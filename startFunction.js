@@ -3,10 +3,6 @@
 
 const { User } = require('./models');
 
-/**
- * Reusable function to start the raffle flow.
- * @param {Telegraf.Context} ctx - The Telegraf context object.
- */
 async function showStartScreen(ctx) {
   const telegramId = ctx.from.id;
   const telegramUsername = ctx.from.username || `user_${telegramId}`;
@@ -23,25 +19,38 @@ async function showStartScreen(ctx) {
           [{ text: '💰 Alpha Pool (₦100)', callback_data: `select_pool:Alpha` }],
           [{ text: '💰 Beta Pool (₦200)', callback_data: `select_pool:Beta` }],
           [{ text: '💎 High Rollers (₦500)', callback_data: `select_pool:HighRollers` }],
-          [{ text: 'ℹ️ How It Works', callback_data: 'how_it_works' }]
+          [{ text: 'ℹ️ How It Works', callback_data: 'how_it_works' }],
+          [{ text: '📋 My Entries', callback_data: 'view_entries' }],
         ]
       }
     };
 
-    // You might want to use editMessageText for a cleaner UX on a button press
+    let messageId;
+
+    // Use editMessageText for a cleaner UX on a button press
     if (ctx.callbackQuery) {
       await ctx.editMessageText('👋 Welcome! Get a chance to win a jackpot every Saturday! We have 3 different pools to play in. Choose your pool below:', options);
+      // When editing, the message ID remains the same
+      messageId = ctx.callbackQuery.message.message_id;
     } else {
-      await ctx.reply('👋 Welcome! Get a chance to win a jackpot every Saturday! We have 3 different pools to play in. Choose your pool below:', options);
+      const welcomeMessage = await ctx.reply('👋 Welcome! Get a chance to win a jackpot every Saturday! We have 3 different pools to play in. Choose your pool below:', options);
+      messageId = welcomeMessage.message_id;
     }
+
+    // Store the welcome message ID in session
+    if (!ctx.session) ctx.session = {};
+    ctx.session.welcomeMessageId = messageId;
+
+    return messageId;
 
   } catch (error) {
     console.error('Error handling start flow:', error);
     ctx.reply('Oops! Something went wrong. Please try again later.');
+    return null;
   }
 }
 
-async function _cleanupSelectionMessages(ctx) {
+async function cleanupSelectionMessages(ctx) {
     try {
         const messagesToDelete = [
             ctx.session.poolSelectionMessageId,
@@ -49,35 +58,42 @@ async function _cleanupSelectionMessages(ctx) {
             ctx.session.quantitySelectionMessageId,
             ctx.session.assignmentMessageId,
             ctx.session.customQuantityMessageId,
-            ctx.session.customPromptMessageId // Add this line
-        ].filter(id => id); // Remove undefined values
+            ctx.session.customPromptMessageId,
+            ctx.session.gridMessageId,
+            ctx.session.randomGridMessageId,
+            ctx.session.confirmationMessageId,
+            ctx.session.paymentMessageId,
+            ctx.session.welcomeMessageId // Add welcome message
+        ].filter(id => id);
 
-        // Use Promise.all for parallel deletion (better performance)
         await Promise.all(
             messagesToDelete.map(async (messageId) => {
                 try {
                     await ctx.telegram.deleteMessage(ctx.chat.id, messageId);
                 } catch (deleteError) {
                     console.log('Could not delete message:', deleteError.message);
-                    // Ignore errors for messages that don't exist or can't be deleted
                 }
             })
         );
 
-        // Clear the message IDs from session
+        // Clear all message IDs from session
         delete ctx.session.poolSelectionMessageId;
         delete ctx.session.quantityMessageId;
         delete ctx.session.quantitySelectionMessageId;
         delete ctx.session.assignmentMessageId;
         delete ctx.session.customQuantityMessageId;
-        delete ctx.session.customPromptMessageId; // Add this line
+        delete ctx.session.customPromptMessageId;
+        delete ctx.session.gridMessageId;
+        delete ctx.session.randomGridMessageId;
+        delete ctx.session.confirmationMessageId;
+        delete ctx.session.paymentMessageId;
+        delete ctx.session.welcomeMessageId;
 
     } catch (error) {
         console.error('Error in cleanupSelectionMessages:', error);
-        // Don't throw error, continue with the flow
     }
 }
-async function cleanupSelectionMessages(ctx) {
+async function _cleanupSelectionMessages(ctx) {
     try {
         const messagesToDelete = [
             ctx.session.poolSelectionMessageId,

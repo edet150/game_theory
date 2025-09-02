@@ -1,189 +1,276 @@
 const { getBotInstance , Markup} = require('../bot/botInstance');
 const bot = getBotInstance();
-const { RafflePool, Entry, User, Payment, sequelize } = require('../models');
+const { RafflePool, Entry, User, Payment, Week, sequelize } = require('../models');
 const axios = require('axios');  
 const { showStartScreen } = require('../startFunction');
+const messageManager = require('../utils/messageManager');
+const { sendError, sendSuccess } = require('../utils/responseUtils');
+// In handleSuccessfulPayment function
+const redisService = require('../services/redisService');
 
-async function initiatePayment(ctx) {
-  const session = ctx.session;
-  if (!session.poolName || !session.quantity) {
-    return ctx.reply('⚠️ Please select a pool and quantity first.');
-  }
-
-  try {
-    const pool = await RafflePool.findOne({ where: { name: session.poolName } });
-    if (!pool) return ctx.reply('⚠️ Pool not found.');
-
-    const totalAmount = pool.price_per_entry * session.quantity;
-
-    // 🔑 Find user by telegram_id to get DB id
-    const user = await User.findOne({ where: { telegram_id: ctx.from.id } });
-    if (!user) return ctx.reply("⚠️ You must register first.");
-
-    const paystackResponse = await axios.post(
-      'https://api.paystack.co/transaction/initialize',
-      {
-        email: ctx.from.username ? `${ctx.from.username}@example.com` : `user${ctx.from.id}@example.com`,
-        amount: totalAmount * 100,
-        currency: 'NGN',
-        callback_url: 'https://t.me/trend_9ja?start=payload',
-        metadata: {
-          telegram_id: ctx.from.id,
-          user_id: user.id,              // ✅ Store DB user id
-          pool_id: pool.id,              // ✅ Store DB pool id
-          pool: pool.name,
-          quantity: session.quantity,
-          assignmentMethod: session.assignmentMethod // ✅ Now captured
-        }
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.PAYSTACK_SEC_TEST}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-
-    const paymentLink = paystackResponse.data.data.authorization_url;
-
-    ctx.reply(
-      `💳 You are about to buy ${session.quantity} entries for the ${pool.name} Pool (₦${totalAmount}).\n\n` +
-      `Assignment method: *${session.assignmentMethod}*\n\n` +
-      `Click below to pay and reserve your entries.`,
-      {
-        parse_mode: "Markdown",
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: `💳 Pay ₦${totalAmount}`, url: paymentLink }]
-          ]
-        }
-      }
-    );
-  } catch (error) {
-    console.error('Error initiating payment:', error.response?.data || error.message);
-    ctx.reply('⚠️ Failed to initiate payment. Please try again later.');
-  }
-}
-
-
-  async function initiatePayment(bot, ctx) {
-    ctx.answerCbQuery(); // Acknowledge the callback query
-  const method = ctx.match[1];
-
-  // Save method in session
-  ctx.session.assignmentMethod = method;
+async function initiatePayment(bot, ctx) {
     const session = ctx.session;
-    if (!session.poolName || !session.quantity) {
-      return ctx.reply('⚠️ Please select a pool and quantity first.');
-    }
-
-  try {
-    const pool = await RafflePool.findOne({ where: { name: session.poolName } });
-    if (!pool) return ctx.reply('⚠️ Pool not found.');
-
-    const totalAmount = pool.price_per_entry * session.quantity;
-
-    // 🔑 Find user by telegram_id to get DB id
-    const user = await User.findOne({ where: { telegram_id: ctx.from.id } });
-    if (!user) return ctx.reply("⚠️ You must register first.");
-
-    const paystackResponse = await axios.post(
-      'https://api.paystack.co/transaction/initialize',
-      {
-        email: ctx.from.username ? `${ctx.from.username}@example.com` : `user${ctx.from.id}@example.com`,
-        amount: totalAmount * 100,
-        currency: 'NGN',
-        callback_url: 'https://t.me/trend_9ja?start=payload',
-        metadata: {
-          telegram_id: ctx.from.id,
-          user_id: user.id,              // ✅ Store DB user id
-          pool_id: pool.id,              // ✅ Store DB pool id
-          pool: pool.name,
-          quantity: session.quantity,
-          assignmentMethod: session.assignmentMethod // ✅ Now captured
-        }
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.PAYSTACK_SEC_TEST}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-
-    const paymentLink = paystackResponse.data.data.authorization_url;
-
-    ctx.reply(
-      `💳 You are about to buy ${session.quantity} entries for the ${pool.name} Pool (₦${totalAmount}).\n\n` +
-      `Assignment method: *${session.assignmentMethod}*\n\n` +
-      `Click below to pay and reserve your entries.`,
-      {
-        parse_mode: "Markdown",
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: `💳 Pay ₦${totalAmount}`, url: paymentLink }]
-          ]
-        }
-      }
-    );
-  } catch (error) {
-    console.error('Error initiating payment:', error.response?.data || error.message);
-    ctx.reply('⚠️ Failed to initiate payment. Please try again later.');
-  }
-  }
-
-  /**
-   * Creates entries in the database after successful payment.
-   */
-  async function createEntries_(bot, userId, poolId, quantity, method, chosenNumbers, telegram_id) {
-    const pool = await RafflePool.findByPk(poolId);
-    if (!pool) return;
-
-    const entries = [];
-    let assignedNumbers = [];
-
+    
     try {
-      if (method === 'choose' && chosenNumbers) {
-        assignedNumbers = chosenNumbers;
-      } else {
-        // Sequential or random assignment
-        const latestEntry = await Entry.findOne({
-          where: { pool_id: poolId },
-          order: [['entry_number', 'DESC']],
-          attributes: ['entry_number']
-        });
-        let startNumber = (latestEntry ? latestEntry.entry_number : 0) + 1;
-        for (let i = 0; i < quantity; i++) {
-          assignedNumbers.push(startNumber + i);
-        }
-        if (method === 'random') {
-          assignedNumbers.sort(() => Math.random() - 0.5);
-        }
-      }
+        const pool = await RafflePool.findOne({ where: { name: session.poolName } });
+        if (!pool) return ctx.reply('⚠️ Pool not found.');
 
-      for (const number of assignedNumbers) {
-        entries.push({
-          user_id: userId,
-          pool_id: poolId,
-          entry_number: number,
-          status: 'paid'
-        });
-      }
+        const totalAmount = pool.price_per_entry * session.quantity;
 
-      await Entry.bulkCreate(entries);
-      bot.telegram.sendMessage(telegram_id, `✅ Payment Confirmed! Your entry numbers are: ${assignedNumbers.join(', ')}.`);
+        // Find user by telegram_id to get DB id
+        const user = await User.findOne({ where: { telegram_id: ctx.from.id } });
+        if (!user) return ctx.reply("⚠️ You must register first.");
+
+        // Get current lottery week
+        const currentLotteryWeek = await Week.findOne({
+            order: [['week_number', 'DESC']]
+        });
+
+        if (!currentLotteryWeek) {
+            return ctx.reply('⚠️ No active lottery week found. Please try again later.');
+        }
+
+        // Prepare summary data for metadata
+        const methodName = session.assignmentMethod === 'choose' ? 'Manual Selection' : 'Random Assignment';
+        const sortedNumbers = session.selectedNumbers ? [...session.selectedNumbers].sort((a, b) => a - b) : [];
+
+        // Prepare metadata for payment
+        const metadata = {
+            telegram_id: ctx.from.id,
+            user_id: user.id,
+            pool_id: pool.id,
+            pool_name: pool.name,
+            price_per_entry: pool.price_per_entry,
+            quantity: session.quantity,
+            total_amount: totalAmount,
+            assignmentMethod: session.assignmentMethod,
+            method_name: methodName,
+            lottery_week_id: currentLotteryWeek.id,
+            lottery_week_code: currentLotteryWeek.code,
+            lottery_week_number: currentLotteryWeek.week_number,
+            lottery_week_name: currentLotteryWeek.week_name,
+            selectedNumbers: session.selectedNumbers || [],
+            sorted_numbers: sortedNumbers,
+            entry_time: new Date().toISOString(),
+            summary_data: {
+                pool_name: pool.name,
+                price_per_entry: pool.price_per_entry,
+                quantity: session.quantity,
+                method_name: methodName,
+                numbers: sortedNumbers,
+                entry_time: new Date().toISOString()
+            }
+        };
+
+        const paystackResponse = await axios.post(
+            'https://api.paystack.co/transaction/initialize',
+            {
+                email: ctx.from.username ? `${ctx.from.username}@example.com` : `user${ctx.from.id}@example.com`,
+                amount: totalAmount * 100,
+                currency: 'NGN',
+                callback_url: 'https://t.me/trend_9ja?start=payload',
+                metadata: metadata
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${process.env.PAYSTACK_SEC_TEST}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        const paymentLink = paystackResponse.data.data.authorization_url;
+
+        // Show payment button
+        const paymentMessage = await ctx.reply(
+            `💳 Ready to complete your purchase!\n\n` +
+            `Total: ₦${totalAmount}\n` +
+            `Click the button below to proceed to payment:`,
+            {
+                parse_mode: "Markdown",
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: `💳 Pay ₦${totalAmount}`, url: paymentLink }],
+                        [{ text: '↩️ Back to Confirmation', callback_data: 'back_to_confirmation' }]
+                    ]
+                }
+            }
+        );
+
+        // Store payment message ID for cleanup
+        ctx.session.paymentMessageId = paymentMessage.message_id;
 
     } catch (error) {
-      console.error('Error creating entries:', error);
-      bot.telegram.sendMessage(telegram_id, '❌ An error occurred while assigning your entries. Please contact support.');
+        console.error('Error initiating payment:', error.response?.data || error.message);
+        ctx.reply('⚠️ Failed to initiate payment. Please try again later.');
     }
-  }
+}
+
+// Add handler for going back to confirmation
+bot.action("back_to_confirmation", async (ctx) => {
+    ctx.answerCbQuery();
+    
+    // Delete payment message
+    if (ctx.session.paymentMessageId) {
+        try {
+            await ctx.deleteMessage(ctx.session.paymentMessageId);
+            delete ctx.session.paymentMessageId;
+        } catch (error) {
+            console.log('Could not delete payment message:', error.message);
+        }
+    }
+    
+    // Show confirmation again
+    await showPaymentConfirmation(ctx);
+});
+
 
   /**
    * Webhook handler or conceptual handler for successful Paystack payment
    * Call this when Paystack sends a callback for successful payment.
    */
-async function handleSuccessfulPayment(bot, paystackTransaction) {
+  async function handleSuccessfulPayment(bot, paystackTransaction) {
+    const t = await sequelize.transaction();
+
+    try {
+        const { id, reference, amount, metadata, status } = paystackTransaction;
+        console.log("Paystack Txn:", paystackTransaction);
+
+        // Extract from metadata
+        const { 
+            telegram_id, 
+            user_id, 
+            pool_id, 
+            quantity, 
+            assignmentMethod, 
+            selectedNumbers,
+            lottery_week_id,
+            lottery_week_number,
+            lottery_week_name,
+            lottery_week_code,
+            summary_data
+        } = metadata;
+
+        // Get user and pool
+        const user = await User.findByPk(user_id);
+        const pool = await RafflePool.findByPk(pool_id);
+        const lotteryWeek = await Week.findByPk(lottery_week_id);
+
+        if (!user || !pool || !lotteryWeek) {
+            throw new Error(`User, Pool, or Lottery Week not found`);
+        }
+
+        // Check if payment already processed
+        const existingPayment = await Payment.findOne({
+            where: { paystack_transaction_id: id },
+            transaction: t
+        });
+
+        if (existingPayment) {
+            console.log(`Payment with transaction ID ${id} already processed. Skipping.`);
+            await t.commit();
+            return;
+        }
+
+        // Create payment record with lottery week
+        const paymentRecord = await Payment.create(
+            {
+                user_id: user.id,
+                pool_id: pool.id,
+                lottery_week_id: lotteryWeek.id,
+                paystack_transaction_id: id,
+                paystack_reference: reference,
+                amount: amount / 100,
+                status
+            },
+            { transaction: t }
+        );
+
+        // Use finalizeEntries to create the entries
+        const result = await finalizeEntries(
+            user.id,
+            pool.id,
+            selectedNumbers,
+            lottery_week_code,
+            lottery_week_name,
+            t // Pass transaction
+        );
+
+        if (!result.success) {
+            throw new Error(`Failed to create entries: ${result.message}`);
+        }
+
+              
+        // After successful payment processing:
+        const entryData = {
+            numbers: selectedNumbers,
+            poolId: pool.id,
+            poolName: pool.name,
+            method: summary_data.method_name,
+            quantity: summary_data.quantity,
+            lottery_week_id: lotteryWeek.id,
+            lottery_week_number: lotteryWeek.week_number,
+            payment_reference: reference,
+            payment_amount: amount / 100
+        };
+
+        // Store in Redis
+        await redisService.addFinalizedEntry(telegram_id, entryData);
+        await t.commit();
+        console.log(`✅ Processed transaction ${id}, entries created.`);
+
+        // Create comprehensive summary message from metadata
+        const summaryMessage = `
+🎯 *ENTRY CONFIRMATION SUMMARY*
+
+🏷️ *Pool:* ${summary_data.pool_name}
+💰 *Price per entry:* ₦${summary_data.price_per_entry}
+📊 *Entries purchased:* ${summary_data.quantity}
+🎲 *Selection method:* ${summary_data.method_name}
+🔢 *Your numbers:* ${summary_data.numbers.join(', ')}
+
+⏰ *Entry time:* ${new Date(summary_data.entry_time).toLocaleString()}
+🏆 *Lottery Week:* ${lottery_week_number}
+✅ *Status:* Confirmed and paid
+
+💡 *Remember: Draw happens every Saturday at 3:00 PM*
+        `;
+
+        // Send success message with summary to user
+      await bot.telegram.sendMessage(
+          
+            telegram_id,
+            summaryMessage,
+            { parse_mode: 'Markdown' }
+        );
+
+        // Additional confirmation message
+        await bot.telegram.sendMessage(
+            telegram_id,
+            `✅ Payment successful! Your ${quantity} entries in the ${pool.name} Pool for week ${lottery_week_number} have been confirmed. Good luck! 🎉`,
+            {
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: "🔄 Start Over", callback_data: "start_over" }]
+                    ]
+                }
+            }
+        );
+
+    } catch (error) {
+        await t.rollback();
+        console.error("❌ Error handling successful payment:", error);
+
+        const telegramId = paystackTransaction.metadata?.telegram_id;
+        if (telegramId) {
+            await bot.telegram.sendMessage(
+                telegram_id,
+                "❌ An error occurred while processing your payment. Please contact support."
+            );
+        }
+    }
+}
+async function _handleSuccessfulPayment(bot, paystackTransaction) {
   const t = await sequelize.transaction(); // Start a database transaction
 
   try {
@@ -235,7 +322,7 @@ async function handleSuccessfulPayment(bot, paystackTransaction) {
     );
 
     // Now create the entries
-    await createEntries(bot, user.id, pool.id, quantity, assignmentMethod, chosenNumbers, telegram_id);
+    // await createEntries(bot, user.id, pool.id, quantity, assignmentMethod, chosenNumbers, telegram_id);
 
     await t.commit(); // Commit everything
     console.log(`✅ Processed transaction ${id}, entries created.`);
@@ -252,10 +339,15 @@ async function handleSuccessfulPayment(bot, paystackTransaction) {
 
     const telegramId = paystackTransaction.metadata?.telegram_id;
     if (telegramId) {
-      bot.telegram.sendMessage(
-        telegramId,
-        "❌ An error occurred while processing your payment. Please contact support."
-      );
+      // bot.telegram.sendMessage(
+      //   telegramId,
+      //   "❌ An error occurred while processing your payment. Please contact support."
+      // );
+      await messageManager.sendAndTrackByBot(
+            bot,
+            telegramId,
+            "❌ An error occurred while processing your payment. Please contact support."
+        );
     }
   }
 }
@@ -417,12 +509,14 @@ async function updateSelectionView(ctx, selectedNumbers, quantity) {
         ctx.session.selectionMessageId = message.message_id;
     }
 }
-async function finalizeEntries(userId, poolId, numbers) {
+async function finalizeEntries(userId, poolId, numbers, lottery_week_code, lottery_week_name) {
     try {
         const entries = numbers.map((num) => ({
             user_id: userId,
             pool_id: poolId,
-            entry_number: num,
+          entry_number: num,
+          code:lottery_week_code ,
+            week_name:lottery_week_name ,
             status: "paid", // Assuming payment is confirmed
         }));
 
@@ -433,46 +527,7 @@ async function finalizeEntries(userId, poolId, numbers) {
         return { success: false, message: "An error occurred while finalizing entries." };
     }
 }
-function _buildGrid(available, selected, quantity, method) {
-  const keyboard = [];
 
-  // 1. Add "Your Selection" heading
-  keyboard.push([Markup.button.callback(`✅ Your Selections (${selected.length}/${quantity})`, "selection_header")]);
-
-  // 2. Add the selected numbers grid
-  if (selected.length > 0) {
-    const sortedSelected = selected.sort((a, b) => a - b);
-    for (let i = 0; i < sortedSelected.length; i += 3) {
-      const row = sortedSelected.slice(i, i + 3).map((num) => {
-        const callbackData = (method === 'choose') ? `remove_number:${num}` : `random_remove:${num}`;
-        return Markup.button.callback(`❌ ${num}`, callbackData);
-      });
-      keyboard.push(row);
-    }
-  } else {
-    keyboard.push([Markup.button.callback("No numbers selected yet.", "selection_empty")]);
-  }
-
-  // 3. Add "Available Numbers" heading
-  keyboard.push([Markup.button.callback("Available Numbers:", "available_header")]);
-
-  // 4. Add the available numbers grid
-  for (let i = 0; i < available.length; i += 5) {
-    const row = available.slice(i, i + 5).map((num) => {
-      const callbackData = (method === 'choose') ? `choose_number:${num}` : `random_select:${num}`;
-      return Markup.button.callback(`${num}`, callbackData);
-    });
-    keyboard.push(row);
-  }
-
-  // 5. Add action buttons
-  keyboard.push([
-    Markup.button.callback("🔄 Refresh", `refresh:${method}`),
-    Markup.button.callback("✅ Done", `done:${method}`),
-  ]);
-
-  return Markup.inlineKeyboard(keyboard);
-}
 function buildGrid(available, selected, quantity, method, finalized = false) {
   const keyboard = [];
 
@@ -575,8 +630,8 @@ async function checkQueryExpiry(ctx, restartOnExpire = false) {
   const now = Date.now();
 console.log('working')
   if (ctx.session.keyboardTimestamp && now - ctx.session.keyboardTimestamp > 30000) {
-    await ctx.answerCbQuery("⚠️ This action has expired. Please refresh.");
-
+    // await ctx.answerCbQuery("⚠️ This action has expired. Please refresh.");
+    await sendError(ctx, "⚠️ This action has expired. Please refresh.");
     if (restartOnExpire) {
       // Re-run your /start flow
         await showStartScreen(ctx);

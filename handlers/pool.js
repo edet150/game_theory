@@ -1,4 +1,6 @@
 const { RafflePool, Entry } = require('../models');
+const messageManager = require('../utils/messageManager');
+const { sendError, sendSuccess } = require('../utils/responseUtils');
 const CLEANUP_CATEGORIES = {
     GRID: ['selectionMessageId', 'gridMessageId', 'randomGridMessageId'],
     QUANTITY: ['quantitySelectionMessageId', 'assignmentMessageId', 'customQuantityMessageId'],
@@ -28,22 +30,6 @@ bot.action(/^select_pool:(\w+)/, async (ctx) => {
 
     // Store pool choice in session
     ctx.session.poolName = poolName;
-    
-    // // Store the message ID of the pool selection for potential deletion
-    // ctx.session.poolSelectionMessageId = ctx.callbackQuery.message.message_id;
-    // console.log(ctx.session.randomGridMessageId)
-    // console.log(ctx.session.randomGridMessageId)
-    // console.log(ctx.session.randomGridMessageId)
-    // console.log(ctx.session.gridMessageId)
-    // console.log(ctx.session.gridMessageId)
-    // // Clean up any existing grid/assignment messages from previous flows
-    // await cleanupSessionMessages(ctx, [
-    //     'quantitySelectionMessageId',
-    //     'assignmentMessageId',
-    //     'customQuantityMessageId',
-    //     'gridMessageId',          // Add grid messages
-    //     'randomGridMessageId'      // Random selection messages
-    // ]);
 
     if (!poolName) {
         console.error('Pool name is undefined');

@@ -6,7 +6,7 @@ const axios = require('axios');
 const Redis = require('ioredis');
 const transactionQueue = require('../queue/transactionQueue');
 const { handleSuccessfulPayment } = require('../handlers/payment');
-console.log(process.env.REDIS_PUBLIC_URL)
+// console.log(process.env.REDIS_PUBLIC_URL)
 
 // Configure Redis connection for this file
 const redisClient = new Redis(process.env.REDIS_PUBLIC_URL || 'redis://127.0.0.1:6379', {
@@ -80,7 +80,7 @@ async function checkPaystackTransactions() {
     }
 }
 // Schedule the function to run every 5 seconds
-// cron.schedule('*/10 * * * * *', checkPaystackTransactions);
+cron.schedule('*/20 * * * * *', checkPaystackTransactions);
 module.exports = {
     checkPaystackTransactions
 };

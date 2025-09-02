@@ -1,13 +1,54 @@
 const { RafflePool, Entry, User, sequelize } = require('../models');
 const { QueryTypes } = require('sequelize');
 // const {initiatePayment} = require('./payment');
-const { updateSelectionView,checkQueryExpiry, buildGrid, buildRandomGrid,generateRandomNumbers, finalizeEntries, getAvailableNumbers,buildNumberGrid,buildSelectedNumbersGrid, handleSuccessfulPayment } = require('./payment');
+const { initiatePayment, checkQueryExpiry, buildGrid, buildRandomGrid, generateRandomNumbers, finalizeEntries, getAvailableNumbers, buildNumberGrid, buildSelectedNumbersGrid, handleSuccessfulPayment } = require('./payment');
 const { Markup} = require('../bot/botInstance');
 const { cleanupSelectionMessages } = require('../startFunction');
-/**
- * Registers the number selection handler with the bot.
- * @param {Telegraf} bot - The Telegraf bot instance.
- */
+const messageManager = require('../utils/messageManager');
+const { sendError, sendSuccess } = require('../utils/responseUtils');
+// Show confirmation summary before payment
+async function showPaymentConfirmation(ctx) {
+    const session = ctx.session;
+    const pool = await RafflePool.findOne({ where: { name: session.poolName } });
+    const methodName = session.assignmentMethod === 'choose' ? 'Manual Selection' : 'Random Assignment';
+    const sortedNumbers = session.selectedNumbers ? [...session.selectedNumbers].sort((a, b) => a - b) : [];
+
+    const confirmationMessage = `
+🎯 **ORDER CONFIRMATION**
+
+🏷️ **Pool:** ${pool.name}
+💰 **Price per entry:** ₦${pool.price_per_entry}
+📊 **Entries purchased:** ${session.quantity}
+🎲 **Selection method:** ${methodName}
+🔢 **Your numbers:** ${sortedNumbers.join(', ')}
+
+💵 **Total Amount:** ₦${pool.price_per_entry * session.quantity}
+
+⚠️ *Please review your order before proceeding to payment.*
+    `;
+
+const confirmation = await ctx.reply(confirmationMessage, {
+    parse_mode: 'Markdown',
+    reply_markup: {
+        inline_keyboard: [
+            [
+                { text: '✅ Confirm & Pay', callback_data: 'proceed_to_payment' }
+            ],
+            [
+                { text: '✏️ Edit Selection', callback_data: 'edit_selection' }
+            ],
+            [
+                { text: '🔄 Start Lottery Selection', callback_data: 'start_over' }
+            ]
+        ]
+    }
+});
+
+
+    // Store confirmation message ID for cleanup
+    ctx.session.confirmationMessageId = confirmation.message_id;
+    return confirmation;
+}
 function clearSelectionSession(session) {
   // Clear only selection-related session data, keep user info and finalized entries
   const preservedData = {
@@ -223,9 +264,9 @@ bot.action("random_refresh", async (ctx) => {
   }
 });
 
+
 // New handler for confirming the random selection
-// New handler for confirming the random selection
-bot.action("random_confirm", async (ctx) => {
+bot.action("randomm_confirm", async (ctx) => {
   ctx.answerCbQuery();
 
   const finalNumbers = ctx.session.selectedNumbers;
@@ -254,16 +295,16 @@ bot.action("random_confirm", async (ctx) => {
         await cleanupSelectionMessages(ctx);
       // Create comprehensive summary message (WON'T be deleted)
       const summaryMessage = `
-🎯 **ENTRY CONFIRMATION SUMMARY**
+🎯 *ENTRY CONFIRMATION SUMMARY*
 
-🏷️ **Pool:** ${pool.name}
-💰 **Price per entry:** ₦${pool.price_per_entry}
-📊 **Entries purchased:** ${ctx.session.quantityLimit}
-🎲 **Selection method:** Random Assignment
-🔢 **Your numbers:** ${finalNumbers.sort((a, b) => a - b).join(', ')}
+🏷️ *Pool:* ${pool.name}
+💰 *Price per entry:* ₦${pool.price_per_entry}
+📊 *Entries purchased:* ${ctx.session.quantityLimit}
+🎲 *Selection method:* Random Assignment
+🔢 *Your numbers:* ${finalNumbers.sort((a, b) => a - b).join(', ')}
 
-⏰ **Entry time:** ${new Date().toLocaleString()}
-✅ **Status:** Confirmed and paid
+⏰ *Entry time:* ${new Date().toLocaleString()}
+✅ *Status:* Confirmed and paid
 
 💡 *Remember: Draw happens every Saturday at 3:00 PM*
       `;
@@ -311,7 +352,7 @@ bot.action("random_confirm", async (ctx) => {
   // Clear the session for this flow
   clearSelectionSession(ctx.session);
 });
-bot.action(/^done:(choose|random)$/, async (ctx) => {
+bot.action(/^ddone:(choose|random)$/, async (ctx) => {
   ctx.answerCbQuery();
   const method = ctx.match[1];
 
@@ -398,6 +439,142 @@ bot.action(/^done:(choose|random)$/, async (ctx) => {
   // Clear the current selection session
   clearSelectionSession(ctx.session);
   
+});
+// Modified random_confirm handler
+bot.action("random_confirm", async (ctx) => {
+    ctx.answerCbQuery();
+
+    const finalNumbers = ctx.session.selectedNumbers;
+    if (!finalNumbers || finalNumbers.length !== ctx.session.quantityLimit) {
+        return ctx.reply("⚠️ An error occurred with your selection. Please start again.");
+    }
+
+    // Clean up previous messages
+    await cleanupSelectionMessages(ctx);
+    
+    // Show confirmation summary
+    await showPaymentConfirmation(ctx);
+});
+
+// Modified done handler
+bot.action(/^done:(choose|random)$/, async (ctx) => {
+    ctx.answerCbQuery();
+    const method = ctx.match[1];
+
+    if (!ctx.session.selectedNumbers || ctx.session.selectedNumbers.length !== ctx.session.quantityLimit) {
+        return ctx.reply(`⚠️ Please select exactly ${ctx.session.quantityLimit} numbers.`);
+    }
+
+    // Clean up previous messages
+    await cleanupSelectionMessages(ctx);
+    
+    // Show confirmation summary
+    await showPaymentConfirmation(ctx);
+});
+  
+// Handler for proceeding to payment after confirmation
+bot.action("proceed_to_payment", async (ctx) => {
+    ctx.answerCbQuery();
+    
+    // Delete confirmation message
+    if (ctx.session.confirmationMessageId) {
+        try {
+            await ctx.deleteMessage(ctx.session.confirmationMessageId);
+            delete ctx.session.confirmationMessageId;
+        } catch (error) {
+            console.log('Could not delete confirmation message:', error.message);
+        }
+    }
+    
+    // Initiate payment
+    await initiatePayment(bot, ctx);
+});
+
+// Handler for editing selection
+bot.action("_edit_selection", async (ctx) => {
+    ctx.answerCbQuery();
+    
+    // Delete confirmation message
+    if (ctx.session.confirmationMessageId) {
+        try {
+            await ctx.deleteMessage(ctx.session.confirmationMessageId);
+            delete ctx.session.confirmationMessageId;
+        } catch (error) {
+            console.log('Could not delete confirmation message:', error.message);
+        }
+    }
+    
+    // Go back to assignment method selection
+    ctx.reply(
+        `How would you like to assign your ${ctx.session.quantity} entries?`,
+        {
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: 'Random', callback_data: 'assign_method:random' }],
+                    [{ text: 'I\'ll Choose My Numbers', callback_data: 'assign_method:choose' }]
+                ]
+            }
+        }
+    );
+});
+  
+  const messageManager = require('../utils/messageManager');
+
+bot.action("edit_selection", async (ctx) => {
+    ctx.answerCbQuery();
+    
+    // Delete confirmation message using message manager
+    if (ctx.session.confirmationMessageId) {
+        await messageManager.cleanupMessages(ctx, [ctx.session.confirmationMessageId]);
+        delete ctx.session.confirmationMessageId;
+    }
+    
+    // Go back to quantity selection
+    try {
+        const pool = await RafflePool.findOne({ where: { name: ctx.session.poolName } });
+        if (!pool) {
+            return ctx.reply('Pool not found. Please try again.');
+        }
+
+        // Count number of paid entries
+        const currentEntriesCount = await Entry.count({
+            where: { pool_id: pool.id, status: 'paid' }
+        });
+
+        const options = {
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '1 Entry', callback_data: `set_quantity:1` }],
+                    [{ text: '5 Entries', callback_data: `set_quantity:5` }],
+                    [{ text: '10 Entries', callback_data: `set_quantity:10` }]
+                ]
+            }
+        };
+
+        // Send quantity selection message with tracking
+        const quantityMessage = await messageManager.sendAndTrack(ctx,
+            `You've selected the ${pool.name} Pool!\n\n` +
+            `**Price:** ₦${pool.price_per_entry} per entry\n` +
+            `**Max Entries:** ${pool.max_entries}\n` +
+            `**Current Entries:** ${currentEntriesCount}/${pool.max_entries}\n\n` +
+            `How many entries would you like to buy?`,
+            { parse_mode: 'Markdown', reply_markup: options.reply_markup }
+        );
+
+        ctx.session.quantityMessageId = quantityMessage.message_id;
+
+        // Send the custom prompt with tracking
+        const customPromptMessage = await messageManager.sendAndTrack(ctx, 
+            'Or, type a custom number of entries.'
+        );
+        ctx.session.customPromptMessageId = customPromptMessage.message_id;
+
+        ctx.session.nextAction = 'prompt_quantity';
+
+    } catch (error) {
+        console.error('Error in edit_selection:', error);
+        ctx.reply('Could not retrieve pool information. Please try again.');
+    }
 });
   
 bot.action('view_entry', async (ctx) => {

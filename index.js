@@ -7,6 +7,8 @@ const poolHandler = require('./handlers/pool');
 const numbersHandler = require('./handlers/numbers');
 const paymentFunctions = require('./handlers/payment');
 const myEntriesHandler = require('./handlers/my_entries');
+const cleanupMiddleware = require('./middleware/cleanupMiddleware');
+const historyHandler = require('./handlers/history');
 require('./cron/paystack_checker');
 require('./cron/sundayCron'); 
 const { getBotInstance, getRedisClient } = require('./bot/botinstance');
@@ -22,6 +24,9 @@ startHandler(bot);
 poolHandler(bot);
 numbersHandler(bot);
 myEntriesHandler(bot);
+historyHandler(bot);
+
+bot.use(cleanupMiddleware);
 
 
 
