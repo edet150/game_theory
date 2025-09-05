@@ -12,6 +12,7 @@ const { handleSuccessfulPayment } = require('../handlers/payment');
 const redisClient = new Redis(process.env.REDIS_PUBLIC_URL || 'redis://127.0.0.1:6379', {
     maxRetriesPerRequest: null
 });
+
 async function clearRedis(all = false) {
   try {
     if (all) {
@@ -25,6 +26,7 @@ async function clearRedis(all = false) {
     console.error("❌ Error clearing Redis:", error);
   }
 }
+
 // Example usage:
 // clearRedis();      // Clears only current DB
 // clearRedis(true); 
@@ -32,6 +34,7 @@ async function clearRedis(all = false) {
 const PAYSTACK_TRANSACTION_KEY = 'processed_paystack_transactions';
 let lastCheckTimestamp = Date.now(); // Initialize the timestamp
 const bot = getBotInstance();
+
 async function checkPaystackTransactions() {
     console.log(`[Cron] Checking for new Paystack transactions...`);
     
@@ -65,7 +68,7 @@ async function checkPaystackTransactions() {
             
             if (!isProcessed) {
                 console.log(`[Cron] Processing new transaction: ${transaction.id}`);
-                
+                // console.log({bot, transaction})
                 // Process the successful payment
                 await handleSuccessfulPayment(bot, transaction);
                 
@@ -79,8 +82,9 @@ async function checkPaystackTransactions() {
         console.error('[Cron] Error fetching transactions from Paystack:', error.response?.data || error.message);
     }
 }
+
 // Schedule the function to run every 5 seconds
-cron.schedule('*/20 * * * * *', checkPaystackTransactions);
+cron.schedule('*/50 * * * * *', checkPaystackTransactions);
 module.exports = {
     checkPaystackTransactions
 };

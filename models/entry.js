@@ -37,6 +37,14 @@ module.exports = (sequelize, DataTypes) => {
     week_name: {
       type: DataTypes.STRING,
       allowNull: false
+    },
+    week_code: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
+    transaction_id: {
+      type: DataTypes.STRING,
+      allowNull: false
     }
   }, {
     sequelize,

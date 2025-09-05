@@ -9,6 +9,7 @@ const paymentFunctions = require('./handlers/payment');
 const myEntriesHandler = require('./handlers/my_entries');
 const cleanupMiddleware = require('./middleware/cleanupMiddleware');
 const historyHandler = require('./handlers/history');
+const adminHandler = require('./handlers/admin');
 require('./cron/paystack_checker');
 require('./cron/sundayCron'); 
 const { getBotInstance, getRedisClient } = require('./bot/botinstance');
@@ -19,12 +20,25 @@ const redis = getRedisClient();
 //WINNING
 let lst = getLast4Digits('000000000000000000014d7c1dee8492516a87cf61c277f824364932b48ce3f3')
 console.log(lst)
+// Handle commands first - this should be registered BEFORE your message handler
+bot.on('text', async (ctx, next) => {
+  // Check if the message starts with a command
+  if (ctx.message.text.startsWith('/')) {
+    // Let Telegraf handle commands normally
+    return next();
+  }
+  
+  // If it's not a command, continue to your custom message handlers
+  return next();
+});
 // Register handlers
 startHandler(bot);
+adminHandler(bot);
 poolHandler(bot);
 numbersHandler(bot);
 myEntriesHandler(bot);
 historyHandler(bot);
+
 
 bot.use(cleanupMiddleware);
 

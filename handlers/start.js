@@ -1,4 +1,4 @@
-const { User, RafflePool, Entry } = require('../models');
+const { User, RafflePool, Entry, Week , sequelize} = require('../models');
 const { showStartScreen, cleanupSelectionMessages } = require('../startFunction');
 const messageManager = require('../utils/messageManager');
 const { sendError, sendSuccess } = require('../utils/responseUtils');
@@ -22,13 +22,16 @@ module.exports = (bot) => {
 bot.action('how_it_works', async (ctx) => {
     ctx.answerCbQuery();
     
-    const message = await messageManager.sendAndTrack(ctx, 
-        'How a winner is selected:\n\n' +
-        'We select one winner from each of our three pools every Saturday at 3:00 PM. The process is 100% transparent and provably fair using a single, verifiable Bitcoin block hash.\n\n' +
-        '1. A Winning Number is Generated: We use specific sections of the first Bitcoin block hash mined after the draw time. Each section corresponds to a different pool.\n\n' +
-        '2. A Winner is Guaranteed: We apply the modulo operator to the winning number against the total number of entries in that pool. This ensures a valid entry is always selected, even if the pool isn\'t full!\n\n' +
-        '3. You Can Verify: You can verify the block hash yourself on any public blockchain explorer like blockchain.com.'
-    );
+const message = await messageManager.sendAndTrack(ctx, 
+    '🎉 *How Winners Are Selected*\n\n' +
+    'We pick *one winner* from each of our three pools every Saturday at 3:00 PM. The process is fully transparent and based on the Bitcoin blockchain.\n\n' +
+    '1️⃣ *Winning Number*: After the draw time, we take the hash of the first Bitcoin block mined. A section of this hash is used as the winning number for each pool.\n\n' +
+    '2️⃣ *Exact Match First*: If a player\'s entry exactly matches the winning number, they win instantly.\n\n' +
+    '3️⃣ *Guaranteed Winner*: If no exact match, we apply the winning number to the pool size using the modulo operator. This fairly maps the number to one of the entries, ensuring there is always a winner.\n\n' +
+    '4️⃣ *Verify Yourself*: Anyone can check the block hash on a public blockchain explorer like blockchain.com to confirm the result.\n\n' +
+    '✅ This means the process is random, transparent, and impossible to manipulate.'
+);
+
 });
 
 
@@ -65,19 +68,40 @@ bot.action("start_over", async (ctx) => {
     // Preserve any data you want to keep across sessions
   };
   ctx.session = essentialData;
-  
-  // Send welcome message and store its ID
-  const welcomeMessage = await ctx.reply('👋 Welcome! Get a chance to win a jackpot every Saturday! We have 3 different pools to play in. Choose your pool below:', {
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: '💰 Alpha Pool (₦100)', callback_data: `select_pool:Alpha` }],
-        [{ text: '💰 Beta Pool (₦200)', callback_data: `select_pool:Beta` }],
-        [{ text: '💎 High Rollers (₦500)', callback_data: `select_pool:HighRollers` }],
-        [{ text: 'ℹ️ How It Works', callback_data: 'how_it_works' }],
-        [{ text: '📋 My Entries', callback_data: 'view_entries' }]
-      ]
-    }
-  });
+  // Fetch latest week info
+const currentLotteryWeek = await Week.findOne({
+  order: [['week_number', 'DESC']]
+});
+
+const weekLabel = currentLotteryWeek 
+  ? `${currentLotteryWeek.week_name} (Week ${currentLotteryWeek.week_number}, ${currentLotteryWeek.year})` 
+  : 'Current Week';
+
+// Example prize money logic (replace with actual calculation later)
+const prizeMoney = "₦100,000"; // or dynamically calculate 80% of entries
+
+// Compose welcome message
+const welcomeText = `👋 Welcome to *Alpha Entries*!  
+Get a chance to win exciting jackpots every Saturday 🎉  
+
+📅 *This Week:* ${weekLabel}  
+💰 *Prize Pool:* ${prizeMoney}  
+
+Please select your draw below to enter:`;
+
+// Send welcome message
+const welcomeMessage = await ctx.reply(welcomeText, {
+  parse_mode: 'Markdown',
+  reply_markup: {
+    inline_keyboard: [
+      [{ text: '💰 Alpha Draw (₦100)', callback_data: `select_pool:Alpha` }],
+      // [{ text: '💰 Beta Draw (₦200)', callback_data: `select_pool:Beta` }],
+      // [{ text: '💎 High Rollers (₦500)', callback_data: `select_pool:HighRollers` }],
+      [{ text: 'ℹ️ How It Works', callback_data: 'how_it_works' }],
+      [{ text: '📋 My Entries', callback_data: 'view_entries' }]
+    ]
+  }
+});
   
   // Store the welcome message ID for future cleanup
   ctx.session.welcomeMessageId = welcomeMessage.message_id;

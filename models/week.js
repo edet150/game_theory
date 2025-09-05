@@ -29,10 +29,6 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: false,
           },
-    week_id: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-      },
       starts_at: {
         type: DataTypes.DATE,
         allowNull: false,

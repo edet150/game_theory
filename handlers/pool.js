@@ -118,8 +118,9 @@ bot.action(/^set_quantity:(\d+)/, async (ctx) => {
     // Store new assignment message ID
     ctx.session.assignmentMessageId = assignmentMessage.message_id;
 });
+  
   bot.on('message', async (ctx) => {
-  console.log('mess')
+  
     if (ctx.session.nextAction === 'prompt_quantity' && ctx.message.text) {
         const quantity = parseInt(ctx.message.text, 10);
         if (isNaN(quantity) || quantity <= 0) {

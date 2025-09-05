@@ -8,6 +8,44 @@ const { sendError, sendSuccess } = require('../utils/responseUtils');
 // In handleSuccessfulPayment function
 const redisService = require('../services/redisService');
 
+
+// Show confirmation summary before payment
+async function showPaymentConfirmation(ctx) {
+    const session = ctx.session;
+    const pool = await RafflePool.findOne({ where: { name: session.poolName } });
+    const methodName = session.assignmentMethod === 'choose' ? 'Manual Selection' : 'Random Assignment';
+    const sortedNumbers = session.selectedNumbers ? [...session.selectedNumbers].sort((a, b) => a - b) : [];
+
+    const confirmationMessage = `
+🎯 **ORDER CONFIRMATION**
+
+🏷️ **Pool:** ${pool.name}
+💰 **Price per entry:** ₦${pool.price_per_entry}
+📊 **Entries purchased:** ${session.quantity}
+🎲 **Selection method:** ${methodName}
+🔢 **Your numbers:** ${sortedNumbers.join(', ')}
+
+💵 **Total Amount:** ₦${pool.price_per_entry * session.quantity}
+
+⚠️ *Please review your order before proceeding to payment.*
+    `;
+
+    const confirmation = await ctx.reply(confirmationMessage, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+            inline_keyboard: [
+                [
+                    { text: '✅ Confirm & Pay', callback_data: 'proceed_to_payment' },
+                    { text: '✏️ Edit Selection', callback_data: 'edit_selection' }
+                ]
+            ]
+        }
+    });
+
+    // Store confirmation message ID for cleanup
+    ctx.session.confirmationMessageId = confirmation.message_id;
+    return confirmation;
+}
 async function initiatePayment(bot, ctx) {
     const session = ctx.session;
     
@@ -91,7 +129,8 @@ async function initiatePayment(bot, ctx) {
                 reply_markup: {
                     inline_keyboard: [
                         [{ text: `💳 Pay ₦${totalAmount}`, url: paymentLink }],
-                        [{ text: '↩️ Back to Confirmation', callback_data: 'back_to_confirmation' }]
+                        [{ text: `💳 Verify Payment`, callback_data: 'verify_payment' }],
+                        [{ text: '↩️ Back to Confirmation screen', callback_data: 'back_to_confirmation' }]
                     ]
                 }
             }
@@ -105,24 +144,6 @@ async function initiatePayment(bot, ctx) {
         ctx.reply('⚠️ Failed to initiate payment. Please try again later.');
     }
 }
-
-// Add handler for going back to confirmation
-bot.action("back_to_confirmation", async (ctx) => {
-    ctx.answerCbQuery();
-    
-    // Delete payment message
-    if (ctx.session.paymentMessageId) {
-        try {
-            await ctx.deleteMessage(ctx.session.paymentMessageId);
-            delete ctx.session.paymentMessageId;
-        } catch (error) {
-            console.log('Could not delete payment message:', error.message);
-        }
-    }
-    
-    // Show confirmation again
-    await showPaymentConfirmation(ctx);
-});
 
 
   /**
@@ -192,7 +213,8 @@ bot.action("back_to_confirmation", async (ctx) => {
             pool.id,
             selectedNumbers,
             lottery_week_code,
-            lottery_week_name,
+          lottery_week_name,
+            id,
             t // Pass transaction
         );
 
@@ -373,7 +395,7 @@ async function getAvailableNumbers(poolId, selectedNumbers = [], limit = 15) {
   // Exclude numbers already selected by the user
   const selectedSet = new Set(selectedNumbers);
 
-  const poolNumbers = Array.from({ length: maxEntries }, (_, i) => i + 1);
+  const poolNumbers = Array.from({ length: maxEntries }, (_, i) => i + 2000);
 
   const available = poolNumbers.filter((n) => !takenSet.has(n) && !selectedSet.has(n));
   available.sort(() => Math.random() - 0.5);
@@ -509,13 +531,15 @@ async function updateSelectionView(ctx, selectedNumbers, quantity) {
         ctx.session.selectionMessageId = message.message_id;
     }
 }
-async function finalizeEntries(userId, poolId, numbers, lottery_week_code, lottery_week_name) {
-    try {
+async function finalizeEntries(userId, poolId, numbers, lottery_week_code, lottery_week_name, id) {
+  console.log('lottery_week_code', lottery_week_code)  
+  try {
         const entries = numbers.map((num) => ({
             user_id: userId,
             pool_id: poolId,
-          entry_number: num,
-          code:lottery_week_code ,
+            entry_number: num,
+            week_code:lottery_week_code ,
+            transaction_id:id ,
             week_name:lottery_week_name ,
             status: "paid", // Assuming payment is confirmed
         }));
@@ -591,7 +615,7 @@ async function generateRandomNumbers(poolId, quantity) {
   const takenSet = new Set(taken.map((t) => t.entry_number));
 
   const availableNumbers = [];
-  for (let i = 1; i <= maxEntries; i++) {
+  for (let i = 2000; i <= maxEntries; i++) {
     if (!takenSet.has(i)) {
       availableNumbers.push(i);
     }

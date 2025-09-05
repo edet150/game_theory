@@ -5,7 +5,8 @@ const { initiatePayment, checkQueryExpiry, buildGrid, buildRandomGrid, generateR
 const { Markup} = require('../bot/botInstance');
 const { cleanupSelectionMessages } = require('../startFunction');
 const messageManager = require('../utils/messageManager');
-const { sendError, sendSuccess } = require('../utils/responseUtils');
+const { checkPaystackTransactions } = require('../cron/paystack_checker');
+
 // Show confirmation summary before payment
 async function showPaymentConfirmation(ctx) {
     const session = ctx.session;
@@ -14,41 +15,41 @@ async function showPaymentConfirmation(ctx) {
     const sortedNumbers = session.selectedNumbers ? [...session.selectedNumbers].sort((a, b) => a - b) : [];
 
     const confirmationMessage = `
-🎯 **ORDER CONFIRMATION**
+🎯 *ORDER CONFIRMATION*
 
-🏷️ **Pool:** ${pool.name}
-💰 **Price per entry:** ₦${pool.price_per_entry}
-📊 **Entries purchased:** ${session.quantity}
-🎲 **Selection method:** ${methodName}
-🔢 **Your numbers:** ${sortedNumbers.join(', ')}
+🏷️ *Pool:* ${pool.name}
+💰 *Price per entry:* ₦${pool.price_per_entry}
+📊 *Entries purchased:* ${session.quantity}
+🎲 *Selection method:* ${methodName}
+🔢 *Your numbers:* ${sortedNumbers.join(', ')}
 
-💵 **Total Amount:** ₦${pool.price_per_entry * session.quantity}
+💵 *Total Amount:* ₦${pool.price_per_entry * session.quantity}
 
 ⚠️ *Please review your order before proceeding to payment.*
     `;
 
-const confirmation = await ctx.reply(confirmationMessage, {
-    parse_mode: 'Markdown',
-    reply_markup: {
-        inline_keyboard: [
-            [
-                { text: '✅ Confirm & Pay', callback_data: 'proceed_to_payment' }
-            ],
-            [
-                { text: '✏️ Edit Selection', callback_data: 'edit_selection' }
-            ],
-            [
-                { text: '🔄 Start Lottery Selection', callback_data: 'start_over' }
+    const confirmation = await ctx.reply(confirmationMessage, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+            inline_keyboard: [
+                [
+                    { text: '✅ Confirm & Pay', callback_data: 'proceed_to_payment' }
+                ],
+                [
+                    { text: '✏️ Edit Selection', callback_data: 'edit_selection' }
+                ],
+                [
+                    { text: '🔄 Start Lottery Selection', callback_data: 'start_over' }
+                ]
             ]
-        ]
-    }
-});
-
+        }
+    });
 
     // Store confirmation message ID for cleanup
     ctx.session.confirmationMessageId = confirmation.message_id;
     return confirmation;
 }
+
 function clearSelectionSession(session) {
   // Clear only selection-related session data, keep user info and finalized entries
   const preservedData = {
@@ -74,8 +75,9 @@ function clearSelectionSession(session) {
   session.selectionMessageId = null;
   */
 }
+
 module.exports = (bot) => {
-  // bot.js (or wherever your bot actions are defined)
+// bot.js (or wherever your bot actions are defined)
   
 bot.action(/^assign_method:(\w+)/, async (ctx) => {
   ctx.answerCbQuery();
@@ -186,8 +188,14 @@ bot.action(/^remove_number:(\d+)$/, async (ctx) => {
     await ctx.editMessageReplyMarkup(updatedGrid.reply_markup);
 });
   
-  
+// Your existing message handler, but with command protection
 bot.on('message', async (ctx) => {
+  // Skip processing if it's a command
+  if (ctx.message.text && ctx.message.text.startsWith('/')) {
+    return;
+  }
+  
+  // Your existing message processing logic
   if (ctx.session.nextAction === 'process_numbers' && ctx.message.text) {
     const requestedNumbers = ctx.message.text.split(',').map(n => parseInt(n.trim(), 10));
     const quantity = ctx.session.quantity;
@@ -223,8 +231,8 @@ bot.on('message', async (ctx) => {
 
     if (takenNumbers.length > 0) {
       ctx.reply(`❌ Sorry, some of your numbers are already taken.\n\n` +
-        `**Numbers Taken:** ${takenNumbers.join(', ')}\n` +
-        `**Numbers Available:** ${availableNumbers.join(', ')}\n\n` +
+        `*Numbers Taken:* ${takenNumbers.join(', ')}\n` +
+        `*Numbers Available:* ${availableNumbers.join(', ')}\n\n` +
         `Would you like to select new numbers for the ones that are taken, or assign all ${quantity} entries automatically?`, {
           parse_mode: 'Markdown',
           reply_markup: {
@@ -263,7 +271,6 @@ bot.action("random_refresh", async (ctx) => {
     ctx.session.randomGridMessageId = newRandomGridMessage.message_id;
   }
 });
-
 
 // New handler for confirming the random selection
 bot.action("randomm_confirm", async (ctx) => {
@@ -352,6 +359,7 @@ bot.action("randomm_confirm", async (ctx) => {
   // Clear the session for this flow
   clearSelectionSession(ctx.session);
 });
+  
 bot.action(/^ddone:(choose|random)$/, async (ctx) => {
   ctx.answerCbQuery();
   const method = ctx.match[1];
@@ -382,16 +390,16 @@ bot.action(/^ddone:(choose|random)$/, async (ctx) => {
         await cleanupSelectionMessages(ctx);
       // Create comprehensive summary message (WON'T be deleted)
       const summaryMessage = `
-🎯 **ENTRY CONFIRMATION SUMMARY**
+🎯 *ENTRY CONFIRMATION SUMMARY*
 
-🏷️ **Pool:** ${pool.name}
-💰 **Price per entry:** ₦${pool.price_per_entry}
-📊 **Entries purchased:** ${ctx.session.quantityLimit}
-🎲 **Selection method:** ${methodName}
-🔢 **Your numbers:** ${ctx.session.selectedNumbers.sort((a, b) => a - b).join(', ')}
+🏷️ *Pool:* ${pool.name}
+💰 *Price per entry:* ₦${pool.price_per_entry}
+📊 *Entries purchased:* ${ctx.session.quantityLimit}
+🎲 *Selection method:* ${methodName}
+🔢 *Your numbers:* ${ctx.session.selectedNumbers.sort((a, b) => a - b).join(', ')}
 
-⏰ **Entry time:** ${new Date().toLocaleString()}
-✅ **Status:** Confirmed and paid
+⏰ *Entry time:* ${new Date().toLocaleString()}
+✅ *Status:* Confirmed and paid
 
 💡 *Remember: Draw happens every Saturday at 3:00 PM*
       `;
@@ -440,6 +448,7 @@ bot.action(/^ddone:(choose|random)$/, async (ctx) => {
   clearSelectionSession(ctx.session);
   
 });
+  
 // Modified random_confirm handler
 bot.action("random_confirm", async (ctx) => {
     ctx.answerCbQuery();
@@ -518,7 +527,7 @@ bot.action("_edit_selection", async (ctx) => {
     );
 });
   
-  const messageManager = require('../utils/messageManager');
+const messageManager = require('../utils/messageManager');
 
 bot.action("edit_selection", async (ctx) => {
     ctx.answerCbQuery();
@@ -554,9 +563,9 @@ bot.action("edit_selection", async (ctx) => {
         // Send quantity selection message with tracking
         const quantityMessage = await messageManager.sendAndTrack(ctx,
             `You've selected the ${pool.name} Pool!\n\n` +
-            `**Price:** ₦${pool.price_per_entry} per entry\n` +
-            `**Max Entries:** ${pool.max_entries}\n` +
-            `**Current Entries:** ${currentEntriesCount}/${pool.max_entries}\n\n` +
+            `*Price:* ₦${pool.price_per_entry} per entry\n` +
+            `*Max Entries:* ${pool.max_entries}\n` +
+            `*Current Entries:* ${currentEntriesCount}/${pool.max_entries}\n\n` +
             `How many entries would you like to buy?`,
             { parse_mode: 'Markdown', reply_markup: options.reply_markup }
         );
@@ -685,8 +694,33 @@ bot.action(/^refresh:(choose|random)$/, async (ctx) => {
     console.log('Error refreshing grid:', error.message);
   }
 });
+  
 bot.action('no_action', (ctx) => {
   ctx.answerCbQuery('This entry has been finalized', true);
+});
+  
+  
+  bot.action("back_to_confirmation", async (ctx) => {
+    ctx.answerCbQuery();
+    
+    // Delete payment message
+    if (ctx.session.paymentMessageId) {
+        try {
+            await ctx.deleteMessage(ctx.session.paymentMessageId);
+            delete ctx.session.paymentMessageId;
+        } catch (error) {
+            console.log('Could not delete payment message:', error.message);
+        }
+    }
+    
+    // Show confirmation again
+    await showPaymentConfirmation(ctx);
+});
+
+bot.action("verify_payment", async (ctx) => {
+    ctx.answerCbQuery();
+    // Manual trigger verification
+    await checkPaystackTransactions();
 });
 };
 

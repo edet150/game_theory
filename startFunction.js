@@ -1,9 +1,9 @@
 // In a new file, or at the top of an existing one.
 // Let's create a new file `utils/startFlow.js`
 
-const { User } = require('./models');
+const { User , Week} = require('./models');
 
-async function showStartScreen(ctx) {
+async function showStartScreen_(ctx) {
   const telegramId = ctx.from.id;
   const telegramUsername = ctx.from.username || `user_${telegramId}`;
 
@@ -16,9 +16,9 @@ async function showStartScreen(ctx) {
     const options = {
       reply_markup: {
         inline_keyboard: [
-          [{ text: '💰 Alpha Pool (₦100)', callback_data: `select_pool:Alpha` }],
-          [{ text: '💰 Beta Pool (₦200)', callback_data: `select_pool:Beta` }],
-          [{ text: '💎 High Rollers (₦500)', callback_data: `select_pool:HighRollers` }],
+          [{ text: '💰 Alpha Draw (₦100)', callback_data: `select_pool:Alpha` }],
+          // [{ text: '💰 Beta Draw (₦200)', callback_data: `select_pool:Beta` }],
+          // [{ text: '💎 High Rollers (₦500)', callback_data: `select_pool:HighRollers` }],
           [{ text: 'ℹ️ How It Works', callback_data: 'how_it_works' }],
           [{ text: '📋 My Entries', callback_data: 'view_entries' }],
         ]
@@ -49,6 +49,76 @@ async function showStartScreen(ctx) {
     return null;
   }
 }
+async function showStartScreen(ctx) {
+  const telegramId = ctx.from.id;
+  const telegramUsername = ctx.from.username || `user_${telegramId}`;
+
+  try {
+    // Ensure user exists in DB
+    await User.findOrCreate({
+      where: { telegram_id: telegramId },
+      defaults: { telegram_username: telegramUsername },
+    });
+
+    // Get current lottery week
+    const currentLotteryWeek = await Week.findOne({
+      order: [['week_number', 'DESC']]
+    });
+
+    const weekLabel = currentLotteryWeek 
+      ? `${currentLotteryWeek.week_name} (Week ${currentLotteryWeek.week_number}, ${currentLotteryWeek.year})`
+      : 'Current Week';
+
+    // Example prize pool (later make dynamic: 80% of all entries)
+    const prizeMoney = "₦100,000";
+
+    // Welcome text with branding
+    const welcomeText = `👋 Welcome to *Alpha Entries*!  
+Get a chance to win exciting jackpots every Saturday 🎉  
+
+📅 *This Week:* ${weekLabel}  
+💰 *Prize Pool:* ${prizeMoney}  
+
+Please select your draw below to enter:`;
+
+    const options = {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '💰 Alpha Draw (₦100)', callback_data: `select_pool:Alpha` }],
+          // [{ text: '💰 Beta Draw (₦200)', callback_data: `select_pool:Beta` }],
+          // [{ text: '💎 High Rollers (₦500)', callback_data: `select_pool:HighRollers` }],
+          [{ text: 'ℹ️ How It Works', callback_data: 'how_it_works' }],
+          [{ text: '📋 My Entries', callback_data: 'view_entries' }],
+        ]
+      }
+    };
+
+    let messageId;
+
+    if (ctx.callbackQuery) {
+      // Editing existing message (button press)
+      await ctx.editMessageText(welcomeText, options);
+      messageId = ctx.callbackQuery.message.message_id;
+    } else {
+      // Fresh start
+      const welcomeMessage = await ctx.reply(welcomeText, options);
+      messageId = welcomeMessage.message_id;
+    }
+
+    // Store welcome message ID in session
+    if (!ctx.session) ctx.session = {};
+    ctx.session.welcomeMessageId = messageId;
+
+    return messageId;
+
+  } catch (error) {
+    console.error('Error handling start flow:', error);
+    ctx.reply('Oops! Something went wrong. Please try again later.');
+    return null;
+  }
+}
+
 
 async function cleanupSelectionMessages(ctx) {
     try {
