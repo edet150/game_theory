@@ -434,17 +434,105 @@ async function cleanupCommandMessage(ctx) {
         }
     }
 }
+    // Show assignment method selection
+    async function showAssignmentMethodSelection(ctx) {
+        const message = `
+        <b>🎯 How would you like to assign your ${ctx.session.quantity} entries?</b>
 
-// Usage example in your handlers:
-// bot.action('some_action', async (ctx) => {
-//     await ctx.answerCbQuery();
+        Choose how you want your bonus entries to be assigned:
+    `;
+
+        const keyboard = {
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        { text: '🎲 Random', callback_data: 'assign_method:random' },
+                        { text: '📝 Choose Numbers', callback_data: 'assign_method:choose' }
+                    ],
+                    [
+                        { text: '🔙 Back', callback_data: 'use_bonus_entries' }
+                    ]
+                ]
+            }
+        };
+
+        await ctx.editMessageText(message, {
+            parse_mode: 'HTML',
+            reply_markup: keyboard.reply_markup
+        });
+    }
+
+async function showBonusEntrySelection(ctx, user) {
+    const availableEntries = user.bonus_entries;
     
-//     // Clean up previous messages before showing new content
-//     await cleanupSelectionMessages(ctx);
+    const entryOptions = [];
     
-//     // Your action logic here
-//     // ...
-// });
+    if (availableEntries <= 8) {
+        // Show all options individually for small numbers
+        for (let i = 1; i <= availableEntries; i++) {
+            if (i % 4 === 1) entryOptions.push([]); // New row every 4 items
+            entryOptions[entryOptions.length - 1].push({ 
+                text: `${i}`, 
+                callback_data: `bonus_quantity:${i}` 
+            });
+        }
+    } else {
+        // For larger numbers, show common options + custom
+        entryOptions.push([
+            { text: '1', callback_data: 'bonus_quantity:1' },
+            { text: '2', callback_data: 'bonus_quantity:2' },
+            { text: '3', callback_data: 'bonus_quantity:3' },
+            { text: '5', callback_data: 'bonus_quantity:5' }
+        ]);
+        
+        entryOptions.push([
+            { text: '10', callback_data: 'bonus_quantity:10' },
+            { text: '15', callback_data: 'bonus_quantity:15' },
+            { text: '20', callback_data: 'bonus_quantity:20' },
+            { text: '25', callback_data: 'bonus_quantity:25' }
+        ]);
+        
+        // Add max option if reasonable
+        if (availableEntries <= 30) {
+            entryOptions.push([{ 
+                text: `Max (${availableEntries})`, 
+                callback_data: `bonus_quantity:${availableEntries}` 
+            }]);
+        }
+    }
+    
+    // Always add custom option for flexibility
+    entryOptions.push([{ 
+        text: 'Custom Amount', 
+        callback_data: 'bonus_custom' 
+    }]);
+    
+    // Add back button
+    entryOptions.push([{ 
+        text: '🔙 Back', 
+        callback_data: 'referral_dashboard' 
+    }]);
+
+    const message = `
+<b>🎁 Use Bonus Entries</b>
+
+You have <b>${availableEntries}</b> bonus entries available.
+
+How many would you like to use?
+    `;
+
+    const keyboard = {
+        reply_markup: {
+            inline_keyboard: entryOptions
+        }
+    };
+
+    await ctx.editMessageText(message, { 
+        parse_mode: 'HTML', 
+        reply_markup: keyboard.reply_markup 
+    });
+}
+
 
 // Export the functions for use in other files
 module.exports = {
@@ -459,7 +547,9 @@ module.exports = {
     cleanupAfterEntrySelection,
     cleanupAfterAdminAction,
     cleanupCommandMessage,
-    deleteMessagesByIds
+    deleteMessagesByIds,
+    showAssignmentMethodSelection,
+    showBonusEntrySelection
 };
 
 // module.exports = { showStartScreen, getLast4Digits, cleanupSelectionMessages };

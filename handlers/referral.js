@@ -1,6 +1,6 @@
 // handlers/referral.js
 const { User, Entry, RafflePool, Week } = require('../models');
-const { showStartScreen } = require('../startFunction');
+const { showStartScreen, showBonusEntrySelection } = require('../startFunction');
 const { sendError, sendSuccess, sendTemporaryMessage } = require('../utils/responseUtils');
 // Modified showPoolSelection function
 // Function to award bonus entries when referrals make purchases
@@ -102,9 +102,9 @@ module.exports = (bot) => {
 • Bonus Entries Available: ${user.bonus_entries}
 
 <b>👥 Your Referred Users:</b>
-${referredUsers.length > 0 ? referredUsers.map(u => 
-    `• ${u.telegram_username} - ${u.Entries?.length || 0} entries`
-).join('\n') : 'No referrals yet'}
+${referredUsers.length > 0 ? referredUsers.map(u =>
+            `• ${u.telegram_username} - ${u.Entries?.length || 0} entries`
+        ).join('\n') : 'No referrals yet'}
 
 <b>📋 How it works:</b>
 • Share your link below
@@ -128,14 +128,14 @@ ${referredUsers.length > 0 ? referredUsers.map(u =>
 
         // Edit or send new message
         if (ctx.callbackQuery) {
-            await ctx.editMessageText(message, { 
-                parse_mode: 'HTML', 
-                reply_markup: keyboard.reply_markup 
+            await ctx.editMessageText(message, {
+                parse_mode: 'HTML',
+                reply_markup: keyboard.reply_markup
             });
         } else {
-            const msg = await ctx.reply(message, { 
-                parse_mode: 'HTML', 
-                reply_markup: keyboard.reply_markup 
+            const msg = await ctx.reply(message, {
+                parse_mode: 'HTML',
+                reply_markup: keyboard.reply_markup
             });
             if (!ctx.session.referralMessages) ctx.session.referralMessages = [];
             ctx.session.referralMessages.push(msg.message_id);
@@ -206,9 +206,9 @@ ${referredUsers.map(u => `
             }
         };
 
-        await ctx.editMessageText(message, { 
-            parse_mode: 'HTML', 
-            reply_markup: keyboard.reply_markup 
+        await ctx.editMessageText(message, {
+            parse_mode: 'HTML',
+            reply_markup: keyboard.reply_markup
         });
     });
 
@@ -218,83 +218,92 @@ ${referredUsers.map(u => `
         await showStartScreen(ctx); // Your existing function
     });
     // Handle bonus quantity selection
-bot.action(/^bonus_quantity:(\d+)/, async (ctx) => {
-    await ctx.answerCbQuery();
-    const quantity = parseInt(ctx.match[1], 10);
+    // Handle bonus quantity selection
+    bot.action(/^bonus_quantity:(\d+)/, async (ctx) => {
+        await ctx.answerCbQuery();
+        const quantity = parseInt(ctx.match[1], 10);
     
-    if (quantity > ctx.session.availableBonusEntries) {
-        return sendError(ctx, `You only have ${ctx.session.availableBonusEntries} bonus entries available`);
-    }
-
-    ctx.session.quantity = quantity;
-    ctx.session.bonusEntryFlow = true;
+        const user = await User.findOne({ where: { telegram_id: ctx.from.id } });
     
-    // Proceed to pool selection (modified to handle bonus entries)
-    await showPoolSelection(ctx);
-});
-
-// Custom bonus quantity
-bot.action('bonus_custom', async (ctx) => {
-    await ctx.answerCbQuery();
-    
-    ctx.session.waitingForBonusQuantity = true;
-    await sendTemporaryMessage(ctx, 
-        `Please enter how many bonus entries you want to use (1-${ctx.session.availableBonusEntries}):`,
-        10000
-    );
-});
-
-// Handle custom bonus quantity input
-bot.on('message', async (ctx) => {
-    if (ctx.session.waitingForBonusQuantity && ctx.message.text) {
-        const quantity = parseInt(ctx.message.text, 10);
-        
-        if (isNaN(quantity) || quantity < 1 || quantity > ctx.session.availableBonusEntries) {
-            return sendError(ctx, `Please enter a valid number between 1 and ${ctx.session.availableBonusEntries}`);
+        if (quantity > user.bonus_entries) {
+            return sendError(ctx, `You only have ${user.bonus_entries} bonus entries available`);
         }
 
         ctx.session.quantity = quantity;
         ctx.session.bonusEntryFlow = true;
-        ctx.session.waitingForBonusQuantity = false;
-        
-        // Delete the input message
-        try {
-            await ctx.deleteMessage();
-        } catch (error) {
-            console.log('Could not delete message:', error.message);
-        }
-        
-        // Proceed to pool selection
-        await showPoolSelection(ctx);
-    }
-});
-};
-
-// Bonus entry selection
-async function showBonusEntrySelection(ctx, user) {
-    const message = `
-<b>🎁 Use Bonus Entries</b>
-
-You have <b>${user.bonus_entries}</b> bonus entries available.
-
-How many would you like to use?
-    `;
-
-    const keyboard = {
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: '1 Entry', callback_data: 'bonus_quantity:1' }],
-                [{ text: '2 Entries', callback_data: 'bonus_quantity:2' }],
-                [{ text: '3 Entries', callback_data: 'bonus_quantity:3' }],
-                [{ text: 'Custom Amount', callback_data: 'bonus_custom' }],
-                [{ text: '🔙 Back', callback_data: 'referral_dashboard' }]
-            ]
-        }
-    };
-
-    await ctx.editMessageText(message, { 
-        parse_mode: 'HTML', 
-        reply_markup: keyboard.reply_markup 
+    
+        // Proceed to assignment method selection (random or choose)
+        await showAssignmentMethodSelection(ctx);
     });
+
+
+    // Custom bonus quantity
+    bot.action('bonus_custom', async (ctx) => {
+        await ctx.answerCbQuery();
+    
+        const user = await User.findOne({ where: { telegram_id: ctx.from.id } });
+    
+        ctx.session.waitingForBonusQuantity = true;
+        await sendTemporaryMessage(ctx,
+            `Please enter how many bonus entries you want to use (1-${user.bonus_entries}):`,
+            15000
+        );
+    });
+
+    // Handle custom bonus quantity input
+    // bot.on('message', async (ctx) => {
+    //     if (ctx.session.waitingForBonusQuantity && ctx.message.text) {
+    //         const quantity = parseInt(ctx.message.text, 10);
+    //         const user = await User.findOne({ where: { telegram_id: ctx.from.id } });
+        
+    //         if (isNaN(quantity) || quantity < 1 || quantity > user.bonus_entries) {
+    //             return sendError(ctx, `Please enter a valid number between 1 and ${user.bonus_entries}`);
+    //         }
+
+    //         ctx.session.quantity = quantity;
+    //         ctx.session.bonusEntryFlow = true;
+    //         ctx.session.waitingForBonusQuantity = false;
+        
+    //         // Delete the input message
+    //         try {
+    //             await ctx.deleteMessage();
+    //         } catch (error) {
+    //             console.log('Could not delete message:', error.message);
+    //         }
+        
+    //         // Proceed to assignment method selection
+    //         await showAssignmentMethodSelection(ctx);
+    //     }
+    // });
 }
 
+// Bonus entry selection
+
+    async function showAssignmentMethodSelection(ctx) {
+        const message = `
+        <b>🎯 How would you like to assign your ${ctx.session.quantity} entries?</b>
+
+        Choose how you want your bonus entries to be assigned:
+    `;
+        // DEFAULT ASSIGN METHOS IS ALPHA POOL
+        ctx.session.poolName = 'Alpha';
+        ctx.session.bonusEntryFlow = true;
+        const keyboard = {
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        { text: '🎲 Random', callback_data: 'assign_method:random' },
+                        { text: '📝 Choose Numbers', callback_data: 'assign_method:choose' }
+                    ],
+                    [
+                        { text: '🔙 Back', callback_data: 'use_bonus_entries' }
+                    ]
+                ]
+            }
+        };
+
+        await ctx.editMessageText(message, {
+            parse_mode: 'HTML',
+            reply_markup: keyboard.reply_markup
+        });
+    }

@@ -45,7 +45,7 @@ cron.schedule("*/30 * * * * *", async () => { // Run every Sunday at midnight
             where: { week_code:code },
               defaults: {
                 code,
-                week_id: week.week_id,
+                // week_id: week.week_id,
                 winning_number: null, // To be set later
                 winning_amount: 1000000.00, // Default amount
                 is_claimed: false,

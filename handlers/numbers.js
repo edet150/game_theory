@@ -1,10 +1,13 @@
-const { RafflePool, Entry, User, sequelize } = require('../models');
+const { RafflePool, Entry, User, Week, Winning, sequelize } = require('../models');
 const { QueryTypes } = require('sequelize');
+        const { Op } = require('sequelize');
+
 // const {initiatePayment} = require('./payment');
 const { initiatePayment, checkQueryExpiry, buildGrid, buildRandomGrid, generateRandomNumbers, finalizeEntries, getAvailableNumbers, buildNumberGrid, buildSelectedNumbersGrid, handleSuccessfulPayment } = require('./payment');
 const { Markup} = require('../bot/botInstance');
 const { cleanupSelectionMessages } = require('../startFunction');
 const messageManager = require('../utils/messageManager');
+const { sendError, sendSuccess, sendTemporaryMessage } = require('../utils/responseUtils');
 const { checkPaystackTransactions } = require('../cron/paystack_checker');
 
 // Show confirmation summary before payment
@@ -76,13 +79,120 @@ function clearSelectionSession(session) {
   */
 }
 
+// Function to finalize bonus/referral entries
+async function finalizeBonusEntries(ctx, finalNumbers, method) {
+    try {
+        const loadingMsg = await ctx.reply("⏳ Finalizing your bonus entries, please wait...");
+    
+        const pool = await RafflePool.findByPk(ctx.session.poolId);
+        // const currentWeek = await Week.findOne({ where: { is_current: true } });
+        const user = await User.findOne({ where: { telegram_id: ctx.from.id } });
+        const today = new Date();
+
+        // Get current week (based on dates)
+        const currentWeek = await Week.findOne({
+        where: {
+            starts_at: { [Op.lte]: today },
+            ends_at: { [Op.gte]: today }
+        }
+        });
+
+   
+        if (!currentWeek) {
+            await ctx.deleteMessage(loadingMsg.message_id);
+            return sendError(ctx, "No current week found. Please try again later.");
+        }
+
+        if (user.bonus_entries < finalNumbers.length) {
+            await ctx.deleteMessage(loadingMsg.message_id);
+            return sendError(ctx, `You don't have enough bonus entries. Available: ${user.bonus_entries}`);
+        }
+
+        // Finalize the entries
+        const result = await finalizeEntries(
+            user.id,
+            ctx.session.poolId,
+            finalNumbers,
+            currentWeek.code,
+            currentWeek.week_name,
+            null, // No transaction ID for bonus entries
+            true  // Mark as bonus entries
+        );
+
+        await ctx.deleteMessage(loadingMsg.message_id);
+
+        if (result.success) {
+            // Deduct used bonus entries
+            user.bonus_entries -= finalNumbers.length;
+            await user.save();
+            
+            // Show success summary
+            await showBonusEntrySummary(ctx, finalNumbers, pool, method);
+        
+            // Clear bonus flow session
+            delete ctx.session.bonusEntryFlow;
+            delete ctx.session.availableBonusEntries;
+        } else {
+            await sendError(ctx, result.message);
+        }
+
+    } catch (error) {
+        console.error("Error finalizing bonus entries:", error);
+        await sendError(ctx, "Something went wrong while finalizing your bonus entries.");
+    }
+
+    clearSelectionSession(ctx.session);
+}
+
+// Function to show bonus entry summary
+async function showBonusEntrySummary(ctx, finalNumbers, pool, method) {
+    const summaryMessage = `
+🎯 <b>BONUS ENTRY CONFIRMATION</b>
+
+🏷️ <b>Pool:</b> ${pool.name}
+🎁 <b>Type:</b> Bonus Entries
+📊 <b>Entries Used:</b> ${finalNumbers.length}
+🎲 <b>Method:</b> ${method === 'random' ? 'Random Assignment' : 'Manual Selection'}
+🔢 <b>Your numbers:</b> ${finalNumbers.sort((a, b) => a - b).join(', ')}
+
+⏰ <b>Entry time:</b> ${new Date().toLocaleString()}
+✅ <b>Status:</b> Confirmed (Bonus)
+
+💡 <b>Remember:</b> Draw happens every Saturday at 3:00 PM
+
+🎉 <b>Thank you for using your bonus entries!</b>
+    `;
+
+    const keyboard = {
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: "🔄 Start Over", callback_data: "start_over" }],
+                [{ text: "🎯 Referral Dashboard", callback_data: "referral_dashboard" }]
+            ]
+        }
+    };
+
+    await ctx.reply(summaryMessage, {
+        parse_mode: 'HTML',
+        reply_markup: keyboard.reply_markup
+    });
+}
+
+// Helper function to clear selection session
+function clearSelectionSession(session) {
+    delete session.selectedNumbers;
+    delete session.quantityLimit;
+    delete session.poolId;
+    delete session.poolName;
+    delete session.assignmentMethod;
+}
 module.exports = (bot) => {
 // bot.js (or wherever your bot actions are defined)
   
 bot.action(/^assign_method:(\w+)/, async (ctx) => {
   ctx.answerCbQuery();
   const method = ctx.match[1];
-
+console.log('________________----------------',  ctx.session.bonusEntryFlow)
   if (method !== 'choose' && method !== 'sequential' && method !== 'random') {
     return ctx.reply("⚠️ Invalid assignment method. Please try again.");
   }
@@ -436,36 +546,48 @@ bot.action("random_refresh", async (ctx) => {
 // });
   
 // // Modified random_confirm handler
-// bot.action("random_confirm", async (ctx) => {
-//     ctx.answerCbQuery();
+bot.action("random_confirm", async (ctx) => {
+    ctx.answerCbQuery();
+console.log('________________+++++++',  ctx.session.bonusEntryFlow)
+    const finalNumbers = ctx.session.selectedNumbers;
+    if (!finalNumbers || finalNumbers.length !== ctx.session.quantityLimit) {
+        return ctx.reply("⚠️ An error occurred with your selection. Please start again.");
+  }
+      // Check if this is a bonus entry flow
+    if (ctx.session.bonusEntryFlow) {
+        await finalizeBonusEntries(ctx, finalNumbers, "random");
+    } else {
+        // Show payment confirmation for regular entries
+        await showPaymentConfirmation(ctx);
+    }
 
-//     const finalNumbers = ctx.session.selectedNumbers;
-//     if (!finalNumbers || finalNumbers.length !== ctx.session.quantityLimit) {
-//         return ctx.reply("⚠️ An error occurred with your selection. Please start again.");
-//     }
-
-//     // Clean up previous messages
-//     await cleanupSelectionMessages(ctx);
+    // Clean up previous messages
+    await cleanupSelectionMessages(ctx);
     
-//     // Show confirmation summary
-//     await showPaymentConfirmation(ctx);
-// });
 
-// // Modified done handler
-// bot.action(/^done:(choose|random)$/, async (ctx) => {
-//     ctx.answerCbQuery();
-//     const method = ctx.match[1];
+});
 
-//     if (!ctx.session.selectedNumbers || ctx.session.selectedNumbers.length !== ctx.session.quantityLimit) {
-//         return ctx.reply(`⚠️ Please select exactly ${ctx.session.quantityLimit} numbers.`);
-//     }
+// Modified done handler
+bot.action(/^done:(choose|random)$/, async (ctx) => {
+    ctx.answerCbQuery();
+    const method = ctx.match[1];
 
-//     // Clean up previous messages
-//     await cleanupSelectionMessages(ctx);
+    if (!ctx.session.selectedNumbers || ctx.session.selectedNumbers.length !== ctx.session.quantityLimit) {
+        return ctx.reply(`⚠️ Please select exactly ${ctx.session.quantityLimit} numbers.`);
+  }
+  
+      // Check if this is a bonus entry flow
+    if (ctx.session.bonusEntryFlow) {
+        await finalizeBonusEntries(ctx, ctx.session.selectedNumbers, method);
+    } else {
+        // Show payment confirmation for regular entries
+        await showPaymentConfirmation(ctx);
+    }
+
+    // Clean up previous messages
+    await cleanupSelectionMessages(ctx);
     
-//     // Show confirmation summary
-//     await showPaymentConfirmation(ctx);
-// });
+});
   
 // Handler for proceeding to payment after confirmation
 bot.action("proceed_to_payment", async (ctx) => {
@@ -483,6 +605,38 @@ bot.action("proceed_to_payment", async (ctx) => {
     
     // Initiate payment
     await initiatePayment(bot, ctx);
+});// Handler for proceeding to payment after confirmation
+bot.action("proceed_to_payment", async (ctx) => {
+    ctx.answerCbQuery();
+    
+    // Delete confirmation message
+    if (ctx.session.confirmationMessageId) {
+        try {
+            await ctx.deleteMessage(ctx.session.confirmationMessageId);
+            delete ctx.session.confirmationMessageId;
+        } catch (error) {
+            console.log('Could not delete confirmation message:', error.message);
+        }
+    }
+    
+    // Show temporary processing message using sendError (or create a similar function for info messages)
+    const processingMsg = await sendTemporaryMessage(
+        ctx, 
+        "⏳ Processing your request, please wait...",
+        10000 // Show for 10 seconds
+    );
+    
+    try {
+        // Initiate payment
+        await initiatePayment(bot, ctx);
+        
+        // The processing message will auto-delete after the specified duration
+    } catch (error) {
+        console.error('Error initiating payment:', error);
+        
+        // Use sendError for temporary error message
+        await sendError(ctx, "Failed to process payment. Please try again or contact support.");
+    }
 });
 
 // Handler for editing selection
@@ -518,58 +672,69 @@ const messageManager = require('../utils/messageManager');
 bot.action("edit_selection", async (ctx) => {
     ctx.answerCbQuery();
     
-    // Delete confirmation message using message manager
+
+    // Go back to quantity selection
+  if (ctx.session.bonusEntryFlow) {
+    const user = await User.findOne({ where: { telegram_id: ctx.from.id } });
+    if (!user || user.bonus_entries === 0) {
+      return sendError(ctx, 'No bonus entries available');
+    }
+    showBonusEntrySelection(ctx, user)
+  }
+  else {
+    try {
+      const pool = await RafflePool.findOne({ where: { name: ctx.session.poolName } });
+      if (!pool) {
+        return ctx.reply('Pool not found. Please try again.');
+      }
+
+      // Count number of paid entries
+      const currentEntriesCount = await Entry.count({
+        where: { pool_id: pool.id, status: 'paid' }
+      });
+
+      const options = {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '1 Entry', callback_data: `set_quantity:1` }],
+            [{ text: '5 Entries', callback_data: `set_quantity:5` }],
+            [{ text: '10 Entries', callback_data: `set_quantity:10` }]
+          ]
+        }
+      };
+
+      // Send quantity selection message with tracking
+      const quantityMessage = await messageManager.sendAndTrack(ctx,
+        `You've selected the ${pool.name} Pool!\n\n` +
+        `*Price:* ₦${pool.price_per_entry} per entry\n` +
+        `*Max Entries:* ${pool.max_entries}\n` +
+        `*Current Entries:* ${currentEntriesCount}/${pool.max_entries}\n\n` +
+        `How many entries would you like to buy?`,
+        { parse_mode: 'Markdown', reply_markup: options.reply_markup }
+      );
+
+      ctx.session.quantityMessageId = quantityMessage.message_id;
+
+      // Send the custom prompt with tracking
+      const customPromptMessage = await messageManager.sendAndTrack(ctx,
+        'Or, type a custom number of entries.'
+      );
+      ctx.session.customPromptMessageId = customPromptMessage.message_id;
+
+      ctx.session.nextAction = 'prompt_quantity';
+
+    } catch (error) {
+      console.error('Error in edit_selection:', error);
+      ctx.reply('Could not retrieve pool information. Please try again.');
+    }
+  }
+
+      // Delete confirmation message using message manager
     if (ctx.session.confirmationMessageId) {
         await messageManager.cleanupMessages(ctx, [ctx.session.confirmationMessageId]);
         delete ctx.session.confirmationMessageId;
     }
     
-    // Go back to quantity selection
-    try {
-        const pool = await RafflePool.findOne({ where: { name: ctx.session.poolName } });
-        if (!pool) {
-            return ctx.reply('Pool not found. Please try again.');
-        }
-
-        // Count number of paid entries
-        const currentEntriesCount = await Entry.count({
-            where: { pool_id: pool.id, status: 'paid' }
-        });
-
-        const options = {
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: '1 Entry', callback_data: `set_quantity:1` }],
-                    [{ text: '5 Entries', callback_data: `set_quantity:5` }],
-                    [{ text: '10 Entries', callback_data: `set_quantity:10` }]
-                ]
-            }
-        };
-
-        // Send quantity selection message with tracking
-        const quantityMessage = await messageManager.sendAndTrack(ctx,
-            `You've selected the ${pool.name} Pool!\n\n` +
-            `*Price:* ₦${pool.price_per_entry} per entry\n` +
-            `*Max Entries:* ${pool.max_entries}\n` +
-            `*Current Entries:* ${currentEntriesCount}/${pool.max_entries}\n\n` +
-            `How many entries would you like to buy?`,
-            { parse_mode: 'Markdown', reply_markup: options.reply_markup }
-        );
-
-        ctx.session.quantityMessageId = quantityMessage.message_id;
-
-        // Send the custom prompt with tracking
-        const customPromptMessage = await messageManager.sendAndTrack(ctx, 
-            'Or, type a custom number of entries.'
-        );
-        ctx.session.customPromptMessageId = customPromptMessage.message_id;
-
-        ctx.session.nextAction = 'prompt_quantity';
-
-    } catch (error) {
-        console.error('Error in edit_selection:', error);
-        ctx.reply('Could not retrieve pool information. Please try again.');
-    }
 });
   
 bot.action('view_entry', async (ctx) => {

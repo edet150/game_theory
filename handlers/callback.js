@@ -32,15 +32,15 @@ console.log('ctx.session.bonusEntryFlow', ctx.session.bonusEntryFlow)
     }
 
     // Modified random_confirm handler
-    bot.action("random_confirm", async (ctx) => {
-        await handleEntryFinalization(ctx, "random");
-    });
+    // bot.action("random_confirm", async (ctx) => {
+    //     await handleEntryFinalization(ctx, "random");
+    // });
 
-    // Modified done handler
-    bot.action(/^done:(choose|random)$/, async (ctx) => {
-        const method = ctx.match[1];
-        await handleEntryFinalization(ctx, method);
-    });
+    // // Modified done handler
+    // bot.action(/^done:(choose|random)$/, async (ctx) => {
+    //     const method = ctx.match[1];
+    //     await handleEntryFinalization(ctx, method);
+    // });
 
     // Function to finalize bonus/referral entries
     async function finalizeBonusEntries(ctx, finalNumbers, method) {
@@ -167,27 +167,27 @@ Please proceed with payment to confirm your entries.
         ctx.session.selectionMethod = method; // Store for reference
     }
 
-    // Additional handler for the payment flow
-    bot.action("proceed_to_payment", async (ctx) => {
-        ctx.answerCbQuery();
+    // // Additional handler for the payment flow
+    // bot.action("proceed_to_payment", async (ctx) => {
+    //     ctx.answerCbQuery();
     
-        // Your existing payment processing logic
-        // Use ctx.session.finalNumbers and ctx.session.selectionMethod
-        await processPayment(ctx);
-    });
+    //     // Your existing payment processing logic
+    //     // Use ctx.session.finalNumbers and ctx.session.selectionMethod
+    //     await processPayment(ctx);
+    // });
 
-    // Handler for changing selection
-    bot.action("change_selection", async (ctx) => {
-        ctx.answerCbQuery();
-        await cleanupSelectionMessages(ctx);
+    // // Handler for changing selection
+    // bot.action("change_selection", async (ctx) => {
+    //     ctx.answerCbQuery();
+    //     await cleanupSelectionMessages(ctx);
     
-        // Go back to the appropriate selection screen
-        if (ctx.session.selectionMethod === 'random') {
-            await showRandomSelection(ctx);
-        } else {
-            await showNumberGrid(ctx);
-        }
-    });
+    //     // Go back to the appropriate selection screen
+    //     if (ctx.session.selectionMethod === 'random') {
+    //         await showRandomSelection(ctx);
+    //     } else {
+    //         await showNumberGrid(ctx);
+    //     }
+    // });
 
     // Helper function to clear selection session
     function clearSelectionSession(session) {
@@ -204,6 +204,59 @@ Please proceed with payment to confirm your entries.
         });
     }
 
+    async function showBonusEntrySelection(ctx, user) {
+    const availableEntries = user.bonus_entries;
+    
+    // Create grid buttons with 4 columns
+    const entryOptions = [];
+    const maxOptions = Math.min(availableEntries, 16); // Limit to 16 options max
+    
+    // Add entry options in rows of 4
+    for (let i = 1; i <= maxOptions; i += 4) {
+        const row = [];
+        for (let j = i; j < i + 4 && j <= maxOptions; j++) {
+            row.push({ 
+                text: `${j}`, 
+                callback_data: `bonus_quantity:${j}` 
+            });
+        }
+        entryOptions.push(row);
+    }
+    
+    // Add custom amount button if needed
+    if (availableEntries > 16) {
+        entryOptions.push([{ 
+            text: 'Custom Amount (1-99)', 
+            callback_data: 'bonus_custom' 
+        }]);
+    }
+    
+    // Add back button
+    entryOptions.push([{ 
+        text: '🔙 Back', 
+        callback_data: 'referral_dashboard' 
+    }]);
+
+    const message = `
+<b>🎁 Use Bonus Entries</b>
+
+You have <b>${availableEntries}</b> bonus entries available.
+
+Select how many to use:
+    `;
+
+    const keyboard = {
+        reply_markup: {
+            inline_keyboard: entryOptions
+        }
+    };
+
+    await ctx.editMessageText(message, { 
+        parse_mode: 'HTML', 
+        reply_markup: keyboard.reply_markup 
+    });
+    }
+    
     // Modified finalizeEntries function to handle bonus entries
     async function finalizeEntries(userId, poolId, numbers, lottery_week_code, lottery_week_name, transactionId = null, isBonus = false) {
         try {
