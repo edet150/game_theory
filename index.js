@@ -10,6 +10,9 @@ const myEntriesHandler = require('./handlers/my_entries');
 const cleanupMiddleware = require('./middleware/cleanupMiddleware');
 const historyHandler = require('./handlers/history');
 const adminHandler = require('./handlers/admin');
+const welcomeUser = require('./handlers/welcomeUser');
+const referralHandler = require('./handlers/referral');
+const callbackHandler = require('./handlers/callback');
 require('./cron/paystack_checker');
 require('./cron/sundayCron'); 
 const { getBotInstance, getRedisClient } = require('./bot/botinstance');
@@ -34,6 +37,10 @@ bot.on('text', async (ctx, next) => {
 // Register handlers
 startHandler(bot);
 adminHandler(bot);
+welcomeUser(bot);
+callbackHandler(bot);
+
+referralHandler(bot);
 poolHandler(bot);
 numbersHandler(bot);
 myEntriesHandler(bot);

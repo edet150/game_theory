@@ -273,213 +273,199 @@ bot.action("random_refresh", async (ctx) => {
 });
 
 // New handler for confirming the random selection
-bot.action("randomm_confirm", async (ctx) => {
-  ctx.answerCbQuery();
+// Modified random_confirm handler for bonus entries
+// bot.action("random_confirm", async (ctx) => {
+//     ctx.answerCbQuery();
 
-  const finalNumbers = ctx.session.selectedNumbers;
-  if (!finalNumbers || finalNumbers.length !== ctx.session.quantityLimit) {
-    return ctx.reply("⚠️ An error occurred with your selection. Please start again.");
-  }
+//     const finalNumbers = ctx.session.selectedNumbers;
+//     if (!finalNumbers || finalNumbers.length !== ctx.session.quantityLimit) {
+//         return sendError(ctx, "An error occurred with your selection. Please start again.");
+//     }
 
-  // ⏳ Send loading message
-  const loadingMsg = await ctx.reply("⏳ Finalizing your random entries, please wait...");
+//     const loadingMsg = await ctx.reply("⏳ Finalizing your entries, please wait...");
 
-  try {
-    // Get pool details for the summary
-    const pool = await RafflePool.findByPk(ctx.session.poolId);
+//     try {
+//         const pool = await RafflePool.findByPk(ctx.session.poolId);
+//         const currentWeek = await Week.findOne({ where: { is_current: true } });
 
-    // Use finalizeEntries function
-    const result = await finalizeEntries(
-      ctx.session.userId,
-      ctx.session.poolId,
-      finalNumbers
-    );
+//         let result;
+//         if (ctx.session.bonusEntryFlow) {
+//             // Use bonus entries
+//             result = await finalizeEntries(
+//                 ctx.session.userId,
+//                 ctx.session.poolId,
+//                 finalNumbers,
+//                 currentWeek.code,
+//                 currentWeek.week_name,
+//                 null, // No transaction ID for bonus entries
+//                 true  // Mark as bonus entries
+//             );
+//         } else {
+//             // Regular paid entries (your existing payment flow)
+//             // ... your payment processing code here ...
+//         }
 
-    // Remove loading message
-    await ctx.deleteMessage(loadingMsg.message_id);
+//         await ctx.deleteMessage(loadingMsg.message_id);
 
-    if (result.success) {
-        await cleanupSelectionMessages(ctx);
-      // Create comprehensive summary message (WON'T be deleted)
-      const summaryMessage = `
-🎯 *ENTRY CONFIRMATION SUMMARY*
+//         if (result.success) {
+//             await cleanupSelectionMessages(ctx);
+            
+//             const summaryMessage = `
+// 🎯 <b>ENTRY CONFIRMATION SUMMARY</b>
 
-🏷️ *Pool:* ${pool.name}
-💰 *Price per entry:* ₦${pool.price_per_entry}
-📊 *Entries purchased:* ${ctx.session.quantityLimit}
-🎲 *Selection method:* Random Assignment
-🔢 *Your numbers:* ${finalNumbers.sort((a, b) => a - b).join(', ')}
+// 🏷️ <b>Pool:</b> ${pool.name}
+// ${ctx.session.bonusEntryFlow ? '🎁 <b>Type:</b> Bonus Entries' : `💰 <b>Price per entry:</b> ₦${pool.price_per_entry}`}
+// 📊 <b>Entries:</b> ${ctx.session.quantityLimit}
+// 🎲 <b>Method:</b> Random Assignment
+// 🔢 <b>Your numbers:</b> ${finalNumbers.sort((a, b) => a - b).join(', ')}
 
-⏰ *Entry time:* ${new Date().toLocaleString()}
-✅ *Status:* Confirmed and paid
+// ⏰ <b>Entry time:</b> ${new Date().toLocaleString()}
+// ✅ <b>Status:</b> Confirmed ${ctx.session.bonusEntryFlow ? '(Bonus)' : 'and paid'}
 
-💡 *Remember: Draw happens every Saturday at 3:00 PM*
-      `;
+// 💡 <b>Remember:</b> Draw happens every Saturday at 3:00 PM
+//             `;
 
-      // Send the permanent summary message
-      await ctx.reply(summaryMessage, { parse_mode: 'Markdown' });
+//             await ctx.reply(summaryMessage, { parse_mode: 'HTML' });
 
-      // Convert the original message to read-only view with Start Over button
-      const readOnlyGrid = buildRandomGrid(finalNumbers, true);
-      const startOverButton = Markup.inlineKeyboard([
-        [Markup.button.callback("🔄 Start Over", "start_over")]
-      ]);
+//             // Clear bonus flow session
+//             if (ctx.session.bonusEntryFlow) {
+//                 delete ctx.session.bonusEntryFlow;
+//                 delete ctx.session.availableBonusEntries;
+//             }
+
+//         } else {
+//             await sendError(ctx, result.message);
+//         }
+
+//     } catch (err) {
+//         console.error("Error in random_confirm:", err);
+//         await ctx.deleteMessage(loadingMsg.message_id);
+//         await sendError(ctx, "Something went wrong while finalizing your entries.");
+//     }
+
+//     clearSelectionSession(ctx.session);
+// });
+  
+// bot.action(/^ddone:(choose|random)$/, async (ctx) => {
+//   ctx.answerCbQuery();
+//   const method = ctx.match[1];
+
+//   if (!ctx.session.selectedNumbers || ctx.session.selectedNumbers.length !== ctx.session.quantityLimit) {
+//     return ctx.reply(`⚠️ Please select exactly ${ctx.session.quantityLimit} numbers.`);
+//   }
+
+//   // ⏳ Send a loading message
+//   const loadingMsg = await ctx.reply("⏳ Finalizing your entries, please wait...");
+
+//   try {
+//     // Get pool details for the summary
+//     const pool = await RafflePool.findByPk(ctx.session.poolId);
+//     const methodName = method === 'choose' ? 'Manual Selection' : 'Random Assignment';
+
+//     // Finalize entries in DB
+//     const result = await finalizeEntries(
+//       ctx.session.userId,
+//       ctx.session.poolId,
+//       ctx.session.selectedNumbers
+//     );
+
+//     // Remove the loading message
+//     await ctx.deleteMessage(loadingMsg.message_id);
+
+//     if (result.success) {
+//         await cleanupSelectionMessages(ctx);
+//       // Create comprehensive summary message (WON'T be deleted)
+//       const summaryMessage = `
+// 🎯 *ENTRY CONFIRMATION SUMMARY*
+
+// 🏷️ *Pool:* ${pool.name}
+// 💰 *Price per entry:* ₦${pool.price_per_entry}
+// 📊 *Entries purchased:* ${ctx.session.quantityLimit}
+// 🎲 *Selection method:* ${methodName}
+// 🔢 *Your numbers:* ${ctx.session.selectedNumbers.sort((a, b) => a - b).join(', ')}
+
+// ⏰ *Entry time:* ${new Date().toLocaleString()}
+// ✅ *Status:* Confirmed and paid
+
+// 💡 *Remember: Draw happens every Saturday at 3:00 PM*
+//       `;
+
+//       // Send the permanent summary message
+//       await ctx.reply(summaryMessage, { parse_mode: 'Markdown' });
+
+//       // Edit the original grid to show finalized state with Start Over button
+//       const finalizedGrid = buildGrid(
+//         ctx.session.availableNumbers,
+//         ctx.session.selectedNumbers,
+//         ctx.session.quantityLimit,
+//         method,
+//         true
+//       );
       
-      // Combine the read-only grid with start over button
-      readOnlyGrid.reply_markup.inline_keyboard.push(
-        ...startOverButton.reply_markup.inline_keyboard
-      );
+//       // Add Start Over button at the bottom
+//       finalizedGrid.reply_markup.inline_keyboard.push([
+//         Markup.button.callback("🔄 Start Over", "start_over")
+//       ]);
 
-      await ctx.editMessageText(
-        `✅ Finalized! Your random numbers: ${finalNumbers.join(", ")}`,
-        { reply_markup: readOnlyGrid.reply_markup }
-      );
+//       await ctx.editMessageReplyMarkup(finalizedGrid.reply_markup);
 
-    } else {
-      await ctx.reply(`❌ ${result.message}`);
-    }
+//     } else {
+//       await ctx.reply(`❌ ${result.message}`);
+//     }
 
-    // Store finalized numbers for reference
-    ctx.session.finalizedEntries = ctx.session.finalizedEntries || [];
-    ctx.session.finalizedEntries.push({
-      numbers: [...finalNumbers],
-      poolId: ctx.session.poolId,
-      poolName: pool.name,
-      method: 'Random Assignment',
-      quantity: ctx.session.quantityLimit,
-      timestamp: new Date()
-    });
+//     // Store finalized numbers for reference
+//     ctx.session.finalizedEntries = ctx.session.finalizedEntries || [];
+//     ctx.session.finalizedEntries.push({
+//       numbers: [...ctx.session.selectedNumbers],
+//       poolId: ctx.session.poolId,
+//       poolName: pool.name,
+//       method: methodName,
+//       quantity: ctx.session.quantityLimit,
+//       timestamp: new Date()
+//     });
 
-  } catch (err) {
-    console.error("Error in random_confirm:", err);
-    await ctx.deleteMessage(loadingMsg.message_id);
-    await ctx.reply("❌ Something went wrong while finalizing your random entries. Please try again.");
-  }
+//   } catch (err) {
+//     console.error("Finalize error:", err);
+//     await ctx.deleteMessage(loadingMsg.message_id);
+//     await ctx.reply("❌ Something went wrong while finalizing your entries. Please try again.");
+//   }
 
-  // Clear the session for this flow
-  clearSelectionSession(ctx.session);
-});
+//   // Clear the current selection session
+//   clearSelectionSession(ctx.session);
   
-bot.action(/^ddone:(choose|random)$/, async (ctx) => {
-  ctx.answerCbQuery();
-  const method = ctx.match[1];
-
-  if (!ctx.session.selectedNumbers || ctx.session.selectedNumbers.length !== ctx.session.quantityLimit) {
-    return ctx.reply(`⚠️ Please select exactly ${ctx.session.quantityLimit} numbers.`);
-  }
-
-  // ⏳ Send a loading message
-  const loadingMsg = await ctx.reply("⏳ Finalizing your entries, please wait...");
-
-  try {
-    // Get pool details for the summary
-    const pool = await RafflePool.findByPk(ctx.session.poolId);
-    const methodName = method === 'choose' ? 'Manual Selection' : 'Random Assignment';
-
-    // Finalize entries in DB
-    const result = await finalizeEntries(
-      ctx.session.userId,
-      ctx.session.poolId,
-      ctx.session.selectedNumbers
-    );
-
-    // Remove the loading message
-    await ctx.deleteMessage(loadingMsg.message_id);
-
-    if (result.success) {
-        await cleanupSelectionMessages(ctx);
-      // Create comprehensive summary message (WON'T be deleted)
-      const summaryMessage = `
-🎯 *ENTRY CONFIRMATION SUMMARY*
-
-🏷️ *Pool:* ${pool.name}
-💰 *Price per entry:* ₦${pool.price_per_entry}
-📊 *Entries purchased:* ${ctx.session.quantityLimit}
-🎲 *Selection method:* ${methodName}
-🔢 *Your numbers:* ${ctx.session.selectedNumbers.sort((a, b) => a - b).join(', ')}
-
-⏰ *Entry time:* ${new Date().toLocaleString()}
-✅ *Status:* Confirmed and paid
-
-💡 *Remember: Draw happens every Saturday at 3:00 PM*
-      `;
-
-      // Send the permanent summary message
-      await ctx.reply(summaryMessage, { parse_mode: 'Markdown' });
-
-      // Edit the original grid to show finalized state with Start Over button
-      const finalizedGrid = buildGrid(
-        ctx.session.availableNumbers,
-        ctx.session.selectedNumbers,
-        ctx.session.quantityLimit,
-        method,
-        true
-      );
-      
-      // Add Start Over button at the bottom
-      finalizedGrid.reply_markup.inline_keyboard.push([
-        Markup.button.callback("🔄 Start Over", "start_over")
-      ]);
-
-      await ctx.editMessageReplyMarkup(finalizedGrid.reply_markup);
-
-    } else {
-      await ctx.reply(`❌ ${result.message}`);
-    }
-
-    // Store finalized numbers for reference
-    ctx.session.finalizedEntries = ctx.session.finalizedEntries || [];
-    ctx.session.finalizedEntries.push({
-      numbers: [...ctx.session.selectedNumbers],
-      poolId: ctx.session.poolId,
-      poolName: pool.name,
-      method: methodName,
-      quantity: ctx.session.quantityLimit,
-      timestamp: new Date()
-    });
-
-  } catch (err) {
-    console.error("Finalize error:", err);
-    await ctx.deleteMessage(loadingMsg.message_id);
-    await ctx.reply("❌ Something went wrong while finalizing your entries. Please try again.");
-  }
-
-  // Clear the current selection session
-  clearSelectionSession(ctx.session);
+// });
   
-});
-  
-// Modified random_confirm handler
-bot.action("random_confirm", async (ctx) => {
-    ctx.answerCbQuery();
+// // Modified random_confirm handler
+// bot.action("random_confirm", async (ctx) => {
+//     ctx.answerCbQuery();
 
-    const finalNumbers = ctx.session.selectedNumbers;
-    if (!finalNumbers || finalNumbers.length !== ctx.session.quantityLimit) {
-        return ctx.reply("⚠️ An error occurred with your selection. Please start again.");
-    }
+//     const finalNumbers = ctx.session.selectedNumbers;
+//     if (!finalNumbers || finalNumbers.length !== ctx.session.quantityLimit) {
+//         return ctx.reply("⚠️ An error occurred with your selection. Please start again.");
+//     }
 
-    // Clean up previous messages
-    await cleanupSelectionMessages(ctx);
+//     // Clean up previous messages
+//     await cleanupSelectionMessages(ctx);
     
-    // Show confirmation summary
-    await showPaymentConfirmation(ctx);
-});
+//     // Show confirmation summary
+//     await showPaymentConfirmation(ctx);
+// });
 
-// Modified done handler
-bot.action(/^done:(choose|random)$/, async (ctx) => {
-    ctx.answerCbQuery();
-    const method = ctx.match[1];
+// // Modified done handler
+// bot.action(/^done:(choose|random)$/, async (ctx) => {
+//     ctx.answerCbQuery();
+//     const method = ctx.match[1];
 
-    if (!ctx.session.selectedNumbers || ctx.session.selectedNumbers.length !== ctx.session.quantityLimit) {
-        return ctx.reply(`⚠️ Please select exactly ${ctx.session.quantityLimit} numbers.`);
-    }
+//     if (!ctx.session.selectedNumbers || ctx.session.selectedNumbers.length !== ctx.session.quantityLimit) {
+//         return ctx.reply(`⚠️ Please select exactly ${ctx.session.quantityLimit} numbers.`);
+//     }
 
-    // Clean up previous messages
-    await cleanupSelectionMessages(ctx);
+//     // Clean up previous messages
+//     await cleanupSelectionMessages(ctx);
     
-    // Show confirmation summary
-    await showPaymentConfirmation(ctx);
-});
+//     // Show confirmation summary
+//     await showPaymentConfirmation(ctx);
+// });
   
 // Handler for proceeding to payment after confirmation
 bot.action("proceed_to_payment", async (ctx) => {

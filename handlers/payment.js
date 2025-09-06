@@ -531,7 +531,7 @@ async function updateSelectionView(ctx, selectedNumbers, quantity) {
         ctx.session.selectionMessageId = message.message_id;
     }
 }
-async function finalizeEntries(userId, poolId, numbers, lottery_week_code, lottery_week_name, id) {
+async function _finalizeEntries(userId, poolId, numbers, lottery_week_code, lottery_week_name, id) {
   console.log('lottery_week_code', lottery_week_code)  
   try {
         const entries = numbers.map((num) => ({
@@ -545,6 +545,35 @@ async function finalizeEntries(userId, poolId, numbers, lottery_week_code, lotte
         }));
 
         await Entry.bulkCreate(entries);
+        return { success: true, message: `Entries created: ${numbers.join(", ")}` };
+    } catch (error) {
+        console.error("Error creating entries:", error);
+        return { success: false, message: "An error occurred while finalizing entries." };
+    }
+}
+// Modified finalizeEntries function
+async function finalizeEntries(userId, poolId, numbers, lottery_week_code, lottery_week_name, transactionId = null, isBonus = false) {
+    try {
+        const entries = numbers.map((num) => ({
+            user_id: userId,
+            pool_id: poolId,
+            entry_number: num,
+            week_code: lottery_week_code,
+            week_name: lottery_week_name,
+            transaction_id: transactionId,
+            status: "paid",
+            is_bonus_entry: isBonus
+        }));
+
+        await Entry.bulkCreate(entries);
+        
+        // If using bonus entries, deduct from user's balance
+        if (isBonus) {
+            const user = await User.findByPk(userId);
+            user.bonus_entries -= numbers.length;
+            await user.save();
+        }
+
         return { success: true, message: `Entries created: ${numbers.join(", ")}` };
     } catch (error) {
         console.error("Error creating entries:", error);

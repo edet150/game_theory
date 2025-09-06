@@ -5,19 +5,19 @@ const { sendError, sendSuccess } = require('../utils/responseUtils');
 
 module.exports = (bot) => {
 
-  bot.start(async (ctx) => {
-    await cleanupSelectionMessages(ctx);
-    messageManager.cleanupAllMessages(ctx)
-      try {
-        // Try to delete the current message (the one with buttons)
-        await ctx.deleteMessage();
-      } catch (error) {
-        // Message might not be deletable, that's okay
-        console.log('Could not delete message:', error.message);
-      }
+  // bot.start(async (ctx) => {
+  //   await cleanupSelectionMessages(ctx);
+  //   messageManager.cleanupAllMessages(ctx)
+  //     try {
+  //       // Try to delete the current message (the one with buttons)
+  //       await ctx.deleteMessage();
+  //     } catch (error) {
+  //       // Message might not be deletable, that's okay
+  //       console.log('Could not delete message:', error.message);
+  //     }
   
-    await showStartScreen(ctx);
-  });
+  //   await showStartScreen(ctx);
+  // });
 
 bot.action('how_it_works', async (ctx) => {
     ctx.answerCbQuery();
@@ -34,7 +34,58 @@ const message = await messageManager.sendAndTrack(ctx,
 
 });
 
+// Modified start command
+bot.start(async (ctx) => {
+    await cleanupSelectionMessages(ctx);
+    
+    try {
+        // Check for referral parameter
+        const startParams = ctx.startPayload;
+        let referrer = null;
+        
+        if (startParams && startParams.startsWith('ref_')) {
+            const referralCode = startParams.replace('ref_', '');
+            referrer = await User.findOne({ where: { referral_code: referralCode } });
+        }
 
+        const telegramId = ctx.from.id;
+        const telegramUsername = ctx.from.username || `user_${telegramId}`;
+
+        // Create or update user with referral info
+        const [user, created] = await User.findOrCreate({
+            where: { telegram_id: telegramId },
+            defaults: { 
+                telegram_username: telegramUsername,
+                referred_by: referrer ? referrer.id : null
+            }
+        });
+
+        // If user was referred and this is their first time
+        if (referrer && created) {
+            // Update referrer's stats
+            referrer.total_referrals += 1;
+            await referrer.save();
+            
+            // Send welcome message to new user
+            await sendSuccess(ctx, `🎉 Welcome! You were referred by ${referrer.telegram_username}`);
+        }
+
+        // Update existing user if needed
+        if (!created && referrer && !user.referred_by) {
+            user.referred_by = referrer.id;
+            await user.save();
+            
+            referrer.total_referrals += 1;
+            await referrer.save();
+        }
+
+        await showStartScreen(ctx);
+
+    } catch (error) {
+        console.error('Error in start command:', error);
+        await sendError(ctx, 'Something went wrong. Please try again.');
+    }
+});
 
   
 bot.action("start_over", async (ctx) => {
@@ -94,11 +145,10 @@ const welcomeMessage = await ctx.reply(welcomeText, {
   parse_mode: 'Markdown',
   reply_markup: {
     inline_keyboard: [
-      [{ text: '💰 Alpha Draw (₦100)', callback_data: `select_pool:Alpha` }],
-      // [{ text: '💰 Beta Draw (₦200)', callback_data: `select_pool:Beta` }],
-      // [{ text: '💎 High Rollers (₦500)', callback_data: `select_pool:HighRollers` }],
-      [{ text: 'ℹ️ How It Works', callback_data: 'how_it_works' }],
-      [{ text: '📋 My Entries', callback_data: 'view_entries' }]
+        [{ text: '💰 Alpha Draw (₦100)', callback_data: `select_pool:Alpha` }],
+                  [{ text: 'ℹ️ How It Works', callback_data: 'how_it_works' }],
+                  [{ text: '📋 My Entries', callback_data: 'view_entries' }],
+                  [{ text: '🎯 Referral Dashboard', callback_data: 'referral_dashboard' }], // Added referral button
     ]
   }
 });
