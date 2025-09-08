@@ -1,7 +1,7 @@
 const { RafflePool, Entry } = require('../models');
 const messageManager = require('../utils/messageManager');
 const { sendError, sendSuccess } = require('../utils/responseUtils');
-const { getBotInstance, getRedisClient } = require('../bot/botinstance');
+const { getbotInstance, getRedisClient } = require('../bot/botInstance');
 const redis = getRedisClient();
 const CLEANUP_CATEGORIES = {
     GRID: ['selectionMessageId', 'gridMessageId', 'randomGridMessageId'],

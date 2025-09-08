@@ -1,6 +1,6 @@
 // handlers/admin.js
 const { User ,RafflePool,Winning, Payment, Admin, Entry, Week} = require('../models');const { Op } = require("sequelize");
-const { getBotInstance, getRedisClient } = require('../bot/botinstance');
+const { getbotInstance, getRedisClient } = require('../bot/botInstance');
 const { sendError, sendSuccess } = require('../utils/responseUtils');
 const redis = getRedisClient();
 module.exports = (bot) => {

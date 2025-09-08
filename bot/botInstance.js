@@ -66,7 +66,7 @@ function initializeBot() {
 // ✅ Auto-initialize right here
 initializeBot();
 
-function getBotInstance() {
+function getbotInstance() {
   if (!botInstance) throw new Error('Bot instance not initialized yet');
   return botInstance;
 }
@@ -78,7 +78,7 @@ function getRedisClient() {
 
 // Export both bot + Markup globally usable
 module.exports = {
-  getBotInstance,
+  getbotInstance,
   getRedisClient,
   Markup
 };

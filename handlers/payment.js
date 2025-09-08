@@ -1,5 +1,5 @@
-const { getBotInstance , Markup} = require('../bot/botInstance');
-const bot = getBotInstance();
+const { getbotInstance , Markup} = require('../bot/botInstance');
+const bot = getbotInstance();
 const { RafflePool, Entry, User, Payment, Week, sequelize } = require('../models');
 const axios = require('axios');  
 const { showStartScreen, awardReferralBonusIfFirstPurchase, deleteMessagesByIds } = require('../startFunction');

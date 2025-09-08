@@ -1,5 +1,5 @@
 // services/redisService.js
-const { getRedisClient } = require('../bot/botinstance');
+const { getRedisClient } = require('../bot/botInstance');
 
 class RedisService {
     constructor() {

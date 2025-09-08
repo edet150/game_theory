@@ -1,6 +1,6 @@
 // src/cron/paystack_checker.js
 const cron = require('node-cron');
-const { getBotInstance } = require('../bot/botInstance');
+const { getbotInstance } = require('../bot/botInstance');
 require('dotenv').config();
 const axios = require('axios');
 const Redis = require('ioredis');
@@ -33,7 +33,7 @@ async function clearRedis(all = false) {
 
 const PAYSTACK_TRANSACTION_KEY = 'processed_paystack_transactions';
 let lastCheckTimestamp = Date.now(); // Initialize the timestamp
-const bot = getBotInstance();
+const bot = getbotInstance();
 
 async function checkPaystackTransactions() {
     console.log(`[Cron] Checking for new Paystack transactions...`);

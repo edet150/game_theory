@@ -3,7 +3,7 @@ const { showStartScreen, cleanupSelectionMessages } = require('../startFunction'
 const messageManager = require('../utils/messageManager');
 const { sendError, sendSuccess } = require('../utils/responseUtils');
 const { Op } = require("sequelize");
-const { getBotInstance, getRedisClient } = require('../bot/botInstance.js');
+const { getbotInstance, getRedisClient } = require('../bot/botInstance.js');
 const redis = getRedisClient();
 module.exports = (bot) => {
 

@@ -15,10 +15,10 @@ const referralHandler = require('./handlers/referral');
 const callbackHandler = require('./handlers/callback');
 require('./cron/paystack_checker');
 require('./cron/sundayCron'); 
-const { getBotInstance, getRedisClient } = require('./bot/botInstance.js');
+const { getbotInstance, getRedisClient } = require('./bot/botInstance.js');
 const { getLast4Digits, showStartScreen } = require('./startFunction');
 
-const bot = getBotInstance();
+const bot = getbotInstance();
 const redis = getRedisClient();
 //WINNING
 let lst = getLast4Digits('000000000000000000014d7c1dee8492516a87cf61c277f824364932b48ce3f3')

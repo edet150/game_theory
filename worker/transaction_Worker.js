@@ -35,7 +35,7 @@ const transactionWorker = new Worker('paystack_transactions', async (job) => {
 }, { connection: redisConnection });
 console.log('calling')
 // This function will be called from your index.js file to set the bot instance.
-function setBotInstance(bot) {
+function setbotInstance(bot) {
     console.log('instance set')
     botInstance = bot;
     console.log(botInstance)
@@ -144,4 +144,4 @@ async function handleSuccessfulPayment(bot, paystackTransaction) {
         }
     }
 }
-module.exports = { transactionWorker, setBotInstance };
+module.exports = { transactionWorker, setbotInstance };
