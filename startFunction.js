@@ -1,7 +1,6 @@
 // In a new file, or at the top of an existing one.
 // Let's create a new file `utils/startFlow.js`
-const { getBotInstance, getRedisClient } = require('./bot/botinstance');
-const bot = getBotInstance();
+
 const { User , Week, Winnning, Entry, Payment} = require('./models');
 
 async function showStartScreen_(ctx) {
@@ -534,7 +533,7 @@ How many would you like to use?
     });
 }
 
-async function awardReferralBonusIfFirstPurchase(userId, currentQuantity, transaction) {
+async function awardReferralBonusIfFirstPurchase(userId, currentQuantity, transaction, bot) {
     try {
         // console.log('userId', userId)
  
@@ -563,7 +562,7 @@ async function awardReferralBonusIfFirstPurchase(userId, currentQuantity, transa
         
         // If this is the first successful payment, award bonus
         if (successfulPayments.length === 1) { // Current payment + 0 previous = 1 total
-            await awardReferralBonus(user.referred_by, currentQuantity, user.id);
+            await awardReferralBonus(user.referred_by, currentQuantity, user.id, bot);
             return true;
         }
         
@@ -574,7 +573,7 @@ async function awardReferralBonusIfFirstPurchase(userId, currentQuantity, transa
     }
 }
 
-async function awardReferralBonus(referrerId, purchasedEntriesCount, referredUserId) {
+async function awardReferralBonus(referrerId, purchasedEntriesCount, referredUserId, bot) {
     try {
         const referrer = await User.findByPk(referrerId);
         if (!referrer) {

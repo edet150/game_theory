@@ -208,7 +208,7 @@ async function initiatePayment(bot, ctx) {
             { transaction: t }
         );
         // ✅ CALL AWARD REFERRAL BONUS HERE - RIGHT AFTER PAYMENT CREATION
-        await awardReferralBonusIfFirstPurchase(user.id, quantity, paymentRecord.id, t);
+        await awardReferralBonusIfFirstPurchase(user.id, quantity, paymentRecord.id, bot);
         // Use finalizeEntries to create the entries
         const result = await finalizeEntries(
             user.id,
