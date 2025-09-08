@@ -15,7 +15,7 @@ const referralHandler = require('./handlers/referral');
 const callbackHandler = require('./handlers/callback');
 require('./cron/paystack_checker');
 require('./cron/sundayCron'); 
-const { getBotInstance, getRedisClient } = require('./bot/botinstance');
+const { getBotInstance, getRedisClient } = require('./bot/botinstance.js');
 const { getLast4Digits, showStartScreen } = require('./startFunction');
 
 const bot = getBotInstance();
