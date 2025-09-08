@@ -63,7 +63,7 @@ async function showPoolSelection(ctx) {
 module.exports = (bot) => {
     // Referral dashboard
     bot.action('referral_dashboard', async (ctx) => {
-        await ctx.answerCbQuery();
+        await await ctx.answerCbQuery();
         
         try {
             const user = await User.findOne({ where: { telegram_id: ctx.from.id } });
@@ -144,7 +144,7 @@ ${referredUsers.length > 0 ? referredUsers.map(u =>
 
     // Copy referral link
     bot.action('copy_referral_link', async (ctx) => {
-        await ctx.answerCbQuery();
+        await await ctx.answerCbQuery();
         
         const user = await User.findOne({ where: { telegram_id: ctx.from.id } });
         if (!user) return;
@@ -156,7 +156,7 @@ ${referredUsers.length > 0 ? referredUsers.map(u =>
 
     // Use bonus entries
     bot.action('use_bonus_entries', async (ctx) => {
-        await ctx.answerCbQuery();
+        await await ctx.answerCbQuery();
         
         const user = await User.findOne({ where: { telegram_id: ctx.from.id } });
         if (!user || user.bonus_entries === 0) {
@@ -171,7 +171,7 @@ ${referredUsers.length > 0 ? referredUsers.map(u =>
 
     // View referral details
     bot.action('view_referral_details', async (ctx) => {
-        await ctx.answerCbQuery();
+        await await ctx.answerCbQuery();
         
         const user = await User.findOne({ where: { telegram_id: ctx.from.id } });
         const referredUsers = await User.findAll({
@@ -214,13 +214,13 @@ ${referredUsers.map(u => `
 
     // Back to main
     bot.action('back_to_main', async (ctx) => {
-        await ctx.answerCbQuery();
+        await await ctx.answerCbQuery();
         await showStartScreen(ctx); // Your existing function
     });
     // Handle bonus quantity selection
     // Handle bonus quantity selection
     bot.action(/^bonus_quantity:(\d+)/, async (ctx) => {
-        await ctx.answerCbQuery();
+        await await ctx.answerCbQuery();
         const quantity = parseInt(ctx.match[1], 10);
     
         const user = await User.findOne({ where: { telegram_id: ctx.from.id } });
@@ -239,7 +239,7 @@ ${referredUsers.map(u => `
 
     // Custom bonus quantity
     bot.action('bonus_custom', async (ctx) => {
-        await ctx.answerCbQuery();
+        await await ctx.answerCbQuery();
     
         const user = await User.findOne({ where: { telegram_id: ctx.from.id } });
     

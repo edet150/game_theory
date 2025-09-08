@@ -7,11 +7,11 @@ const { Entry, Winning, Week} = require("../models");
 // 🔑 Crypto APIs key
 const API_KEY = process.env.CRYPTO_API_KEY;
 
-// cron.schedule("0 12 * * 0", async () => {
 cron.schedule("*/30 * * * * *", async () => { // Run every Sunday at midnight
     console.log("⏳ Checking/creating week and winning entry...");
     try {
-        const now = moment().tz("Australia/Perth"); // WST (GMT+8)
+        // Use Lagos time (Africa/Lagos) - WAT (GMT+1)
+        const now = moment().tz("Africa/Lagos");
         const year = now.year();
         const weekNumber = now.isoWeek();
 
@@ -20,7 +20,8 @@ cron.schedule("*/30 * * * * *", async () => { // Run every Sunday at midnight
         const weekName = `Week ${weekNumber}, ${year}`;
         const startsAt = now.startOf("isoWeek").toDate();
         const endsAt = now.endOf("isoWeek").toDate();
-
+        console.log('startsAt', startsAt)
+        console.log('endsAt', endsAt)
         // Create or find week
         const [week, weekCreated] = await Week.findOrCreate({
             where: { code },
@@ -42,16 +43,15 @@ cron.schedule("*/30 * * * * *", async () => { // Run every Sunday at midnight
             
             // Create winning entry for this week
             const winningEntry = await Winning.findOrCreate({
-            where: { week_code:code },
-              defaults: {
-                code,
-                // week_id: week.week_id,
-                winning_number: null, // To be set later
-                winning_amount: 1000000.00, // Default amount
-                is_claimed: false,
-                createdAt: new Date(),
-                updatedAt: new Date()
-              },
+                where: { week_code: code },
+                defaults: {
+                    week_code: code,
+                    winning_number: null, // To be set later
+                    winning_amount: 1000000.00, // Default amount
+                    is_claimed: false,
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                },
             });
             
             console.log(`✅ Created winning entry for week: ${weekName}`);

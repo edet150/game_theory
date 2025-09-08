@@ -11,7 +11,7 @@ const messageManager = require('../utils/messageManager');
 module.exports = (bot) => {
     // Unified handler for both payment and referral flows
     async function handleEntryFinalization(ctx, method) {
-        ctx.answerCbQuery();
+        await ctx.answerCbQuery();
 
         const finalNumbers = ctx.session.selectedNumbers;
         if (!finalNumbers || finalNumbers.length !== ctx.session.quantityLimit) {
@@ -169,7 +169,7 @@ Please proceed with payment to confirm your entries.
 
     // // Additional handler for the payment flow
     // bot.action("proceed_to_payment", async (ctx) => {
-    //     ctx.answerCbQuery();
+    //     await ctx.answerCbQuery();
     
     //     // Your existing payment processing logic
     //     // Use ctx.session.finalNumbers and ctx.session.selectionMethod
@@ -178,7 +178,7 @@ Please proceed with payment to confirm your entries.
 
     // // Handler for changing selection
     // bot.action("change_selection", async (ctx) => {
-    //     ctx.answerCbQuery();
+    //     await ctx.answerCbQuery();
     //     await cleanupSelectionMessages(ctx);
     
     //     // Go back to the appropriate selection screen

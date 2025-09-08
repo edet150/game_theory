@@ -1,6 +1,8 @@
 const { RafflePool, Entry } = require('../models');
 const messageManager = require('../utils/messageManager');
 const { sendError, sendSuccess } = require('../utils/responseUtils');
+const { getBotInstance, getRedisClient } = require('../bot/botinstance');
+const redis = getRedisClient();
 const CLEANUP_CATEGORIES = {
     GRID: ['selectionMessageId', 'gridMessageId', 'randomGridMessageId'],
     QUANTITY: ['quantitySelectionMessageId', 'assignmentMessageId', 'customQuantityMessageId'],
@@ -24,8 +26,13 @@ async function cleanupSessionMessages(ctx, messageKeys) {
   }
 }
 module.exports = (bot) => {
-bot.action(/^select_pool:(\w+)/, async (ctx) => {
-    ctx.answerCbQuery();
+  bot.action(/^select_pool:(\w+)/, async (ctx) => {
+      const isLocked = await redis.get('entries_locked');
+    if (isLocked) {
+        await ctx.answerCbQuery();
+        return await ctx.reply('🔒 Entries are currently locked. Please try again later.');
+    }
+    await ctx.answerCbQuery();
     const poolName = ctx.match[1];
 
     // Store pool choice in session
@@ -83,7 +90,7 @@ bot.action(/^select_pool:(\w+)/, async (ctx) => {
     }
 });
 bot.action(/^set_quantity:(\d+)/, async (ctx) => {
-    ctx.answerCbQuery();
+    await ctx.answerCbQuery();
     const quantity = parseInt(ctx.match[1], 10);
 
     // Store quantity in session

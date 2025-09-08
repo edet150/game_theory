@@ -1,44 +1,37 @@
-const { User, RafflePool, Entry, Week , sequelize} = require('../models');
+const { User, Winning, Entry, Week , sequelize} = require('../models');
 const { showStartScreen, cleanupSelectionMessages } = require('../startFunction');
 const messageManager = require('../utils/messageManager');
 const { sendError, sendSuccess } = require('../utils/responseUtils');
-
+const { Op } = require("sequelize");
+const { getBotInstance, getRedisClient } = require('../bot/botinstance');
+const redis = getRedisClient();
 module.exports = (bot) => {
 
-  // bot.start(async (ctx) => {
-  //   await cleanupSelectionMessages(ctx);
-  //   messageManager.cleanupAllMessages(ctx)
-  //     try {
-  //       // Try to delete the current message (the one with buttons)
-  //       await ctx.deleteMessage();
-  //     } catch (error) {
-  //       // Message might not be deletable, that's okay
-  //       console.log('Could not delete message:', error.message);
-  //     }
-  
-  //   await showStartScreen(ctx);
-  // });
 
 bot.action('how_it_works', async (ctx) => {
-    ctx.answerCbQuery();
-    
-const message = await messageManager.sendAndTrack(ctx, 
-    '🎉 *How Winners Are Selected*\n\n' +
-    'We pick *one winner* from each of our three pools every Saturday at 3:00 PM. The process is fully transparent and based on the Bitcoin blockchain.\n\n' +
-    '1️⃣ *Winning Number*: After the draw time, we take the hash of the first Bitcoin block mined. A section of this hash is used as the winning number for each pool.\n\n' +
-    '2️⃣ *Exact Match First*: If a player\'s entry exactly matches the winning number, they win instantly.\n\n' +
-    '3️⃣ *Guaranteed Winner*: If no exact match, we apply the winning number to the pool size using the modulo operator. This fairly maps the number to one of the entries, ensuring there is always a winner.\n\n' +
-    '4️⃣ *Verify Yourself*: Anyone can check the block hash on a public blockchain explorer like blockchain.com to confirm the result.\n\n' +
-    '✅ This means the process is random, transparent, and impossible to manipulate.'
-);
-
+    await ctx.answerCbQuery();  
+    const message = await messageManager.sendAndTrack(ctx, 
+        '🎉 *How Winners Are Selected*\n\n' +
+        'We pick *one winner* from each of our three pools every Saturday at 3:00 PM. The process is fully transparent and based on the Bitcoin blockchain.\n\n' +
+        '1️⃣ *Winning Number*: After the draw time, we take the hash of the first Bitcoin block mined. A section of this hash is used as the winning number for each pool.\n\n' +
+        '2️⃣ *Exact Match First*: If a player\'s entry exactly matches the winning number, they win instantly.\n\n' +
+        '3️⃣ *Guaranteed Winner*: If no exact match, we apply the winning number to the pool size using the modulo operator. This fairly maps the number to one of the entries, ensuring there is always a winner.\n\n' +
+        '4️⃣ *Verify Yourself*: Anyone can check the block hash on a public blockchain explorer like blockchain.com to confirm the result.\n\n' +
+        '✅ This means the process is random, transparent, and impossible to manipulate.'
+    );
 });
 
 // Modified start command
 bot.start(async (ctx) => {
-    await cleanupSelectionMessages(ctx);
-    
-    try {
+  await cleanupSelectionMessages(ctx);
+  
+  try {
+       // Check if entries are locked
+        const isLocked = await redis.get('entries_locked');
+        if (isLocked) {
+            return await ctx.reply('🔒 Entries are currently locked. Please try again later.');
+        }
+
         // Check for referral parameter
         const startParams = ctx.startPayload;
         let referrer = null;
@@ -51,14 +44,22 @@ bot.start(async (ctx) => {
         const telegramId = ctx.from.id;
         const telegramUsername = ctx.from.username || `user_${telegramId}`;
 
-        // Create or update user with referral info
+
+      // Create or update user with referral info
         const [user, created] = await User.findOrCreate({
             where: { telegram_id: telegramId },
             defaults: { 
                 telegram_username: telegramUsername,
-                referred_by: referrer ? referrer.id : null
+                referred_by: referrer ? referrer.id : null,
+                referral_code:telegramUsername, // Add referral code generation
             }
         });
+    
+         // If user already exists but doesn't have a referral code, generate one
+        if (!created && !user.referral_code) {
+            user.referral_code = Math.random().toString(36).substring(2, 10).toUpperCase();
+            await user.save();
+        }
 
         // If user was referred and this is their first time
         if (referrer && created) {
@@ -89,7 +90,7 @@ bot.start(async (ctx) => {
 
   
 bot.action("start_over", async (ctx) => {
-  ctx.answerCbQuery();
+  await ctx.answerCbQuery();
   
   try {
     // Delete the bot's prompt message if it exists
@@ -119,20 +120,50 @@ bot.action("start_over", async (ctx) => {
     // Preserve any data you want to keep across sessions
   };
   ctx.session = essentialData;
-  // Fetch latest week info
-const currentLotteryWeek = await Week.findOne({
-  order: [['week_number', 'DESC']]
-});
+  
+  try {
+    // Fetch latest week info
+        const today = new Date();
+  
+          // Get current week (based on dates)
+          const currentWeek = await Week.findOne({
+          where: {
+              starts_at: { [Op.lte]: today },
+              ends_at: { [Op.gte]: today }
+          }
+          });
+    // If no current week found, get the latest week
+    let weekLabel = 'Current Week';
+    let weekCode = '';
+    
+    if (currentWeek) {
+      weekLabel = `${currentWeek.week_name} (Week ${currentWeek.week_number}, ${currentWeek.year})`;
+      weekCode = currentWeek.code;
+    } else {
+      // Fallback: get the most recent week
+      const latestWeek = await Week.findOne({
+        order: [['createdAt', 'DESC']]
+      });
+      if (latestWeek) {
+        weekLabel = `${latestWeek.week_name} (Week ${latestWeek.week_number}, ${latestWeek.year})`;
+        weekCode = latestWeek.code;
+      }
+    }
 
-const weekLabel = currentLotteryWeek 
-  ? `${currentLotteryWeek.week_name} (Week ${currentLotteryWeek.week_number}, ${currentLotteryWeek.year})` 
-  : 'Current Week';
+    // Fetch current week's winning record using the weekCode
+    let prizeMoney = "₦100,000"; // Default value
+    if (weekCode) {
+      const winning = await Winning.findOne({
+        where: { week_code: weekCode }
+      });
 
-// Example prize money logic (replace with actual calculation later)
-const prizeMoney = "₦100,000"; // or dynamically calculate 80% of entries
+      if (winning) {
+        prizeMoney = `₦${winning.winning_amount.toLocaleString()}`;
+      }
+    }
 
-// Compose welcome message
-const welcomeText = `👋 Welcome to *Alpha Entries*!  
+    // Compose welcome message
+    const welcomeText = `👋 Welcome to *Alpha Entries*!  
 Get a chance to win exciting jackpots every Saturday 🎉  
 
 📅 *This Week:* ${weekLabel}  
@@ -140,20 +171,43 @@ Get a chance to win exciting jackpots every Saturday 🎉
 
 Please select your draw below to enter:`;
 
-// Send welcome message
-const welcomeMessage = await ctx.reply(welcomeText, {
-  parse_mode: 'Markdown',
-  reply_markup: {
-    inline_keyboard: [
-        [{ text: '💰 Alpha Draw (₦100)', callback_data: `select_pool:Alpha` }],
-                  [{ text: 'ℹ️ How It Works', callback_data: 'how_it_works' }],
-                  [{ text: '📋 My Entries', callback_data: 'view_entries' }],
-                  [{ text: '🎯 Referral Dashboard', callback_data: 'referral_dashboard' }], // Added referral button
-    ]
-  }
-});
+    // Send welcome message
+    const welcomeMessage = await ctx.reply(welcomeText, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '💰 Alpha Draw (₦100/entry)', callback_data: `select_pool:Alpha` }],
+          [{ text: 'ℹ️ How It Works', callback_data: 'how_it_works' }],
+          [{ text: '📋 My Entries', callback_data: 'view_entries' }],
+          [{ text: '🎯 Referral Dashboard', callback_data: 'referral_dashboard' }],
+        ]
+      }
+    });
   
-  // Store the welcome message ID for future cleanup
-  ctx.session.welcomeMessageId = welcomeMessage.message_id;
+    // Store the welcome message ID for future cleanup
+    ctx.session.welcomeMessageId = welcomeMessage.message_id;
+    
+  } catch (error) {
+    console.error('Error fetching week information:', error);
+    // Fallback welcome message if there's an error
+    const fallbackMessage = await ctx.reply(
+      `👋 Welcome to *Alpha Entries*!  
+Get a chance to win exciting jackpots every Saturday 🎉  
+
+Please select your draw below to enter:`,
+      {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '💰 Alpha Draw (₦100/entry)', callback_data: `select_pool:Alpha` }],
+            [{ text: 'ℹ️ How It Works', callback_data: 'how_it_works' }],
+            [{ text: '📋 My Entries', callback_data: 'view_entries' }],
+            [{ text: '🎯 Referral Dashboard', callback_data: 'referral_dashboard' }],
+          ]
+        }
+      }
+    );
+    ctx.session.welcomeMessageId = fallbackMessage.message_id;
+  }
 });
 };

@@ -19,6 +19,11 @@ module.exports = (sequelize, DataTypes) => {
   }
 
   User.init({
+     id: {
+        type: DataTypes.INTEGER, // Or UUID if you're using UUIDs
+        primaryKey: true,
+        autoIncrement: true // If using INTEGER
+    },
     telegram_id: {
       type: DataTypes.BIGINT,
       allowNull: false,

@@ -34,6 +34,7 @@ bot.on('text', async (ctx, next) => {
   // If it's not a command, continue to your custom message handlers
   return next();
 });
+
 // Register handlers
 startHandler(bot);
 adminHandler(bot);
@@ -53,7 +54,7 @@ bot.use(cleanupMiddleware);
 
 
 bot.action('initiate_payment', async (ctx) => {
-  ctx.answerCbQuery();
+  await ctx.answerCbQuery();
   const method = ctx.match[1];
   ctx.session.assignmentMethod = method;
   await paymentFunctions.initiatePayment(ctx);
@@ -120,6 +121,7 @@ process.once('SIGTERM', () => {
 // Launch bot
 (async () => {
   try {
+     
     await db.sequelize.sync();
     console.log("✅ Database synchronized");
 

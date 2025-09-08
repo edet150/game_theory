@@ -5,7 +5,7 @@ const { QueryTypes } = require('sequelize');
 // const {initiatePayment} = require('./payment');
 const { initiatePayment, checkQueryExpiry, buildGrid, buildRandomGrid, generateRandomNumbers, finalizeEntries, getAvailableNumbers, buildNumberGrid, buildSelectedNumbersGrid, handleSuccessfulPayment } = require('./payment');
 const { Markup} = require('../bot/botInstance');
-const { cleanupSelectionMessages } = require('../startFunction');
+const { cleanupSelectionMessages, deleteMessagesByIds } = require('../startFunction');
 const messageManager = require('../utils/messageManager');
 const { sendError, sendSuccess, sendTemporaryMessage } = require('../utils/responseUtils');
 const { checkPaystackTransactions } = require('../cron/paystack_checker');
@@ -49,7 +49,7 @@ async function showPaymentConfirmation(ctx) {
     });
 
     // Store confirmation message ID for cleanup
-    ctx.session.confirmationMessageId = confirmation.message_id;
+    // ctx.session.confirmationMessageId = confirmation.message_id;
     return confirmation;
 }
 
@@ -190,9 +190,9 @@ module.exports = (bot) => {
 // bot.js (or wherever your bot actions are defined)
   
 bot.action(/^assign_method:(\w+)/, async (ctx) => {
-  ctx.answerCbQuery();
+  await ctx.answerCbQuery();
   const method = ctx.match[1];
-console.log('________________----------------',  ctx.session.bonusEntryFlow)
+  console.log('________________----------------',  ctx.session.bonusEntryFlow)
   if (method !== 'choose' && method !== 'sequential' && method !== 'random') {
     return ctx.reply("⚠️ Invalid assignment method. Please try again.");
   }
@@ -244,7 +244,7 @@ console.log('________________----------------',  ctx.session.bonusEntryFlow)
   
 // ----------------- Handlers -----------------
 bot.action(/^choose_number:(\d+)$/, async (ctx) => {
-  ctx.answerCbQuery();
+  await ctx.answerCbQuery();
   checkQueryExpiry(ctx,)
     const num = parseInt(ctx.match[1]);
       console.log(num)
@@ -275,7 +275,7 @@ bot.action(/^choose_number:(\d+)$/, async (ctx) => {
 
 // This handler removes a number from the user's selection.
 bot.action(/^remove_number:(\d+)$/, async (ctx) => {
-    ctx.answerCbQuery();
+    await ctx.answerCbQuery();
   const num = parseInt(ctx.match[1]);
   console.log(num)
 
@@ -362,7 +362,7 @@ bot.on('message', async (ctx) => {
 });
 
 bot.action("random_refresh", async (ctx) => {
-  ctx.answerCbQuery();
+  await ctx.answerCbQuery();
   
   const newRandomNumbers = await generateRandomNumbers(ctx.session.poolId, ctx.session.quantityLimit);
   ctx.session.selectedNumbers = newRandomNumbers;
@@ -385,7 +385,7 @@ bot.action("random_refresh", async (ctx) => {
 // New handler for confirming the random selection
 // Modified random_confirm handler for bonus entries
 // bot.action("random_confirm", async (ctx) => {
-//     ctx.answerCbQuery();
+//     await ctx.answerCbQuery();
 
 //     const finalNumbers = ctx.session.selectedNumbers;
 //     if (!finalNumbers || finalNumbers.length !== ctx.session.quantityLimit) {
@@ -457,7 +457,7 @@ bot.action("random_refresh", async (ctx) => {
 // });
   
 // bot.action(/^ddone:(choose|random)$/, async (ctx) => {
-//   ctx.answerCbQuery();
+//   await ctx.answerCbQuery();
 //   const method = ctx.match[1];
 
 //   if (!ctx.session.selectedNumbers || ctx.session.selectedNumbers.length !== ctx.session.quantityLimit) {
@@ -546,9 +546,10 @@ bot.action("random_refresh", async (ctx) => {
 // });
   
 // // Modified random_confirm handler
-bot.action("random_confirm", async (ctx) => {
-    ctx.answerCbQuery();
-console.log('________________+++++++',  ctx.session.bonusEntryFlow)
+  bot.action("random_confirm", async (ctx) => {
+  try{
+    await ctx.answerCbQuery();
+    console.log('________________+++++++',  ctx.session.bonusEntryFlow)
     const finalNumbers = ctx.session.selectedNumbers;
     if (!finalNumbers || finalNumbers.length !== ctx.session.quantityLimit) {
         return ctx.reply("⚠️ An error occurred with your selection. Please start again.");
@@ -563,13 +564,17 @@ console.log('________________+++++++',  ctx.session.bonusEntryFlow)
 
     // Clean up previous messages
     await cleanupSelectionMessages(ctx);
-    
+  } catch (error){
+      console.log('Ccatch:', error.message);
+    }
+
 
 });
 
 // Modified done handler
-bot.action(/^done:(choose|random)$/, async (ctx) => {
-    ctx.answerCbQuery();
+  bot.action(/^done:(choose|random)$/, async (ctx) => {
+  try{
+    await ctx.answerCbQuery();
     const method = ctx.match[1];
 
     if (!ctx.session.selectedNumbers || ctx.session.selectedNumbers.length !== ctx.session.quantityLimit) {
@@ -586,28 +591,35 @@ bot.action(/^done:(choose|random)$/, async (ctx) => {
 
     // Clean up previous messages
     await cleanupSelectionMessages(ctx);
+    } catch (error){
+      console.log('Ccatch:', error.message);
+    }
+
     
 });
   
 // Handler for proceeding to payment after confirmation
-bot.action("proceed_to_payment", async (ctx) => {
-    ctx.answerCbQuery();
-    
-    // Delete confirmation message
-    if (ctx.session.confirmationMessageId) {
+  bot.action("proceed_to_payment", async (ctx) => {
+    try {
+      await ctx.answerCbQuery();
+      // Initiate payment
+      await initiatePayment(bot, ctx);
+      // Delete confirmation message
+      if (ctx.session.confirmationMessageId) {
         try {
-            await ctx.deleteMessage(ctx.session.confirmationMessageId);
-            delete ctx.session.confirmationMessageId;
+          await ctx.deleteMessage(ctx.session.confirmationMessageId);
+          delete ctx.session.confirmationMessageId;
         } catch (error) {
-            console.log('Could not delete confirmation message:', error.message);
+          console.log('Could not delete confirmation message:', error.message);
         }
+      }
+    } catch (error){
+      console.log('Ccatch:', error.message);
     }
-    
-    // Initiate payment
-    await initiatePayment(bot, ctx);
+
 });// Handler for proceeding to payment after confirmation
 bot.action("proceed_to_payment", async (ctx) => {
-    ctx.answerCbQuery();
+    await ctx.answerCbQuery();
     
     // Delete confirmation message
     if (ctx.session.confirmationMessageId) {
@@ -641,7 +653,7 @@ bot.action("proceed_to_payment", async (ctx) => {
 
 // Handler for editing selection
 bot.action("_edit_selection", async (ctx) => {
-    ctx.answerCbQuery();
+    await ctx.answerCbQuery();
     
     // Delete confirmation message
     if (ctx.session.confirmationMessageId) {
@@ -670,7 +682,7 @@ bot.action("_edit_selection", async (ctx) => {
 const messageManager = require('../utils/messageManager');
 
 bot.action("edit_selection", async (ctx) => {
-    ctx.answerCbQuery();
+    await ctx.answerCbQuery();
     
 
     // Go back to quantity selection
@@ -738,7 +750,7 @@ bot.action("edit_selection", async (ctx) => {
 });
   
 bot.action('view_entry', async (ctx) => {
-  ctx.answerCbQuery();
+  await ctx.answerCbQuery();
   
   if (!ctx.session.finalizedEntries || ctx.session.finalizedEntries.length === 0) {
     return ctx.reply('No finalized entries in this session.');
@@ -757,7 +769,7 @@ bot.action('view_entry', async (ctx) => {
 });
   
 // bot.action(/^done:(choose|random)$/, async (ctx) => {
-//   ctx.answerCbQuery();
+//   await ctx.answerCbQuery();
 //   const method = ctx.match[1];
 
 //   if (
@@ -819,7 +831,7 @@ bot.action('view_entry', async (ctx) => {
 // });
 
 bot.action(/^refresh:(choose|random)$/, async (ctx) => {
-  ctx.answerCbQuery();
+  await ctx.answerCbQuery();
   const method = ctx.match[1];
 
   // Fetch updated available numbers
@@ -852,7 +864,7 @@ bot.action('no_action', (ctx) => {
   
   
   bot.action("back_to_confirmation", async (ctx) => {
-    ctx.answerCbQuery();
+    await ctx.answerCbQuery();
     
     // Delete payment message
     if (ctx.session.paymentMessageId) {
@@ -869,9 +881,11 @@ bot.action('no_action', (ctx) => {
 });
 
 bot.action("verify_payment", async (ctx) => {
-    ctx.answerCbQuery();
+  await ctx.answerCbQuery();
+    
     // Manual trigger verification
-    await checkPaystackTransactions();
+  await checkPaystackTransactions();
+  await deleteMessagesByIds(ctx, ['paymentMessageId']);
 });
 };
 

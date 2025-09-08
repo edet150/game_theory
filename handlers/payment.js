@@ -2,7 +2,7 @@ const { getBotInstance , Markup} = require('../bot/botInstance');
 const bot = getBotInstance();
 const { RafflePool, Entry, User, Payment, Week, sequelize } = require('../models');
 const axios = require('axios');  
-const { showStartScreen } = require('../startFunction');
+const { showStartScreen, awardReferralBonusIfFirstPurchase, deleteMessagesByIds } = require('../startFunction');
 const messageManager = require('../utils/messageManager');
 const { sendError, sendSuccess } = require('../utils/responseUtils');
 // In handleSuccessfulPayment function
@@ -106,7 +106,7 @@ async function initiatePayment(bot, ctx) {
                 email: ctx.from.username ? `${ctx.from.username}@example.com` : `user${ctx.from.id}@example.com`,
                 amount: totalAmount * 100,
                 currency: 'NGN',
-                callback_url: 'https://t.me/trend_9ja?start=payload',
+                callback_url: 'https://t.me/trend_9ja',
                 metadata: metadata
             },
             {
@@ -129,7 +129,7 @@ async function initiatePayment(bot, ctx) {
                 reply_markup: {
                     inline_keyboard: [
                         [{ text: `💳 Pay ₦${totalAmount}`, url: paymentLink }],
-                        [{ text: `💳 Verify Payment`, callback_data: 'verify_payment' }],
+                        [{ text: `Click to Verify Payment`, callback_data: 'verify_payment' }],
                         [{ text: '↩️ Back to Confirmation screen', callback_data: 'back_to_confirmation' }]
                     ]
                 }
@@ -202,11 +202,13 @@ async function initiatePayment(bot, ctx) {
                 paystack_transaction_id: id,
                 paystack_reference: reference,
                 amount: amount / 100,
-                status
+                status,
+                quantity: quantity
             },
             { transaction: t }
         );
-
+        // ✅ CALL AWARD REFERRAL BONUS HERE - RIGHT AFTER PAYMENT CREATION
+        await awardReferralBonusIfFirstPurchase(user.id, quantity, paymentRecord.id, t);
         // Use finalizeEntries to create the entries
         const result = await finalizeEntries(
             user.id,
@@ -222,7 +224,12 @@ async function initiatePayment(bot, ctx) {
             throw new Error(`Failed to create entries: ${result.message}`);
         }
 
-              
+      // await deleteMessagesByIds(ctx, ['paymentMessageId']);  
+
+          // await bot.telegram.deleteMessage(ctx.chat.id, ctx.session.paymentMessageId);
+       
+
+      
         // After successful payment processing:
         const entryData = {
             numbers: selectedNumbers,
@@ -553,33 +560,55 @@ async function _finalizeEntries(userId, poolId, numbers, lottery_week_code, lott
 }
 // Modified finalizeEntries function
 async function finalizeEntries(userId, poolId, numbers, lottery_week_code, lottery_week_name, transactionId = null, isBonus = false) {
-    try {
-        const entries = numbers.map((num) => ({
-            user_id: userId,
-            pool_id: poolId,
-            entry_number: num,
-            week_code: lottery_week_code,
-            week_name: lottery_week_name,
-            transaction_id: transactionId,
-            status: "paid",
-            is_bonus_entry: isBonus
-        }));
+  try {
+    // Step 1: Fetch already taken numbers in this pool & week
+    const existingEntries = await Entry.findAll({
+      where: {
+        pool_id: poolId,
+        week_code: lottery_week_code,
+        entry_number: numbers
+      },
+      attributes: ["entry_number"]
+    });
 
-        await Entry.bulkCreate(entries);
-        
-        // If using bonus entries, deduct from user's balance
-        if (isBonus) {
-            const user = await User.findByPk(userId);
-            user.bonus_entries -= numbers.length;
-            await user.save();
-        }
+    const existingNumbers = new Set(existingEntries.map(e => e.entry_number));
 
-        return { success: true, message: `Entries created: ${numbers.join(", ")}` };
-    } catch (error) {
-        console.error("Error creating entries:", error);
-        return { success: false, message: "An error occurred while finalizing entries." };
+    // Step 2: Filter out numbers that are already taken
+    const uniqueNumbers = numbers.filter(num => !existingNumbers.has(num));
+
+    if (uniqueNumbers.length === 0) {
+      return { success: false, message: "All selected numbers are already taken." };
     }
+
+    // Step 3: Prepare new entries
+    const entries = uniqueNumbers.map((num) => ({
+      user_id: userId,
+      pool_id: poolId,
+      entry_number: num,
+      week_code: lottery_week_code,
+      week_name: lottery_week_name,
+      transaction_id: transactionId,
+      status: "paid",
+      is_bonus_entry: isBonus
+    }));
+
+    // Step 4: Bulk insert only unique entries
+    await Entry.bulkCreate(entries);
+
+    // Step 5: Deduct bonus entries if needed
+    if (isBonus) {
+      const user = await User.findByPk(userId);
+      user.bonus_entries = Math.max(0, user.bonus_entries - uniqueNumbers.length);
+      await user.save();
+    }
+
+    return { success: true, message: `Entries created: ${uniqueNumbers.join(", ")}` };
+  } catch (error) {
+    console.error("Error creating entries:", error);
+    return { success: false, message: "An error occurred while finalizing entries." };
+  }
 }
+
 
 function buildGrid(available, selected, quantity, method, finalized = false) {
   const keyboard = [];

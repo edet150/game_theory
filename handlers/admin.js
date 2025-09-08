@@ -1,5 +1,8 @@
 // handlers/admin.js
 const { User ,RafflePool,Winning, Payment, Admin, Entry, Week} = require('../models');const { Op } = require("sequelize");
+const { getBotInstance, getRedisClient } = require('../bot/botinstance');
+const { sendError, sendSuccess } = require('../utils/responseUtils');
+const redis = getRedisClient();
 module.exports = (bot) => {
     // Admin authentication states
     const ADMIN_STATES = {
@@ -59,7 +62,7 @@ module.exports = (bot) => {
     };
 
     // Admin commands handler
-    bot.command('admin', async (ctx) => {
+    bot.command('admin_dadi', async (ctx) => {
         // Clean up any previous messages
         await cleanupAdminMessages(ctx);
         
@@ -124,6 +127,30 @@ module.exports = (bot) => {
         } catch (error) {
             console.error('Error creating admin:', error);
             await ctx.reply('❌ Error creating admin user.');
+        }
+    });
+    // Add this to your admin handlers
+    bot.action('admin_toggle_entries_lock', async (ctx) => {
+        await ctx.answerCbQuery();
+        
+        try {
+            const isLocked = await redis.get('entries_locked');
+            
+            if (isLocked) {
+                // Unlock entries
+                await redis.del('entries_locked');
+                await sendSuccess(ctx, '✅ Entries have been unlocked. Users can now make entries.');
+            } else {
+                // Lock entries
+                await redis.set('entries_locked', 'true');
+                await sendSuccess(ctx, '🔒 Entries have been locked. Users cannot make new entries.');
+            }
+            
+            // Refresh admin dashboard to show updated status
+            await showAdminDashboard(ctx);
+        } catch (error) {
+            console.error('Error toggling entries lock:', error);
+            await sendError(ctx, 'Failed to toggle entries lock.');
         }
     });
 
@@ -320,6 +347,9 @@ bot.on('message', async (ctx) => {
     }
     // Add this button to your admin dashboard
     async function showAdminDashboard(ctx) {
+        const isLocked = await redis.get('entries_locked');
+        const lockStatus = isLocked ? '🔒 Locked' : '🔓 Unlocked';
+        
         const keyboard = {
             reply_markup: {
                 inline_keyboard: [
@@ -338,6 +368,9 @@ bot.on('message', async (ctx) => {
                     [
                         { text: '🎯 Announce Winner', callback_data: 'admin_announce_winner' },
                         { text: '📢 Post Winning Number', callback_data: 'admin_post_winning_number' }
+                    ],
+                    [
+                        { text: `${lockStatus} Entries`, callback_data: 'admin_toggle_entries_lock' }
                     ],
                     [
                         { text: '🚪 Logout', callback_data: 'admin_logout' }
@@ -363,7 +396,7 @@ bot.on('message', async (ctx) => {
         const message = await ctx.reply('Please enter the winning number for this week:');
         trackMessage(ctx, 'winningNumberPrompt');
         
-        ctx.answerCbQuery();
+        await ctx.answerCbQuery();
     });
 
     bot.action('admin_set_winning_amount', async (ctx) => {
@@ -373,7 +406,7 @@ bot.on('message', async (ctx) => {
         const message = await ctx.reply('Please enter the new winning amount:');
         trackMessage(ctx, 'winningAmountPrompt');
         
-        ctx.answerCbQuery();
+        await ctx.answerCbQuery();
     });
 
     bot.action('admin_get_winners', async (ctx) => {
@@ -457,7 +490,7 @@ bot.on('message', async (ctx) => {
         console.error('Error getting winners:', error);
         await ctx.reply('❌ Error retrieving winners.');
     }
-    ctx.answerCbQuery();
+    await ctx.answerCbQuery();
     });
 
     // Announce winner to channel
@@ -535,7 +568,7 @@ bot.on('message', async (ctx) => {
         const message = await ctx.reply('Please enter the name for the new pool:');
         trackMessage(ctx, 'poolNamePrompt');
         
-        ctx.answerCbQuery();
+        await ctx.answerCbQuery();
     });
 
     bot.action('admin_pool_stats', async (ctx) => {
@@ -566,7 +599,7 @@ bot.on('message', async (ctx) => {
             console.error('Error getting pool stats:', error);
             await ctx.reply('❌ Error retrieving pool statistics.');
         }
-        ctx.answerCbQuery();
+        await ctx.answerCbQuery();
     });
 
     bot.action('admin_logout', async (ctx) => {
@@ -574,7 +607,7 @@ bot.on('message', async (ctx) => {
         ctx.session.adminState = null;
         await cleanupAdminMessages(ctx);
         await ctx.reply('✅ Logged out successfully.');
-        ctx.answerCbQuery();
+        await ctx.answerCbQuery();
     });
 
     // Add this to your admin.js file, preferably near the other action handlers
@@ -861,7 +894,7 @@ async function compileWinnerAnnouncementHTML() {
         message += `<b>Date:</b> ${currentDate}\n`;
         message += `<b>Week:</b> ${currentWeek.week_name}\n`;
         message += `<b>Winning Number:</b> ${winningNumber}\n`;
-        message += `<b>Prize Money:</b> ₦${winningRecord.winning_amount.toLocaleString()}\n`;
+        message += `<b>Prize Money:</b> ₦${(Number(winningRecord.winning_amount)).toLocaleString()}\n`;
         message += `<b>Win Method:</b> ${winMethod}\n\n`;
         message += "━━━━━━━━━━━━━━━━━━━━\n\n";
 
@@ -982,7 +1015,7 @@ async function compileWinnerAnnouncementHTML() {
             message += "   - Total Entries: 100\n";
             message += "   - 15 % 100 = 15 → Entry at position 15 wins\n\n";
             message += "━━━━━━━━━━━━━━━━━━━━\n\n";
-            message += `*Prize Money:* ₦${winningRecord.winning_amount.toLocaleString()}\n\n`;
+            message += `*Prize Money:* ₦${(Number(winningRecord.winning_amount)).toLocaleString()}\n\n`;
             message += "The winner will be announced shortly!\n";
             message += "Good luck to all participants! 🍀";
 

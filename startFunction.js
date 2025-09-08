@@ -1,7 +1,8 @@
 // In a new file, or at the top of an existing one.
 // Let's create a new file `utils/startFlow.js`
-
-const { User , Week} = require('./models');
+const { getBotInstance, getRedisClient } = require('./bot/botinstance');
+const bot = getBotInstance();
+const { User , Week, Winnning, Entry, Payment} = require('./models');
 
 async function showStartScreen_(ctx) {
   const telegramId = ctx.from.id;
@@ -16,7 +17,7 @@ async function showStartScreen_(ctx) {
     const options = {
       reply_markup: {
         inline_keyboard: [
-          [{ text: '💰 Alpha Draw (₦100)', callback_data: `select_pool:Alpha` }],
+          [{ text: '💰 Alpha Draw (₦100/entry)', callback_data: `select_pool:Alpha` }],
           // [{ text: '💰 Beta Draw (₦200)', callback_data: `select_pool:Beta` }],
           // [{ text: '💎 High Rollers (₦500)', callback_data: `select_pool:HighRollers` }],
           [{ text: 'ℹ️ How It Works', callback_data: 'how_it_works' }],
@@ -533,6 +534,129 @@ How many would you like to use?
     });
 }
 
+async function awardReferralBonusIfFirstPurchase(userId, currentQuantity, transaction) {
+    try {
+        // console.log('userId', userId)
+ 
+    const users = await User.findAll({
+        where: { id: userId },
+        attributes: ['id', 'referred_by']
+    });
+    
+    const user = users[0]; // Get first result
+    // console.log('User found:', user);
+    
+    if (!user || !user.referred_by) {
+        console.log('No user or no referrer found');
+        return false;
+    }
+    
+        // SIMPLIFIED: Check if user has any previous successful payments
+        // This avoids complex WHERE clauses that might cause the UUID error
+        const allUserPayments = await Payment.findAll({
+            where: { user_id: userId },
+            attributes: ['id', 'status']
+            
+        });
+        // Filter successful payments manually
+        const successfulPayments = allUserPayments.filter(payment => payment.status === 'success');
+        
+        // If this is the first successful payment, award bonus
+        if (successfulPayments.length === 1) { // Current payment + 0 previous = 1 total
+            await awardReferralBonus(user.referred_by, currentQuantity, user.id);
+            return true;
+        }
+        
+        return false;
+    } catch (error) {
+        console.error('Error checking first purchase:', error);
+        return false;
+    }
+}
+
+async function awardReferralBonus(referrerId, purchasedEntriesCount, referredUserId) {
+    try {
+        const referrer = await User.findByPk(referrerId);
+        if (!referrer) {
+            console.log('Referrer not found with ID:', referrerId);
+            return;
+        }
+
+        // Award bonus entries based on the first purchase quantity
+        const bonusEntriesToAward = purchasedEntriesCount; // 1:1 ratio
+        
+        if (bonusEntriesToAward > 0) {
+            referrer.bonus_entries += bonusEntriesToAward;
+            referrer.active_referrals += 1;
+            await referrer.save();
+            
+            // Notify referrer
+      
+            try {
+                await bot.telegram.sendMessage(
+                    referrer.telegram_id,
+                    `🎉 Your referral just made their first purchase of ${purchasedEntriesCount} entries!\n` +
+                    `You received ${bonusEntriesToAward} bonus ${bonusEntriesToAward === 1 ? 'entry' : 'entries'}.\n` +
+                    `Total bonus entries: ${referrer.bonus_entries}`,
+                    { parse_mode: 'HTML' }
+                );
+            } catch (error) {
+                console.log('Could not notify referrer:', error.message);
+            }
+            
+            console.log(`Awarded ${bonusEntriesToAward} bonus entries to referrer ${referrerId}`);
+        }
+    } catch (error) {
+        console.error('Error awarding referral bonus:', error);
+    }
+}
+// utils/loadingMessage.js
+async function startLoadingDots(ctx, text = "⏳ Verifying payment") {
+  // Send initial loading message
+  const loadingMsg = await ctx.reply(text);
+
+  const dots = ["", ".", "..", "..."];
+  let i = 0;
+
+  // Interval for animation
+  const interval = setInterval(async () => {
+    try {
+      i = (i + 1) % dots.length;
+      await ctx.telegram.editMessageText(
+        ctx.chat.id,
+        loadingMsg.message_id,
+        null,
+        `${text}${dots[i]}`
+      );
+    } catch (err) {
+      console.log("Loading animation error:", err.message);
+    }
+  }, 500);
+
+  // Return controller
+  return {
+    messageId: loadingMsg.message_id,
+    stop: async (finalText = null) => {
+      clearInterval(interval);
+      try {
+        if (finalText) {
+          // Replace with final message
+          await ctx.telegram.editMessageText(ctx.chat.id, loadingMsg.message_id, null, finalText);
+        } else {
+          // Or just delete the loading message
+          await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id);
+        }
+      } catch (err) {
+        console.log("Error stopping loading message:", err.message);
+      }
+    }
+  };
+}
+
+
+// Then in your handleSuccessfulPayment function:
+// ✅ AWARD REFERRAL BONUS HERE (if applicable)
+// await awardReferralBonusIfFirstPurchase(user.id, quantity, t);
 
 // Export the functions for use in other files
 module.exports = {
@@ -549,7 +673,9 @@ module.exports = {
     cleanupCommandMessage,
     deleteMessagesByIds,
     showAssignmentMethodSelection,
-    showBonusEntrySelection
+    showBonusEntrySelection,
+    awardReferralBonusIfFirstPurchase,
+    startLoadingDots
 };
 
 // module.exports = { showStartScreen, getLast4Digits, cleanupSelectionMessages };
