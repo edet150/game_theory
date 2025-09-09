@@ -677,7 +677,7 @@ bot.on('message', async (ctx) => {
                     model: RafflePool
                 }]
             }],
-            order: [['telegram_username', 'ASC']]
+            order: [['id', 'ASC']]
         });
 
         // Get all entries for modulo positioning
@@ -686,7 +686,7 @@ bot.on('message', async (ctx) => {
                 week_code: currentWeek.code,
                 status: 'paid'
             },
-            order: [['entry_number', 'ASC']]
+            order: [['id', 'ASC']]
         });
 
         // Create a map of entry numbers to their modulo position
@@ -859,7 +859,7 @@ async function compileWinnerAnnouncementHTML() {
                     week_code: currentWeek.code,
                     status: 'paid'
                 },
-                order: [['entry_number', 'ASC']],
+                order: [['id', 'ASC']],
                 include: [
                     { model: User },
                     { model: RafflePool }
@@ -919,7 +919,7 @@ async function compileWinnerAnnouncementHTML() {
                         week_code: currentWeek.code,
                         status: 'paid'
                     },
-                    order: [['entry_number', 'ASC']]
+                    order: [['id', 'ASC']]
                 });
 
                 const position = allEntries.findIndex(e => e.id === entry.id) + 1;
