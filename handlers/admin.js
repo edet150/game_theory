@@ -480,8 +480,8 @@ bot.on('message', async (ctx) => {
         message += `👤 ${entry.User.username}\n`;
         message += `🔢 Entry #${entry.entry_number}\n`;
         message += `🏊 Arena: ${entry.RafflePool.name}\n`;
-        message += `📧 Email: ${entry.User.email || 'Not provided'}\n`;
-        message += `📞 Phone: ${entry.User.phone || 'Not provided'}\n\n`;
+        // message += `📧 Email: ${entry.User.email || 'Not provided'}\n`;
+        // message += `📞 Phone: ${entry.User.phone || 'Not provided'}\n\n`;
         });
 
         await cleanupAdminMessages(ctx, ['adminDashboard']);
@@ -665,6 +665,16 @@ bot.on('message', async (ctx) => {
         if (!currentWeek) {
             throw new Error('No current week found');
         }
+      // Get the winning record for this week
+        const winningRecord = await Winning.findOne({
+            where: { week_code: currentWeek.code }
+        });
+
+        if (!winningRecord) {
+            throw new Error('No winning number found for this week');
+        }
+
+        const winningAmount = winningRecord.winning_amount;
 
         // Get all users with their paid entries for current week
         const users = await User.findAll({
@@ -711,7 +721,7 @@ bot.on('message', async (ctx) => {
         message += `*Week:* ${currentWeek.week_name}\n`;
         message += `*Total Participants:* ${users.length}\n`;
         message += `*Total Entries:* ${allEntries.length}\n`;
-        message += `*Winning Number:* ${currentWeek.winning_number || 'Not yet set'}\n\n`;
+        message += `*Winning Amount:* ${winningAmount || 'Not yet set'}\n\n`;
         message += "━━━━━━━━━━━━━━━━━━━━\n\n";
 
         let userCount = 1;
