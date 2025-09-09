@@ -37,7 +37,7 @@ module.exports = (bot) => {
         replyMessage += `${entriesByPool[pool].sort((a, b) => a - b).join(', ')}\n\n`;
       }
 
-      ctx.reply(replyMessage, { parse_mode: 'Markdown' });
+      ctx.reply(replyMessage, { parse_mode: 'MarkdownV2' });
 
     } catch (error) {
       console.error('Error handling /my_entries:', error);

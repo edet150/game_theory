@@ -21,7 +21,7 @@ async function sendError(ctx, errorMessage, duration = 5000) {
     return sendTemporaryMessage(ctx, `⚠️ ${errorMessage}`, duration);
 }
 
-async function sendSuccess(ctx, successMessage, duration = 3000) {
+async function sendSuccess(ctx, successMessage, duration = 5000) {
     return sendTemporaryMessage(ctx, `✅ ${successMessage}`, duration);
 }
 

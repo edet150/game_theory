@@ -3,52 +3,7 @@
 
 const { User , Week, Winnning, Entry, Payment} = require('./models');
 
-async function showStartScreen_(ctx) {
-  const telegramId = ctx.from.id;
-  const telegramUsername = ctx.from.username || `user_${telegramId}`;
 
-  try {
-    await User.findOrCreate({
-      where: { telegram_id: telegramId },
-      defaults: { telegram_username: telegramUsername },
-    });
-
-    const options = {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: '💰 Alpha Draw (₦100/entry)', callback_data: `select_pool:Alpha` }],
-          // [{ text: '💰 Beta Draw (₦200)', callback_data: `select_pool:Beta` }],
-          // [{ text: '💎 High Rollers (₦500)', callback_data: `select_pool:HighRollers` }],
-          [{ text: 'ℹ️ How It Works', callback_data: 'how_it_works' }],
-          [{ text: '📋 My Entries', callback_data: 'view_entries' }],
-        ]
-      }
-    };
-
-    let messageId;
-
-    // Use editMessageText for a cleaner UX on a button press
-    if (ctx.callbackQuery) {
-      await ctx.editMessageText('👋 Welcome! Get a chance to win a jackpot every Saturday! We have 3 different pools to play in. Choose your pool below:', options);
-      // When editing, the message ID remains the same
-      messageId = ctx.callbackQuery.message.message_id;
-    } else {
-      const welcomeMessage = await ctx.reply('👋 Welcome! Get a chance to win a jackpot every Saturday! We have 3 different pools to play in. Choose your pool below:', options);
-      messageId = welcomeMessage.message_id;
-    }
-
-    // Store the welcome message ID in session
-    if (!ctx.session) ctx.session = {};
-    ctx.session.welcomeMessageId = messageId;
-
-    return messageId;
-
-  } catch (error) {
-    console.error('Error handling start flow:', error);
-    ctx.reply('Oops! Something went wrong. Please try again later.');
-    return null;
-  }
-}
 async function showStartScreen(ctx) {
   const telegramId = ctx.from.id;
   const telegramUsername = ctx.from.username || `user_${telegramId}`;
@@ -60,7 +15,7 @@ async function showStartScreen(ctx) {
       defaults: { telegram_username: telegramUsername },
     });
 
-    // Get current lottery week
+    // Get current game week
     const currentLotteryWeek = await Week.findOne({
       order: [['week_number', 'DESC']]
     });
@@ -72,26 +27,26 @@ async function showStartScreen(ctx) {
     // Example prize pool (later make dynamic: 80% of all entries)
     const prizeMoney = "₦100,000";
 
-    // Welcome text with branding
-    const welcomeText = `👋 Welcome to *Alpha Entries*!  
-Get a chance to win exciting jackpots every Saturday 🎉  
+    // Welcome text with Game Theory branding
+    const welcomeText = `👋 Welcome to *Game Theory* 🎭  
+Where chance meets strategy.  
 
-📅 *This Week:* ${weekLabel}  
+📅 *This Round:* ${weekLabel}  
 💰 *Prize Pool:* ${prizeMoney}  
 
-Please select your draw below to enter:`;
+Choose your arena below to make your move:`;  
 
-  const options = {
-          parse_mode: 'HTML',
-          reply_markup: {
-              inline_keyboard: [
-                  [{ text: '💰 Alpha Draw (₦100)', callback_data: `select_pool:Alpha` }],
-                  [{ text: 'ℹ️ How It Works', callback_data: 'how_it_works' }],
-                  [{ text: '📋 My Entries', callback_data: 'view_entries' }],
-                  [{ text: '🎯 Referral Dashboard', callback_data: 'referral_dashboard' }], // Added referral button
-              ]
-          }
-      };
+    const options = {
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '💰 Alpha Arena (₦100)', callback_data: `select_pool:Alpha` }],
+          [{ text: 'ℹ️ How It Works', callback_data: 'how_it_works' }],
+          [{ text: '📋 My Moves', callback_data: 'view_entries' }],
+          [{ text: '🎯 Referral Dashboard', callback_data: 'referral_dashboard' }],
+        ]
+      }
+    };
 
     let messageId;
 
@@ -117,6 +72,7 @@ Please select your draw below to enter:`;
     return null;
   }
 }
+
 
 
 async function _cleanupSelectionMessages(ctx) {
@@ -435,32 +391,33 @@ async function cleanupCommandMessage(ctx) {
     }
 }
     // Show assignment method selection
-    async function showAssignmentMethodSelection(ctx) {
-        const message = `
-        <b>🎯 How would you like to assign your ${ctx.session.quantity} entries?</b>
+async function showAssignmentMethodSelection(ctx) {
+    const message = `
+<b>🎯 How would you like to place your ${ctx.session.quantity} entries?</b>
 
-        Choose how you want your bonus entries to be assigned:
+Select your strategy below:
     `;
 
-        const keyboard = {
-            reply_markup: {
-                inline_keyboard: [
-                    [
-                        { text: '🎲 Random', callback_data: 'assign_method:random' },
-                        { text: '📝 Choose Numbers', callback_data: 'assign_method:choose' }
-                    ],
-                    [
-                        { text: '🔙 Back', callback_data: 'use_bonus_entries' }
-                    ]
+    const keyboard = {
+        reply_markup: {
+            inline_keyboard: [
+                [
+                    { text: '🎲 Random Pick', callback_data: 'assign_method:random' },
+                    { text: '📝 Manual Pick', callback_data: 'assign_method:choose' }
+                ],
+                [
+                    { text: '🔙 Back', callback_data: 'use_bonus_entries' }
                 ]
-            }
-        };
+            ]
+        }
+    };
 
-        await ctx.editMessageText(message, {
-            parse_mode: 'HTML',
-            reply_markup: keyboard.reply_markup
-        });
-    }
+    await ctx.editMessageText(message, {
+        parse_mode: 'HTML',
+        reply_markup: keyboard.reply_markup
+    });
+}
+
 
 async function showBonusEntrySelection(ctx, user) {
     const availableEntries = user.bonus_entries;
@@ -513,13 +470,14 @@ async function showBonusEntrySelection(ctx, user) {
         callback_data: 'referral_dashboard' 
     }]);
 
-    const message = `
-<b>🎁 Use Bonus Entries</b>
+const message = `
+<b>🎁 Bonus Plays</b>
 
-You have <b>${availableEntries}</b> bonus entries available.
+You have <b>${availableEntries}</b> bonus plays available.  
 
-How many would you like to use?
-    `;
+How many would you like to apply?
+`;
+
 
     const keyboard = {
         reply_markup: {
@@ -590,21 +548,21 @@ async function awardReferralBonus(referrerId, purchasedEntriesCount, referredUse
             await referrer.save();
             
             // Notify referrer
-      
             try {
                 await bot.telegram.sendMessage(
                     referrer.telegram_id,
-                    `🎉 Your referral just made their first purchase of ${purchasedEntriesCount} entries!\n` +
-                    `You received ${bonusEntriesToAward} bonus ${bonusEntriesToAward === 1 ? 'entry' : 'entries'}.\n` +
-                    `Total bonus entries: ${referrer.bonus_entries}`,
+                    `🎉 Your referral just made their first move with ${purchasedEntriesCount} plays!\n` +
+                    `You earned ${bonusEntriesToAward} bonus ${bonusEntriesToAward === 1 ? 'play' : 'plays'}.\n` +
+                    `Total bonus plays: ${referrer.bonus_entries}`,
                     { parse_mode: 'HTML' }
                 );
             } catch (error) {
                 console.log('Could not notify referrer:', error.message);
             }
             
-            console.log(`Awarded ${bonusEntriesToAward} bonus entries to referrer ${referrerId}`);
+            console.log(`Awarded ${bonusEntriesToAward} bonus plays to referrer ${referrerId}`);
         }
+
     } catch (error) {
         console.error('Error awarding referral bonus:', error);
     }

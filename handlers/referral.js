@@ -36,8 +36,8 @@ async function showPoolSelection(ctx) {
     const pools = await RafflePool.findAll();
     
     let message = ctx.session.bonusEntryFlow ?
-        `<b>🎯 Select Pool for Bonus Entries</b>\n\nYou're using ${ctx.session.quantity} bonus entries. Select a pool:` :
-        `<b>🎯 Select a Draw Pool</b>\n\nChoose which pool you want to enter:`;
+        `<b>🎯 Select Arena for Bonus Entries</b>\n\nYou're using ${ctx.session.quantity} bonus entries. Select your Arena:` :
+        `<b>🎯 Select a Draw Arena</b>\n\nChoose which Arena you want to enter:`;
 
     const keyboard = {
         reply_markup: {
@@ -292,7 +292,7 @@ ${referredUsers.map(u => `
             reply_markup: {
                 inline_keyboard: [
                     [
-                        { text: '🎲 Random', callback_data: 'assign_method:random' },
+                        { text: '🎲 Random Pick', callback_data: 'assign_method:random' },
                         { text: '📝 Choose Numbers', callback_data: 'assign_method:choose' }
                     ],
                     [

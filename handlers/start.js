@@ -11,13 +11,13 @@ module.exports = (bot) => {
 bot.action('how_it_works', async (ctx) => {
     await ctx.answerCbQuery();  
     const message = await messageManager.sendAndTrack(ctx, 
-        '🎉 *How Winners Are Selected*\n\n' +
-        'We pick *one winner* from each of our three pools every Saturday at 3:00 PM. The process is fully transparent and based on the Bitcoin blockchain.\n\n' +
-        '1️⃣ *Winning Number*: After the draw time, we take the hash of the first Bitcoin block mined. A section of this hash is used as the winning number for each pool.\n\n' +
-        '2️⃣ *Exact Match First*: If a player\'s entry exactly matches the winning number, they win instantly.\n\n' +
-        '3️⃣ *Guaranteed Winner*: If no exact match, we apply the winning number to the pool size using the modulo operator. This fairly maps the number to one of the entries, ensuring there is always a winner.\n\n' +
-        '4️⃣ *Verify Yourself*: Anyone can check the block hash on a public blockchain explorer like blockchain.com to confirm the result.\n\n' +
-        '✅ This means the process is random, transparent, and impossible to manipulate.'
+      '🎭 *The Rules of the Game*\n\n' +
+      'Every Saturday at 3:00 PM WAT, we select *one strategist (winner)* from each pool. The system is built on fairness and transparency, powered by the Bitcoin blockchain.\n\n' +
+      '1️⃣ *Signal Number*: We take the first Bitcoin block hash mined after noon (12:00 PM WAT). The *last 4 digits* of this hash form the winning number.\n\n' +
+      '2️⃣ *Exact Strategy Wins*: If your entry matches those 4 digits, you win instantly.\n\n' +
+      '3️⃣ *Game Theory Balance*: If no exact match, we map the number to the pool size using modulo. This guarantees a winner every round.\n\n' +
+      '4️⃣ *Verify the Play*: Anyone can check the block hash on explorers like blockchain.com to confirm fairness.\n\n' +
+      '✅ This isn’t luck alone — it’s strategy, randomness, and transparency working together.'
     );
 });
 
@@ -163,26 +163,27 @@ bot.action("start_over", async (ctx) => {
     }
 
     // Compose welcome message
-    const welcomeText = `👋 Welcome to *Alpha Entries*!  
-Get a chance to win exciting jackpots every Saturday 🎉  
+    const welcomeText = `👋 Welcome to *Alpha Plays*!  
+    Step into the game and test your strategy every Saturday 🎉  
 
-📅 *This Week:* ${weekLabel}  
-💰 *Prize Pool:* ${prizeMoney}  
+    📅 *This Week:* ${weekLabel}  
+    💰 *Prize Pool:* ${prizeMoney}  
 
-Please select your draw below to enter:`;
+    Choose your arena below to make a move:`;
 
     // Send welcome message
     const welcomeMessage = await ctx.reply(welcomeText, {
-      parse_mode: 'Markdown',
+      parse_mode: 'MarkdownV2',
       reply_markup: {
         inline_keyboard: [
-          [{ text: '💰 Alpha Draw (₦100/entry)', callback_data: `select_pool:Alpha` }],
+          [{ text: '💰 Alpha Arena (₦100/play)', callback_data: `select_pool:Alpha` }],
           [{ text: 'ℹ️ How It Works', callback_data: 'how_it_works' }],
-          [{ text: '📋 My Entries', callback_data: 'view_entries' }],
+          [{ text: '📋 My Plays', callback_data: 'view_entries' }],
           [{ text: '🎯 Referral Dashboard', callback_data: 'referral_dashboard' }],
         ]
       }
     });
+
   
     // Store the welcome message ID for future cleanup
     ctx.session.welcomeMessageId = welcomeMessage.message_id;
@@ -192,21 +193,22 @@ Please select your draw below to enter:`;
     // Fallback welcome message if there's an error
     const fallbackMessage = await ctx.reply(
       `👋 Welcome to *Alpha Entries*!  
-Get a chance to win exciting jackpots every Saturday 🎉  
+    Step into the game and test your strategy every Saturday 🎉  
 
-Please select your draw below to enter:`,
+    Choose your arena below to make a move:`,
       {
-        parse_mode: 'Markdown',
+        parse_mode: 'MarkdownV2',
         reply_markup: {
           inline_keyboard: [
-            [{ text: '💰 Alpha Draw (₦100/entry)', callback_data: `select_pool:Alpha` }],
+            [{ text: '💰 Alpha Arena (₦100/play)', callback_data: `select_pool:Alpha` }],
             [{ text: 'ℹ️ How It Works', callback_data: 'how_it_works' }],
-            [{ text: '📋 My Entries', callback_data: 'view_entries' }],
+            [{ text: '📋 My Plays', callback_data: 'view_entries' }],
             [{ text: '🎯 Referral Dashboard', callback_data: 'referral_dashboard' }],
           ]
         }
       }
     );
+
     ctx.session.welcomeMessageId = fallbackMessage.message_id;
   }
 });

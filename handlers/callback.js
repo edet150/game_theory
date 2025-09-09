@@ -98,7 +98,7 @@ console.log('ctx.session.bonusEntryFlow', ctx.session.bonusEntryFlow)
         const summaryMessage = `
 🎯 <b>BONUS ENTRY CONFIRMATION</b>
 
-🏷️ <b>Pool:</b> ${pool.name}
+🏷️ <b>Arena:</b> ${pool.name}
 🎁 <b>Type:</b> Bonus Entries
 📊 <b>Entries Used:</b> ${finalNumbers.length}
 🎲 <b>Method:</b> ${method === 'random' ? 'Random Assignment' : 'Manual Selection'}
@@ -138,7 +138,7 @@ console.log('ctx.session.bonusEntryFlow', ctx.session.bonusEntryFlow)
         const confirmationMessage = `
 💰 <b>PAYMENT CONFIRMATION</b>
 
-🏷️ <b>Pool:</b> ${pool.name}
+🏷️ <b>Arena:</b> ${pool.name}
 📊 <b>Entries:</b> ${finalNumbers.length}
 🎲 <b>Method:</b> ${method === 'random' ? 'Random Assignment' : 'Manual Selection'}
 🔢 <b>Your numbers:</b> ${finalNumbers.sort((a, b) => a - b).join(', ')}

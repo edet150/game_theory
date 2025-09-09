@@ -30,7 +30,7 @@ module.exports = (bot) => {
       const isLocked = await redis.get('entries_locked');
     if (isLocked) {
         await ctx.answerCbQuery();
-        return await ctx.reply('🔒 Entries are currently locked. Please try again later.');
+        return await ctx.reply('🔒 Plays are currently locked. Please try again later.');
     }
     await ctx.answerCbQuery();
     const poolName = ctx.match[1];
@@ -39,7 +39,7 @@ module.exports = (bot) => {
     ctx.session.poolName = poolName;
 
     if (!poolName) {
-        console.error('Pool name is undefined');
+        console.error('Arena name is undefined');
         return ctx.reply('Invalid pool selection. Please try again.');
     }
 
@@ -47,7 +47,7 @@ module.exports = (bot) => {
         // Find the pool using model
         const pool = await RafflePool.findOne({ where: { name: poolName } });
         if (!pool) {
-            ctx.reply('Pool not found. Please try again.');
+            ctx.reply('Arena not found. Please try again.');
             return;
         }
 
@@ -59,9 +59,10 @@ module.exports = (bot) => {
         const options = {
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: '1 Entry', callback_data: `set_quantity:1` }],
-                    [{ text: '5 Entries', callback_data: `set_quantity:5` }],
-                    [{ text: '10 Entries', callback_data: `set_quantity:10` }]
+            [{ text: '1 Play', callback_data: `set_quantity:1` }],
+            [{ text: '5 Plays', callback_data: `set_quantity:5` }],
+            [{ text: '10 Plays', callback_data: `set_quantity:10` }]
+
                 ]
             }
         };
@@ -70,23 +71,23 @@ module.exports = (bot) => {
         const quantityMessage = await ctx.reply(
             `You've selected the ${pool.name} Pool!\n\n` +
             `**Price:** ₦${pool.price_per_entry} per entry\n` +
-            `**Max Entries:** ${pool.max_entries}\n` +
-            `**Current Entries:** ${currentEntriesCount}/${pool.max_entries}\n\n` +
-            `How many entries would you like to buy?`,
-            { parse_mode: 'Markdown', reply_markup: options.reply_markup }
+            `**Max Plays:** ${pool.max_entries}\n` +
+            `**Current Plays:** ${currentEntriesCount}/${pool.max_entries}\n\n` +
+            `How many plays would you like to purchase?`,
+            { parse_mode: 'MarkdownV2', reply_markup: options.reply_markup }
         );
 
         ctx.session.quantityMessageId = quantityMessage.message_id;
 
         // Send the custom prompt and store its message ID
-        const customPromptMessage = await ctx.reply('Or, type a custom number of entries.');
+        const customPromptMessage = await ctx.reply('Or, type a custom number of plays.');
         ctx.session.customPromptMessageId = customPromptMessage.message_id;
 
         ctx.session.nextAction = 'prompt_quantity';
 
     } catch (error) {
-        console.error('Error selecting pool:', error);
-        ctx.reply('Could not retrieve pool information. Please try again.');
+        console.error('Error selecting Arena:', error);
+        ctx.reply('Could not retrieve Arena information. Please try again.');
     }
 });
 bot.action(/^set_quantity:(\d+)/, async (ctx) => {
@@ -109,14 +110,14 @@ bot.action(/^set_quantity:(\d+)/, async (ctx) => {
     ctx.session.quantitySelectionMessageId = ctx.callbackQuery.message.message_id;
 
     const assignmentMessage = await ctx.reply(
-       `Great! You've chosen to buy *${quantity} entries*.\n\nHow would you like them assigned?`
+       `Great! You've chosen to buy *${quantity} plays*.\n\nHow would you like them assigned?`
 ,
       {
-             parse_mode: 'Markdown', 
+             parse_mode: 'MarkdownV2', 
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: 'Random', callback_data: 'assign_method:random' }],
-                    [{ text: 'I\'ll Choose My Numbers', callback_data: 'assign_method:choose' }]
+                    [{ text: 'Random Pick', callback_data: 'assign_method:random' }],
+                    [{ text: 'Choose Numbers', callback_data: 'assign_method:choose' }]
                 ]
             }
         }
@@ -131,9 +132,10 @@ bot.action(/^set_quantity:(\d+)/, async (ctx) => {
     if (ctx.session.nextAction === 'prompt_quantity' && ctx.message.text) {
         const quantity = parseInt(ctx.message.text, 10);
         if (isNaN(quantity) || quantity <= 0) {
-            ctx.reply('Please enter a valid number of entries.');
+            ctx.reply('Please enter a valid number of plays.');
             return;
         }
+
 
         ctx.session.quantity = quantity;
         ctx.session.nextAction = null; // Clear the next action
@@ -141,14 +143,16 @@ bot.action(/^set_quantity:(\d+)/, async (ctx) => {
         // Store the custom quantity message ID for deletion
         ctx.session.customQuantityMessageId = ctx.message.message_id;
 const assignmentMessage = await ctx.reply(
-    `Great! You've chosen to buy *${quantity} entries*.\n\nHow would you like them assigned?`,
+    `Great! You've chosen to buy *${quantity} plays*.\n\nHow would you like them assigned?`,
     {
-        parse_mode: 'Markdown', // Add this line
+        parse_mode: 'MarkdownV2', // Add this line
         reply_markup: {
-            inline_keyboard: [
-                [{ text: 'Random', callback_data: 'assign_method:random' }],
-                [{ text: 'I\'ll Choose My Numbers', callback_data: 'assign_method:choose' }]
-            ]
+           
+              inline_keyboard: [
+                 { text: '🎲 Random Pick', callback_data: 'assign_method:random' },
+                    { text: '📝 Manual Pick', callback_data: 'assign_method:choose' }
+              ]
+            
         }
     }
 );
@@ -166,15 +170,16 @@ const assignmentMessage = await ctx.reply(
 
   // Send new prompt
   const startPromptMessage = await ctx.reply(
-    "Please use /start to begin the lottery process:",
-    {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "🚀 Start Lottery", callback_data: "start_over" }],
-        ],
-      },
-    }
-  );
+  "Please use /start to enter the game",
+  {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "🚀 Enter Game", callback_data: "start_over" }],
+      ],
+    },
+  }
+);
+
 
   // Save message ID in session
   if (!ctx.session) ctx.session = {};

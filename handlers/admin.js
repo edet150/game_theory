@@ -262,15 +262,16 @@ bot.on('message', async (ctx) => {
 
         // Send new prompt
         const startPromptMessage = await ctx.reply(
-            "Please use /start to begin the lottery process:",
+            "Please use /start to enter the game:",
             {
                 reply_markup: {
-                    inline_keyboard: [
-                        [{ text: "🚀 Start Lottery", callback_data: "start_over" }],
-                    ],
+                inline_keyboard: [
+                    [{ text: "🚀 Enter Game", callback_data: "start_over" }],
+                ],
                 },
             }
-        );
+            );
+
 
         // Save message ID in session
         if (!ctx.session) ctx.session = {};

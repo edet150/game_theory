@@ -7,30 +7,33 @@ module.exports = (bot) => {
             for (const member of newMembers) {
                 const name = member.first_name || "there";
 
-                const welcomeMessage =
-                    `👋 Hello *${name}*! Welcome to our Lottery Group 🎉
+            const welcomeMessage =
+  `👋 Hello *${name}*! Welcome to *Game Theory* 🎭  
 
-Here’s how it works:
+Here’s how the game unfolds:  
 
-📅 *Draws:* We select one winner from each of our pools every **Saturday at 3:00 PM WAT**.
+📅 *Strategy Sessions (Draws):*  
+Every **Saturday at 3:00 PM WAT**, one strategist (winner) is chosen.  
 
-🎯 *Winner Selection Process:*
-1️⃣ A winning number is generated from the *Bitcoin blockchain*.  
-   - Specifically, we take the first Bitcoin block hash mined after **12:00 PM WAT** on draw day.  
-   - You can verify this hash yourself on [btcscan.org](https://btcscan.org).  
+🎯 *Game Mechanics (Winner Selection):*  
+1️⃣ The *Bitcoin blockchain* provides the “signal.”  
+   - Specifically, we take the first Bitcoin block hash mined after **12:00 PM WAT** on game day.  
+   - The *last 4 digits* of this hash become the winning number.  
+   - You can verify this publicly at [btcscan.org](https://btcscan.org).  
 
-2️⃣ If the winning number exactly matches an entry number, that entry wins.  
-   If not, we apply the **modulo operator** (\`winning_number % total_entries\`) to guarantee that *a valid winner is always chosen*.  
+2️⃣ If a strategist’s entry exactly matches the winning number, they win outright.  
+   If not, we apply the **modulo operator** (\`winning_number % total_entries\`) — ensuring *a guaranteed winner always emerges*.  
 
-✅ *Transparency:* This ensures the process is 100% fair, random, and publicly verifiable.  
+✅ *Fair Play:*  
+The process is 100% transparent, random, and cannot be manipulated.  
 
-Good luck 🍀, and we’re excited to have you join the game!`;
+Good luck 🍀 — may your strategy pay off in *Game Theory*!`;
 
                 await ctx.replyWithMarkdown(welcomeMessage, {
                     reply_markup: {
                         inline_keyboard: [
                             [
-                                { text: "🤖 Chat with Bot / Get Started", url: "https://t.me/YourBotUsername" }
+                                { text: "🤖 Chat with Bot / Get Started", url: "https://t.me/trend_9ja_bot" }
                             ]
                         ]
                     }

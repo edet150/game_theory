@@ -32,7 +32,7 @@ async function showPaymentConfirmation(ctx) {
     `;
 
     const confirmation = await ctx.reply(confirmationMessage, {
-        parse_mode: 'Markdown',
+        parse_mode: 'MarkdownV2',
         reply_markup: {
             inline_keyboard: [
                 [
@@ -149,7 +149,7 @@ async function showBonusEntrySummary(ctx, finalNumbers, pool, method) {
     const summaryMessage = `
 🎯 <b>BONUS ENTRY CONFIRMATION</b>
 
-🏷️ <b>Pool:</b> ${pool.name}
+🏷️ <b>Arena:</b> ${pool.name}
 🎁 <b>Type:</b> Bonus Entries
 📊 <b>Entries Used:</b> ${finalNumbers.length}
 🎲 <b>Method:</b> ${method === 'random' ? 'Random Assignment' : 'Manual Selection'}
@@ -222,7 +222,7 @@ bot.action(/^assign_method:(\w+)/, async (ctx) => {
     
     // STORE THE GRID MESSAGE ID
     const gridMessage = await ctx.reply(`Please choose *${ctx.session.quantityLimit}* numbers for the ${pool.name} Pool:`, {
-      parse_mode: 'Markdown',
+      parse_mode: 'MarkdownV2',
       reply_markup: initialGrid.reply_markup
     });
     
@@ -344,7 +344,7 @@ bot.on('message', async (ctx) => {
         `*Numbers Taken:* ${takenNumbers.join(', ')}\n` +
         `*Numbers Available:* ${availableNumbers.join(', ')}\n\n` +
         `Would you like to select new numbers for the ones that are taken, or assign all ${quantity} entries automatically?`, {
-          parse_mode: 'Markdown',
+          parse_mode: 'MarkdownV2',
           reply_markup: {
             inline_keyboard: [
               [{ text: 'Choose New Numbers', callback_data: 'assign_method:choose' }],
@@ -501,7 +501,7 @@ bot.action("random_refresh", async (ctx) => {
 //       `;
 
 //       // Send the permanent summary message
-//       await ctx.reply(summaryMessage, { parse_mode: 'Markdown' });
+//       await ctx.reply(summaryMessage, { parse_mode: 'MarkdownV2' });
 
 //       // Edit the original grid to show finalized state with Start Over button
 //       const finalizedGrid = buildGrid(
@@ -722,7 +722,7 @@ bot.action("edit_selection", async (ctx) => {
         `*Max Entries:* ${pool.max_entries}\n` +
         `*Current Entries:* ${currentEntriesCount}/${pool.max_entries}\n\n` +
         `How many entries would you like to buy?`,
-        { parse_mode: 'Markdown', reply_markup: options.reply_markup }
+        { parse_mode: 'MarkdownV2', reply_markup: options.reply_markup }
       );
 
       ctx.session.quantityMessageId = quantityMessage.message_id;

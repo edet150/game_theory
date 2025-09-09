@@ -31,7 +31,7 @@ async function showPaymentConfirmation(ctx) {
     `;
 
     const confirmation = await ctx.reply(confirmationMessage, {
-        parse_mode: 'Markdown',
+        parse_mode: 'MarkdownV2',
         reply_markup: {
             inline_keyboard: [
                 [
@@ -125,7 +125,7 @@ async function initiatePayment(bot, ctx) {
             `Total: ₦${totalAmount}\n` +
             `Click the button below to proceed to payment:`,
             {
-                parse_mode: "Markdown",
+                parse_mode: "MarkdownV2",
                 reply_markup: {
                     inline_keyboard: [
                         [{ text: `💳 Pay ₦${totalAmount}`, url: paymentLink }],
@@ -270,7 +270,7 @@ async function initiatePayment(bot, ctx) {
           
             telegram_id,
             summaryMessage,
-            { parse_mode: 'Markdown' }
+            { parse_mode: 'MarkdownV2' }
         );
 
         // Additional confirmation message
@@ -469,7 +469,7 @@ async function createEntries(
       await ctx.reply(
         `Please choose *${quantity}* numbers for the ${pool.name} pool:`,
         {
-          parse_mode: "Markdown",
+          parse_mode: "MarkdownV2",
           ...buildNumberGrid(available, [], quantity),
         }
       );
@@ -528,11 +528,11 @@ async function updateSelectionView(ctx, selectedNumbers, quantity) {
             ctx.session.selectionMessageId,
             null,
             selectedText,
-            { parse_mode: 'Markdown', reply_markup: buildSelectedNumbersGrid(selectedNumbers).reply_markup }
+            { parse_mode: 'MarkdownV2', reply_markup: buildSelectedNumbersGrid(selectedNumbers).reply_markup }
         );
     } else {
         const message = await ctx.reply(selectedText, {
-            parse_mode: 'Markdown',
+            parse_mode: 'MarkdownV2',
             reply_markup: buildSelectedNumbersGrid(selectedNumbers).reply_markup
         });
         ctx.session.selectionMessageId = message.message_id;

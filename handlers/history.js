@@ -15,7 +15,7 @@ module.exports = (bot) => {
             
             entries.forEach((entry, index) => {
                 message += `🎯 **Entry ${index + 1}**\n`;
-                message += `🏷️ **Pool:** ${entry.poolName}\n`;
+                message += `🏷️ **Arena:** ${entry.poolName}\n`;
                 message += `🔢 **Numbers:** ${entry.numbers.join(', ')}\n`;
                 message += `📊 **Quantity:** ${entry.quantity}\n`;
                 message += `🎲 **Method:** ${entry.method}\n`;
@@ -56,7 +56,7 @@ bot.action('view_entries', async (ctx) => {
 
     entries.forEach((entry, index) => {
       message += `🎯 <b>Entry ${index + 1}</b>\n`;
-      message += `🏷️ <b>Pool:</b> ${entry.poolName}\n`;
+      message += `🏷️ <b>Arena:</b> ${entry.poolName}\n`;
       message += `🔢 <b>Numbers:</b> ${entry.numbers.join(', ')}\n`;
       message += `📊 <b>Quantity:</b> ${entry.quantity}\n`;
       message += `🎲 <b>Method:</b> ${entry.method}\n`;
