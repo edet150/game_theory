@@ -111,7 +111,7 @@ ${referredUsers.length > 0 ? referredUsers.map(u =>
 • Get 1 bonus entry for each friend's first purchase
 • Use bonus entries for free plays
 
-<b>🔗 Your referral link:</b>
+<b>🔗 Your referral link: (tap and hold to copy)</b>
 <code>${referralLink}</code>
         `;
 

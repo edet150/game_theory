@@ -32,7 +32,7 @@ async function showPaymentConfirmation(ctx) {
     `;
 
     const confirmation = await ctx.reply(confirmationMessage, {
-        parse_mode: 'MarkdownV2',
+        parse_mode: 'markdown',
         reply_markup: {
             inline_keyboard: [
                 [
@@ -222,7 +222,7 @@ bot.action(/^assign_method:(\w+)/, async (ctx) => {
     
     // STORE THE GRID MESSAGE ID
     const gridMessage = await ctx.reply(`Please choose *${ctx.session.quantityLimit}* numbers for the ${pool.name} Pool:`, {
-      parse_mode: 'MarkdownV2',
+      parse_mode: 'markdown',
       reply_markup: initialGrid.reply_markup
     });
     
@@ -344,7 +344,7 @@ bot.on('message', async (ctx) => {
         `*Numbers Taken:* ${takenNumbers.join(', ')}\n` +
         `*Numbers Available:* ${availableNumbers.join(', ')}\n\n` +
         `Would you like to select new numbers for the ones that are taken, or assign all ${quantity} entries automatically?`, {
-          parse_mode: 'MarkdownV2',
+          parse_mode: 'markdown',
           reply_markup: {
             inline_keyboard: [
               [{ text: 'Choose New Numbers', callback_data: 'assign_method:choose' }],
@@ -501,7 +501,7 @@ bot.action("random_refresh", async (ctx) => {
 //       `;
 
 //       // Send the permanent summary message
-//       await ctx.reply(summaryMessage, { parse_mode: 'MarkdownV2' });
+//       await ctx.reply(summaryMessage, { parse_mode: 'markdown' });
 
 //       // Edit the original grid to show finalized state with Start Over button
 //       const finalizedGrid = buildGrid(
@@ -571,7 +571,7 @@ bot.action("random_refresh", async (ctx) => {
 
 });
 
-// Modified done handler
+  // Modified done handler
   bot.action(/^done:(choose|random)$/, async (ctx) => {
   try{
     await ctx.answerCbQuery();
@@ -596,9 +596,9 @@ bot.action("random_refresh", async (ctx) => {
     }
 
     
-});
+  });
   
-// Handler for proceeding to payment after confirmation
+  // Handler for proceeding to payment after confirmation
   bot.action("proceed_to_payment", async (ctx) => {
     try {
       await ctx.answerCbQuery();
@@ -617,137 +617,139 @@ bot.action("random_refresh", async (ctx) => {
       console.log('Ccatch:', error.message);
     }
 
-});// Handler for proceeding to payment after confirmation
-bot.action("proceed_to_payment", async (ctx) => {
-    await ctx.answerCbQuery();
-    
-    // Delete confirmation message
-    if (ctx.session.confirmationMessageId) {
-        try {
-            await ctx.deleteMessage(ctx.session.confirmationMessageId);
-            delete ctx.session.confirmationMessageId;
-        } catch (error) {
-            console.log('Could not delete confirmation message:', error.message);
-        }
-    }
-    
-    // Show temporary processing message using sendError (or create a similar function for info messages)
-    const processingMsg = await sendTemporaryMessage(
-        ctx, 
-        "⏳ Processing your request, please wait...",
-        10000 // Show for 10 seconds
-    );
-    
-    try {
-        // Initiate payment
-        await initiatePayment(bot, ctx);
-        
-        // The processing message will auto-delete after the specified duration
-    } catch (error) {
-        console.error('Error initiating payment:', error);
-        
-        // Use sendError for temporary error message
-        await sendError(ctx, "Failed to process payment. Please try again or contact support.");
-    }
-});
-
-// Handler for editing selection
-bot.action("_edit_selection", async (ctx) => {
-    await ctx.answerCbQuery();
-    
-    // Delete confirmation message
-    if (ctx.session.confirmationMessageId) {
-        try {
-            await ctx.deleteMessage(ctx.session.confirmationMessageId);
-            delete ctx.session.confirmationMessageId;
-        } catch (error) {
-            console.log('Could not delete confirmation message:', error.message);
-        }
-    }
-    
-    // Go back to assignment method selection
-    ctx.reply(
-        `How would you like to assign your ${ctx.session.quantity} entries?`,
-        {
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: 'Random', callback_data: 'assign_method:random' }],
-                    [{ text: 'I\'ll Choose My Numbers', callback_data: 'assign_method:choose' }]
-                ]
-            }
-        }
-    );
-});
+  });
   
-const messageManager = require('../utils/messageManager');
-
-bot.action("edit_selection", async (ctx) => {
-    await ctx.answerCbQuery();
-    
-
-    // Go back to quantity selection
-  if (ctx.session.bonusEntryFlow) {
-    const user = await User.findOne({ where: { telegram_id: ctx.from.id } });
-    if (!user || user.bonus_entries === 0) {
-      return sendError(ctx, 'No bonus entries available');
-    }
-    showBonusEntrySelection(ctx, user)
-  }
-  else {
-    try {
-      const pool = await RafflePool.findOne({ where: { name: ctx.session.poolName } });
-      if (!pool) {
-        return ctx.reply('Pool not found. Please try again.');
+  // Handler for proceeding to payment after confirmation
+  bot.action("proceed_to_payment", async (ctx) => {
+      await ctx.answerCbQuery();
+      
+      // Delete confirmation message
+      if (ctx.session.confirmationMessageId) {
+          try {
+              await ctx.deleteMessage(ctx.session.confirmationMessageId);
+              delete ctx.session.confirmationMessageId;
+          } catch (error) {
+              console.log('Could not delete confirmation message:', error.message);
+          }
       }
+      
+      // Show temporary processing message using sendError (or create a similar function for info messages)
+      const processingMsg = await sendTemporaryMessage(
+          ctx, 
+          "⏳ Processing your request, please wait...",
+          10000 // Show for 10 seconds
+      );
+      
+      try {
+          // Initiate payment
+          await initiatePayment(bot, ctx);
+          
+          // The processing message will auto-delete after the specified duration
+      } catch (error) {
+          console.error('Error initiating payment:', error);
+          
+          // Use sendError for temporary error message
+          await sendError(ctx, "Failed to process payment. Please try again or contact support.");
+      }
+  });
 
-      // Count number of paid entries
-      const currentEntriesCount = await Entry.count({
-        where: { pool_id: pool.id, status: 'paid' }
-      });
+  // Handler for editing selection
+  bot.action("_edit_selection", async (ctx) => {
+      await ctx.answerCbQuery();
+      
+      // Delete confirmation message
+      if (ctx.session.confirmationMessageId) {
+          try {
+              await ctx.deleteMessage(ctx.session.confirmationMessageId);
+              delete ctx.session.confirmationMessageId;
+          } catch (error) {
+              console.log('Could not delete confirmation message:', error.message);
+          }
+      }
+      
+      // Go back to assignment method selection
+      ctx.reply(
+          `How would you like to assign your ${ctx.session.quantity} entries?`,
+          {
+              reply_markup: {
+                  inline_keyboard: [
+                      [{ text: 'Random', callback_data: 'assign_method:random' }],
+                      [{ text: 'I\'ll Choose My Numbers', callback_data: 'assign_method:choose' }]
+                  ]
+              }
+          }
+      );
+  });
+  
+  const messageManager = require('../utils/messageManager');
 
-      const options = {
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: '1 Entry', callback_data: `set_quantity:1` }],
-            [{ text: '5 Entries', callback_data: `set_quantity:5` }],
-            [{ text: '10 Entries', callback_data: `set_quantity:10` }]
-          ]
+  bot.action("edit_selection", async (ctx) => {
+      await ctx.answerCbQuery();
+      
+
+      // Go back to quantity selection
+    if (ctx.session.bonusEntryFlow) {
+      const user = await User.findOne({ where: { telegram_id: ctx.from.id } });
+      if (!user || user.bonus_entries === 0) {
+        return sendError(ctx, 'No bonus entries available');
+      }
+      showBonusEntrySelection(ctx, user)
+    }
+    else {
+      try {
+        const pool = await RafflePool.findOne({ where: { name: ctx.session.poolName } });
+        if (!pool) {
+          return ctx.reply('Pool not found. Please try again.');
         }
-      };
 
-      // Send quantity selection message with tracking
-      const quantityMessage = await messageManager.sendAndTrack(ctx,
-        `You've selected the ${pool.name} Pool!\n\n` +
-        `*Price:* ₦${pool.price_per_entry} per entry\n` +
-        `*Max Entries:* ${pool.max_entries}\n` +
-        `*Current Entries:* ${currentEntriesCount}/${pool.max_entries}\n\n` +
-        `How many entries would you like to buy?`,
-        { parse_mode: 'MarkdownV2', reply_markup: options.reply_markup }
-      );
+        // Count number of paid entries
+        const currentEntriesCount = await Entry.count({
+          where: { pool_id: pool.id, status: 'paid' }
+        });
 
-      ctx.session.quantityMessageId = quantityMessage.message_id;
+        const options = {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: '1 Entry', callback_data: `set_quantity:1` }],
+              [{ text: '5 Entries', callback_data: `set_quantity:5` }],
+              [{ text: '10 Entries', callback_data: `set_quantity:10` }]
+            ]
+          }
+        };
 
-      // Send the custom prompt with tracking
-      const customPromptMessage = await messageManager.sendAndTrack(ctx,
-        'Or, type a custom number of entries.'
-      );
-      ctx.session.customPromptMessageId = customPromptMessage.message_id;
+        // Send quantity selection message with tracking
+        const quantityMessage = await messageManager.sendAndTrack(ctx,
+          `You've selected the ${pool.name} Pool!\n\n` +
+          `*Price:* ₦${pool.price_per_entry} per entry\n` +
+          `*Max Entries:* ${pool.max_entries}\n` +
+          `*Current Entries:* ${currentEntriesCount}/${pool.max_entries}\n\n` +
+          `How many entries would you like to buy?`,
+          { parse_mode: 'markdown', reply_markup: options.reply_markup }
+        );
 
-      ctx.session.nextAction = 'prompt_quantity';
+        ctx.session.quantityMessageId = quantityMessage.message_id;
 
-    } catch (error) {
-      console.error('Error in edit_selection:', error);
-      ctx.reply('Could not retrieve pool information. Please try again.');
+        // Send the custom prompt with tracking
+        const customPromptMessage = await messageManager.sendAndTrack(ctx,
+          'Or, type a custom number of entries.'
+        );
+        ctx.session.customPromptMessageId = customPromptMessage.message_id;
+
+        ctx.session.nextAction = 'prompt_quantity';
+
+      } catch (error) {
+        console.error('Error in edit_selection:', error);
+        ctx.reply('Could not retrieve pool information. Please try again.');
+      }
     }
-  }
 
-      // Delete confirmation message using message manager
-    if (ctx.session.confirmationMessageId) {
-        await messageManager.cleanupMessages(ctx, [ctx.session.confirmationMessageId]);
-        delete ctx.session.confirmationMessageId;
-    }
-    
-});
+        // Delete confirmation message using message manager
+      if (ctx.session.confirmationMessageId) {
+          await messageManager.cleanupMessages(ctx, [ctx.session.confirmationMessageId]);
+          delete ctx.session.confirmationMessageId;
+      }
+      
+  });
   
 bot.action('view_entry', async (ctx) => {
   await ctx.answerCbQuery();

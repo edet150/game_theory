@@ -173,7 +173,7 @@ bot.action("start_over", async (ctx) => {
 
     // Send welcome message
     const welcomeMessage = await ctx.reply(welcomeText, {
-      parse_mode: 'MarkdownV2',
+      parse_mode: 'markdown',
       reply_markup: {
         inline_keyboard: [
           [{ text: '💰 Alpha Arena (₦100/play)', callback_data: `select_pool:Alpha` }],
@@ -197,7 +197,7 @@ bot.action("start_over", async (ctx) => {
 
     Choose your arena below to make a move:`,
       {
-        parse_mode: 'MarkdownV2',
+        parse_mode: 'markdown',
         reply_markup: {
           inline_keyboard: [
             [{ text: '💰 Alpha Arena (₦100/play)', callback_data: `select_pool:Alpha` }],
