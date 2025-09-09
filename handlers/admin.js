@@ -335,7 +335,7 @@ bot.on('message', async (ctx) => {
                         { text: '➕ Create New Pool', callback_data: 'admin_create_pool' }
                     ],
                     [
-                        { text: '📊 Pool Statistics', callback_data: 'admin_pool_stats' },
+                        { text: '📊 Arena Statistics', callback_data: 'admin_pool_stats' },
                         { text: '🚪 Logout', callback_data: 'admin_logout' }
                     ]
                 ]
@@ -363,7 +363,7 @@ bot.on('message', async (ctx) => {
                         { text: '➕ Create New Pool', callback_data: 'admin_create_pool' }
                     ],
                     [
-                        { text: '📊 Pool Statistics', callback_data: 'admin_pool_stats' },
+                        { text: '📊 Arena Statistics', callback_data: 'admin_pool_stats' },
                         { text: '📋 Daily Entries Report', callback_data: 'admin_send_to_channel' }
                     ],
                     [
@@ -473,13 +473,13 @@ bot.on('message', async (ctx) => {
 
         let message = `🏆 Winners for ${currentWeek.week_name} (Week ${currentWeek.week_number}):\n\n`;
         message += `**Winning Number:** ${winningNumber}\n`;
-        message += `**Prize Pool:** ₦${winningRecord.amount}\n\n`; // assuming amount lives in Winning
+        message += `**Prize Arena:** ₦${winningRecord.amount}\n\n`; // assuming amount lives in Winning
 
         winningEntries.forEach((entry, index) => {
         message += `**Winner ${index + 1}:**\n`;
         message += `👤 ${entry.User.username}\n`;
         message += `🔢 Entry #${entry.entry_number}\n`;
-        message += `🏊 Pool: ${entry.RafflePool.name}\n`;
+        message += `🏊 Arena: ${entry.RafflePool.name}\n`;
         message += `📧 Email: ${entry.User.email || 'Not provided'}\n`;
         message += `📞 Phone: ${entry.User.phone || 'Not provided'}\n\n`;
         });
@@ -566,7 +566,7 @@ bot.on('message', async (ctx) => {
         ctx.session.adminState = ADMIN_STATES.AWAITING_POOL_NAME;
         
         await cleanupAdminMessages(ctx, ['adminDashboard']);
-        const message = await ctx.reply('Please enter the name for the new pool:');
+        const message = await ctx.reply('Please enter the name for the new Arena:');
         trackMessage(ctx, 'poolNamePrompt');
         
         await ctx.answerCbQuery();
@@ -582,7 +582,7 @@ bot.on('message', async (ctx) => {
                 }]
             });
 
-            let message = '📊 Pool Statistics:\n\n';
+            let message = '📊 Arena Statistics:\n\n';
             pools.forEach(pool => {
                 const entryCount = pool.Entries ? pool.Entries.length : 0;
                 const revenue = entryCount * pool.price_per_entry;
@@ -597,8 +597,8 @@ bot.on('message', async (ctx) => {
             const sentMessage = await ctx.reply(message, { parse_mode: 'Markdown' });
             trackMessage(ctx, 'poolStats');
         } catch (error) {
-            console.error('Error getting pool stats:', error);
-            await ctx.reply('❌ Error retrieving pool statistics.');
+            console.error('Error getting Arena stats:', error);
+            await ctx.reply('❌ Error retrieving Arena statistics.');
         }
         await ctx.answerCbQuery();
     });
@@ -911,7 +911,7 @@ async function compileWinnerAnnouncementHTML() {
                 message += `📧 <b>Email:</b> ${entry.User.email}\n`;
             }
 
-            message += `🏊 <b>Pool:</b> ${entry.RafflePool.name}\n`;
+            message += `🏊 <b>Arena:</b> ${entry.RafflePool.name}\n`;
             message += `🔢 <b>Winning Entry:</b> #${entry.entry_number}\n`;
 
             if (winMethod === "modulo positioning") {
@@ -1177,7 +1177,7 @@ async function compileWinnerAnnouncementHTML() {
         const poolName = ctx.message.text.trim();
         
         if (poolName.length < 2) {
-            await ctx.reply('Please enter a valid pool name (min 2 characters):');
+            await ctx.reply('Please enter a valid Arena name (min 2 characters):');
             return;
         }
 
@@ -1187,13 +1187,13 @@ async function compileWinnerAnnouncementHTML() {
         });
 
         if (existingPool) {
-            await ctx.reply('❌ A pool with this name already exists. Please choose a different name:');
+            await ctx.reply('❌ An Arena with this name already exists. Please choose a different name:');
             return;
         }
 
         ctx.session.newPoolName = poolName;
         ctx.session.adminState = ADMIN_STATES.AWAITING_POOL_PRICE;
-        await ctx.reply('Please enter the price per entry for this pool:');
+        await ctx.reply('Please enter the price per entry for this Arena:');
     }
 
     async function handlePoolPrice(ctx) {
@@ -1206,7 +1206,7 @@ async function compileWinnerAnnouncementHTML() {
 
         ctx.session.newPoolPrice = price;
         ctx.session.adminState = ADMIN_STATES.AWAITING_POOL_MAX_ENTRIES;
-        await ctx.reply('Please enter the maximum number of entries for this pool:');
+        await ctx.reply('Please enter the maximum number of entries for this Arena:');
     }
 
     async function handlePoolMaxEntries(ctx) {
@@ -1226,7 +1226,7 @@ async function compileWinnerAnnouncementHTML() {
                 is_active: true
             });
 
-            await ctx.reply(`✅ New pool created successfully!\n\n` +
+            await ctx.reply(`✅ New Arena created successfully!\n\n` +
                 `Name: ${ctx.session.newPoolName}\n` +
                 `Price: ₦${ctx.session.newPoolPrice.toLocaleString()}\n` +
                 `Max Entries: ${maxEntries.toLocaleString()}`);
@@ -1238,8 +1238,8 @@ async function compileWinnerAnnouncementHTML() {
 
             await showAdminDashboard(ctx);
         } catch (error) {
-            console.error('Error creating pool:', error);
-            await ctx.reply('❌ Error creating pool. Please try again.');
+            console.error('Error creating Arena:', error);
+            await ctx.reply('❌ Error creating Arena. Please try again.');
         }
     }
 // Helper function to compile user list with entries
