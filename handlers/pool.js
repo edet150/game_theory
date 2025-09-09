@@ -46,8 +46,9 @@ bot.action(/^select_pool:(\w+)/, async (ctx) => {
 
   try {
     // Special rules for Beta Arena
+
     if (poolName === "Beta") {
-      return await ctx.reply(
+      const betaMessage = await ctx.reply(
         "🔒 *Beta Arena is currently locked!*\n\n" +
         "It is only available on certain days that will be announced on our channel. 📢",
         {
@@ -60,31 +61,49 @@ bot.action(/^select_pool:(\w+)/, async (ctx) => {
           }
         }
       );
+
+      // Store messageId so we can delete later
+      ctx.session.betaMessageId = betaMessage.message_id;
+      return;
     }
 
     // Special rules for HighRollers Arena
-    if (poolName === "HighRollers") {
-      return await ctx.reply(
-        "🔒 *HighRollers Arena Access Restricted!*\n\n" +
-        "This pool is only available to users who have referred new players. 🎯\n\n" +
-        "Invite friends to unlock access in your referral dashboard.",
-        {
-          parse_mode: "Markdown",
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: "🎯 Referral Dashboard", callback_data: "referral_dashboard" }],
-              [{ text: "🔄 Start Over", callback_data: "start_over" }]
-            ]
-          }
+    // Special rules for HighRollers Arena
+  if (poolName === "HighRollers") {
+    const highRollersMessage = await ctx.reply(
+      "🔒 *HighRollers Arena Access Restricted!*\n\n" +
+      "This pool is only available to users who have referred new players. 🎯\n\n" +
+      "Invite friends to unlock access in your referral dashboard.",
+      {
+        parse_mode: "Markdown",
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "🎯 Referral Dashboard", callback_data: "referral_dashboard" }],
+            [{ text: "🔄 Start Over", callback_data: "start_over" }]
+          ]
         }
-      );
-    }
+      }
+    );
+        // Store messageId so we can delete later
+    ctx.session.highRollersMessageId = highRollersMessage.message_id;
+    return;
+  }
 
     // Default flow for Alpha Arena (or others)
     const pool = await RafflePool.findOne({ where: { name: poolName } });
     if (!pool) {
       ctx.reply('Arena not found. Please try again.');
       return;
+        }
+        
+        // 🧹 Cleanup any old Beta/HighRollers lock messages
+    if (ctx.session.betaMessageId) {
+      try { await ctx.deleteMessage(ctx.session.betaMessageId); } catch (e) {}
+      ctx.session.betaMessageId = null;
+    }
+    if (ctx.session.highRollersMessageId) {
+      try { await ctx.deleteMessage(ctx.session.highRollersMessageId); } catch (e) {}
+      ctx.session.highRollersMessageId = null;
     }
 
     // Count number of paid entries
