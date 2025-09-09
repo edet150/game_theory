@@ -26,70 +26,106 @@ async function cleanupSessionMessages(ctx, messageKeys) {
   }
 }
 module.exports = (bot) => {
-  bot.action(/^select_pool:(\w+)/, async (ctx) => {
-      const isLocked = await redis.get('entries_locked');
-    if (isLocked) {
-        await ctx.answerCbQuery();
-        return await ctx.reply('🔒 Plays are currently locked. Please try again later.');
-    }
+bot.action(/^select_pool:(\w+)/, async (ctx) => {
+  const isLocked = await redis.get('entries_locked');
+  if (isLocked) {
     await ctx.answerCbQuery();
-    const poolName = ctx.match[1];
+    return await ctx.reply('🔒 Entries are currently locked. Please try again later.');
+  }
 
-    // Store pool choice in session
-    ctx.session.poolName = poolName;
+  await ctx.answerCbQuery();
+  const poolName = ctx.match[1];
 
-    if (!poolName) {
-        console.error('Arena name is undefined');
-        return ctx.reply('Invalid pool selection. Please try again.');
-    }
+  // Store pool choice in session
+  ctx.session.poolName = poolName;
 
-    try {
-        // Find the pool using model
-        const pool = await RafflePool.findOne({ where: { name: poolName } });
-        if (!pool) {
-            ctx.reply('Arena not found. Please try again.');
-            return;
+  if (!poolName) {
+    console.error('Arena name is undefined');
+    return ctx.reply('Invalid Arena selection. Please try again.');
+  }
+
+  try {
+    // Special rules for Beta Arena
+    if (poolName === "Beta") {
+      return await ctx.reply(
+        "🔒 *Beta Arena is currently locked!*\n\n" +
+        "It is only available on certain days that will be announced on our channel. 📢",
+        {
+          parse_mode: "Markdown",
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "📢 Join Updates Channel", url: "https://t.me/aplhea_entries" }],
+              [{ text: "🔄 Start Over", callback_data: "start_over" }]
+            ]
+          }
         }
-
-        // Count number of paid entries using model
-        const currentEntriesCount = await Entry.count({
-            where: { pool_id: pool.id, status: 'paid' }
-        });
-
-        const options = {
-            reply_markup: {
-                inline_keyboard: [
-            [{ text: '1 Play', callback_data: `set_quantity:1` }],
-            [{ text: '5 Plays', callback_data: `set_quantity:5` }],
-            [{ text: '10 Plays', callback_data: `set_quantity:10` }]
-
-                ]
-            }
-        };
-
-        // Send quantity selection message and store its ID
-        const quantityMessage = await ctx.reply(
-            `You've selected the ${pool.name} Pool!\n\n` +
-            `**Price:** ₦${pool.price_per_entry} per entry\n` +
-            `**Max Plays:** ${pool.max_entries}\n` +
-            `**Current Plays:** ${currentEntriesCount}/${pool.max_entries}\n\n` +
-            `How many plays would you like to purchase?`,
-            { parse_mode: 'MarkdownV2', reply_markup: options.reply_markup }
-        );
-
-        ctx.session.quantityMessageId = quantityMessage.message_id;
-
-        // Send the custom prompt and store its message ID
-        const customPromptMessage = await ctx.reply('Or, type a custom number of plays.');
-        ctx.session.customPromptMessageId = customPromptMessage.message_id;
-
-        ctx.session.nextAction = 'prompt_quantity';
-
-    } catch (error) {
-        console.error('Error selecting Arena:', error);
-        ctx.reply('Could not retrieve Arena information. Please try again.');
+      );
     }
+
+    // Special rules for HighRollers Arena
+    if (poolName === "HighRollers") {
+      return await ctx.reply(
+        "🔒 *HighRollers Arena Access Restricted!*\n\n" +
+        "This pool is only available to users who have referred new players. 🎯\n\n" +
+        "Invite friends to unlock access in your referral dashboard.",
+        {
+          parse_mode: "Markdown",
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "🎯 Referral Dashboard", callback_data: "referral_dashboard" }],
+              [{ text: "🔄 Start Over", callback_data: "start_over" }]
+            ]
+          }
+        }
+      );
+    }
+
+    // Default flow for Alpha Arena (or others)
+    const pool = await RafflePool.findOne({ where: { name: poolName } });
+    if (!pool) {
+      ctx.reply('Arena not found. Please try again.');
+      return;
+    }
+
+    // Count number of paid entries
+    const currentEntriesCount = await Entry.count({
+      where: { pool_id: pool.id, status: 'paid' }
+    });
+
+    const options = {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '1 Entry', callback_data: `set_quantity:1` }],
+          [{ text: '5 Entries', callback_data: `set_quantity:5` }],
+          [{ text: '10 Entries', callback_data: `set_quantity:10` }]
+        ]
+      }
+    };
+
+    // Send quantity selection message and store its ID
+    const quantityMessage = await ctx.reply(
+      `You've selected the ${pool.name} Pool!\n\n` +
+      `💰 *Price:* ₦${pool.price_per_entry} per entry\n` +
+      `📊 *Max Entries:* ${pool.max_entries}\n` +
+      `🎲 *Current Entries:* ${currentEntriesCount}/${pool.max_entries}\n\n` +
+      `How many entries would you like to buy?`,
+      { parse_mode: 'Markdown', reply_markup: options.reply_markup }
+    );
+
+    ctx.session.quantityMessageId = quantityMessage.message_id;
+
+    // Send the custom prompt and store its message ID
+    const customPromptMessage = await ctx.reply('Or, type a custom number of entries.');
+    ctx.session.customPromptMessageId = customPromptMessage.message_id;
+
+    ctx.session.nextAction = 'prompt_quantity';
+
+  } catch (error) {
+    console.error('Error selecting pool:', error);
+    ctx.reply('Could not retrieve Arena information. Please try again.');
+  }
 });
+
 bot.action(/^set_quantity:(\d+)/, async (ctx) => {
     await ctx.answerCbQuery();
     const quantity = parseInt(ctx.match[1], 10);
@@ -110,14 +146,14 @@ bot.action(/^set_quantity:(\d+)/, async (ctx) => {
     ctx.session.quantitySelectionMessageId = ctx.callbackQuery.message.message_id;
 
     const assignmentMessage = await ctx.reply(
-       `Great! You've chosen to buy *${quantity} plays*.\n\nHow would you like them assigned?`
+       `Great! You've chosen to buy *${quantity} entries*.\n\nHow would you like them assigned?`
 ,
       {
-             parse_mode: 'MarkdownV2', 
+             parse_mode: 'Markdown', 
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: 'Random Pick', callback_data: 'assign_method:random' }],
-                    [{ text: 'Choose Numbers', callback_data: 'assign_method:choose' }]
+                    [{ text: 'Random', callback_data: 'assign_method:random' }],
+                    [{ text: 'I\'ll Choose My Numbers', callback_data: 'assign_method:choose' }]
                 ]
             }
         }
@@ -132,10 +168,9 @@ bot.action(/^set_quantity:(\d+)/, async (ctx) => {
     if (ctx.session.nextAction === 'prompt_quantity' && ctx.message.text) {
         const quantity = parseInt(ctx.message.text, 10);
         if (isNaN(quantity) || quantity <= 0) {
-            ctx.reply('Please enter a valid number of plays.');
+            ctx.reply('Please enter a valid number of entries.');
             return;
         }
-
 
         ctx.session.quantity = quantity;
         ctx.session.nextAction = null; // Clear the next action
@@ -143,16 +178,14 @@ bot.action(/^set_quantity:(\d+)/, async (ctx) => {
         // Store the custom quantity message ID for deletion
         ctx.session.customQuantityMessageId = ctx.message.message_id;
 const assignmentMessage = await ctx.reply(
-    `Great! You've chosen to buy *${quantity} plays*.\n\nHow would you like them assigned?`,
+    `Great! You've chosen to buy *${quantity} entries*.\n\nHow would you like them assigned?`,
     {
-        parse_mode: 'MarkdownV2', // Add this line
+        parse_mode: 'Markdown', // Add this line
         reply_markup: {
-           
-              inline_keyboard: [
-                 { text: '🎲 Random Pick', callback_data: 'assign_method:random' },
-                    { text: '📝 Manual Pick', callback_data: 'assign_method:choose' }
-              ]
-            
+            inline_keyboard: [
+                [{ text: 'Random', callback_data: 'assign_method:random' }],
+                [{ text: 'I\'ll Choose My Numbers', callback_data: 'assign_method:choose' }]
+            ]
         }
     }
 );
@@ -170,7 +203,7 @@ const assignmentMessage = await ctx.reply(
 
   // Send new prompt
   const startPromptMessage = await ctx.reply(
-  "Please use /start to enter the game",
+  "Please use /start to enter the game:",
   {
     reply_markup: {
       inline_keyboard: [
