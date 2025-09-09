@@ -106,7 +106,7 @@ async function initiatePayment(bot, ctx) {
                 email: ctx.from.username ? `${ctx.from.username}@example.com` : `user${ctx.from.id}@example.com`,
                 amount: totalAmount * 100,
                 currency: 'NGN',
-                callback_url: 'https://t.me/trend_9ja',
+                callback_url: 'https://t.me/trend_9ja_bot',
                 metadata: metadata
             },
             {
@@ -276,15 +276,19 @@ async function initiatePayment(bot, ctx) {
         // Additional confirmation message
         await bot.telegram.sendMessage(
             telegram_id,
-            `✅ Payment successful! Your ${quantity} entries in the ${pool.name} Pool for week ${lottery_week_number} have been confirmed. Good luck! 🎉`,
+            `✅ markdownful! Your ${quantity} entries in the ${pool.name} Pool for week ${lottery_week_number} have been confirmed. Good luck! 🎉  
+
+          📢 Stay updated! Join our channel to see winning numbers, winners, and important announcements.`,
             {
-                reply_markup: {
-                    inline_keyboard: [
-                        [{ text: "🔄 Start Over", callback_data: "start_over" }]
-                    ]
-                }
+              reply_markup: {
+                inline_keyboard: [
+                  [{ text: "🔄 Start Over", callback_data: "start_over" }],
+                  [{ text: "📢 Join Updates Channel", url: "https://t.me/aplhea_entries" }]
+                ]
+              }
             }
-        );
+          );
+
 
     } catch (error) {
         await t.rollback();
