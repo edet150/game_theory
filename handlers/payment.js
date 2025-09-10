@@ -601,11 +601,12 @@ async function finalizeEntries(userId, poolId, numbers, lottery_week_code, lotte
     await Entry.bulkCreate(entries);
 
     // Step 5: Deduct bonus entries if needed
-    if (isBonus) {
-      const user = await User.findByPk(userId);
-      user.bonus_entries = Math.max(0, user.bonus_entries - uniqueNumbers.length);
-      await user.save();
-    }
+if (isBonus) {
+  await User.increment(
+    { bonus_entries: -uniqueNumbers.length },
+    { where: { id: userId } }
+  );
+}
 
     return { success: true, message: `Entries created: ${uniqueNumbers.join(", ")}` };
   } catch (error) {
