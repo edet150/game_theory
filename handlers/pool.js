@@ -50,12 +50,13 @@ bot.action(/^select_pool:(\w+)/, async (ctx) => {
     if (poolName === "Beta") {
       const betaMessage = await ctx.reply(
         "🔒 *Beta Arena is currently locked!*\n\n" +
-        "It is only available on certain days that will be announced on our channel. 📢",
+        "It is only available to users who have referred new players and on certain days that will be announced on our channel. 📢",
         {
           parse_mode: "Markdown",
           reply_markup: {
             inline_keyboard: [
-              [{ text: "📢 Join Updates Channel", url: "https://t.me/aplhea_entries" }],
+              [{ text: "🎯 Referral Dashboard", callback_data: "referral_dashboard" }],
+              [{ text: "📢 Join Updates Channel", url: `https://t.me/${process.env.CHANNEL_NAME}` }],
               [{ text: "🔄 Start Over", callback_data: "start_over" }]
             ]
           }
@@ -123,7 +124,7 @@ bot.action(/^select_pool:(\w+)/, async (ctx) => {
 
     // Send quantity selection message and store its ID
     const quantityMessage = await ctx.reply(
-      `You've selected the ${pool.name} Pool!\n\n` +
+      `You've selected the ${pool.name} Arena!\n\n` +
       `💰 *Price:* ₦${pool.price_per_entry} per entry\n` +
       `📊 *Max Entries:* ${pool.max_entries}\n` +
       `🎲 *Current Entries:* ${currentEntriesCount}/${pool.max_entries}\n\n` +

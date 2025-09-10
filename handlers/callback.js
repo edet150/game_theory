@@ -107,7 +107,7 @@ console.log('ctx.session.bonusEntryFlow', ctx.session.bonusEntryFlow)
 ⏰ <b>Entry time:</b> ${new Date().toLocaleString()}
 ✅ <b>Status:</b> Confirmed (Bonus)
 
-💡 <b>Remember:</b> Draw happens every Saturday at 3:00 PM
+💡 <b>Remember:</b> Draw happens every sunday at 6:00 PM
 
 🎉 <b>Thank you for using your bonus entries!</b>
     `;

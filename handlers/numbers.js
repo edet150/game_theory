@@ -42,7 +42,7 @@ async function showPaymentConfirmation(ctx) {
                     { text: '✏️ Edit Selection', callback_data: 'edit_selection' }
                 ],
                 [
-                    { text: '🔄 Start Lottery Selection', callback_data: 'start_over' }
+                    { text: '🔄 Start Game Selection', callback_data: 'start_over' }
                 ]
             ]
         }
@@ -158,7 +158,7 @@ async function showBonusEntrySummary(ctx, finalNumbers, pool, method) {
 ⏰ <b>Entry time:</b> ${new Date().toLocaleString()}
 ✅ <b>Status:</b> Confirmed (Bonus)
 
-💡 <b>Remember:</b> Draw happens every Saturday at 3:00 PM
+💡 <b>Remember:</b> Draw happens every sunday at 6:00 PM
 
 🎉 <b>Thank you for using your bonus entries!</b>
     `;
@@ -432,7 +432,7 @@ bot.action("random_refresh", async (ctx) => {
 // ⏰ <b>Entry time:</b> ${new Date().toLocaleString()}
 // ✅ <b>Status:</b> Confirmed ${ctx.session.bonusEntryFlow ? '(Bonus)' : 'and paid'}
 
-// 💡 <b>Remember:</b> Draw happens every Saturday at 3:00 PM
+// 💡 <b>Remember:</b> Draw happens every sunday at 6:00 PM
 //             `;
 
 //             await ctx.reply(summaryMessage, { parse_mode: 'HTML' });
@@ -497,7 +497,7 @@ bot.action("random_refresh", async (ctx) => {
 // ⏰ *Entry time:* ${new Date().toLocaleString()}
 // ✅ *Status:* Confirmed and paid
 
-// 💡 *Remember: Draw happens every Saturday at 3:00 PM*
+// 💡 *Remember: Draw happens every sunday at 6:00 PM*
 //       `;
 
 //       // Send the permanent summary message

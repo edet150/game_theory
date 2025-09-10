@@ -769,7 +769,7 @@ bot.on('message', async (ctx) => {
 
         message += "━━━━━━━━━━━━━━━━━━━━\n\n";
         message += "*Note:* This is a daily summary of all entries. \n";
-        message += "The draw will be held on Saturday.\n";
+        message += "The draw will be held on sunday.\n";
 
         return message;
     } catch (error) {

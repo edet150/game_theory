@@ -84,7 +84,7 @@ async function checkPaystackTransactions() {
 }
 
 // Schedule the function to run every 5 seconds
-cron.schedule('*/50 * * * * *', checkPaystackTransactions);
+// cron.schedule('*/50 * * * * *', checkPaystackTransactions);
 module.exports = {
     checkPaystackTransactions
 };

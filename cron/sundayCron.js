@@ -7,7 +7,7 @@ const { Entry, Winning, Week} = require("../models");
 // 🔑 Crypto APIs key
 const API_KEY = process.env.CRYPTO_API_KEY;
 
-cron.schedule("*/30 * * * * *", async () => { // Run every Sunday at midnight
+cron.schedule("0 0 0 * * 0", async () => { // Run every Sunday at midnight
     console.log("⏳ Checking/creating week and winning entry...");
     try {
         // Use Lagos time (Africa/Lagos) - WAT (GMT+1)
@@ -65,6 +65,6 @@ cron.schedule("*/30 * * * * *", async () => { // Run every Sunday at midnight
 
 
 
-// Schedule job: every Saturday at 1:00 PM WST
+// Schedule job: every sunday at 1:00 PM WST
 // cron.schedule("0 13 * * 6", async () => {
 

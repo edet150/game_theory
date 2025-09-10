@@ -65,7 +65,7 @@ async function initiatePayment(bot, ctx) {
         });
 
         if (!currentLotteryWeek) {
-            return ctx.reply('⚠️ No active lottery week found. Please try again later.');
+            return ctx.reply('⚠️ No active Game week found. Please try again later.');
         }
 
         // Prepare summary data for metadata
@@ -106,7 +106,7 @@ async function initiatePayment(bot, ctx) {
                 email: ctx.from.username ? `${ctx.from.username}@example.com` : `user${ctx.from.id}@example.com`,
                 amount: totalAmount * 100,
                 currency: 'NGN',
-                callback_url: 'https://t.me/trend_9ja_bot',
+                callback_url: `https://t.me/${process.env.BOT_NAME}`,
                 metadata: metadata
             },
             {
@@ -155,7 +155,7 @@ async function initiatePayment(bot, ctx) {
 
     try {
         const { id, reference, amount, metadata, status } = paystackTransaction;
-        console.log("Paystack Txn:", paystackTransaction);
+        console.log("Paystack metadata:", metadata);
 
         // Extract from metadata
         const { 
@@ -207,8 +207,7 @@ async function initiatePayment(bot, ctx) {
             },
             { transaction: t }
         );
-        // ✅ CALL AWARD REFERRAL BONUS HERE - RIGHT AFTER PAYMENT CREATION
-        await awardReferralBonusIfFirstPurchase(user.id, quantity, paymentRecord.id, bot);
+      
         // Use finalizeEntries to create the entries
         const result = await finalizeEntries(
             user.id,
@@ -222,7 +221,9 @@ async function initiatePayment(bot, ctx) {
 
         if (!result.success) {
             throw new Error(`Failed to create entries: ${result.message}`);
-        }
+      }
+        // ✅ CALL AWARD REFERRAL BONUS HERE - RIGHT AFTER PAYMENT CREATION
+        await awardReferralBonusIfFirstPurchase(user.id, quantity, paymentRecord.id, bot, t);
 
       // await deleteMessagesByIds(ctx, ['paymentMessageId']);  
 
@@ -262,7 +263,7 @@ async function initiatePayment(bot, ctx) {
 🏆 *Lottery Week:* ${lottery_week_number}
 ✅ *Status:* Confirmed and paid
 
-💡 *Remember: Draw happens every Saturday at 3:00 PM*
+💡 *Remember: Draw happens every sunday at 6:00 PM*
         `;
 
         // Send success message with summary to user
@@ -283,7 +284,7 @@ async function initiatePayment(bot, ctx) {
               reply_markup: {
                 inline_keyboard: [
                   [{ text: "🔄 Start Over", callback_data: "start_over" }],
-                  [{ text: "📢 Join Updates Channel", url: "https://t.me/aplhea_entries" }]
+                  [{ text: "📢 Join Updates Channel", url: `https://t.me/${process.env.CHANNEL_NAME}` }]
                 ]
               }
             }
@@ -326,7 +327,7 @@ async function _handleSuccessfulPayment(bot, paystackTransaction) {
       : await RafflePool.findOne({ where: { name: poolName } });
 
     if (!user || !pool) {
-      throw new Error(`User or Pool not found (user=${user?.id}, pool=${pool?.id})`);
+      throw new Error(`User or Arena not found (user=${user?.id}, pool=${pool?.id})`);
     }
 
     // First, check if this payment has already been processed

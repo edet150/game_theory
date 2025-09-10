@@ -13,7 +13,7 @@ module.exports = (bot) => {
 Here’s how the game unfolds:  
 
 📅 *Strategy Sessions (Draws):*  
-Every **Saturday at 3:00 PM WAT**, one strategist (winner) is chosen.  
+Every **sunday at 6:00 PM WAT**, one strategist (winner) is chosen.  
 
 🎯 *Game Mechanics (Winner Selection):*  
 1️⃣ The *Bitcoin blockchain* provides the “signal.”  

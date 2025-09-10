@@ -21,45 +21,45 @@ async function showStartScreen(ctx) {
     });
 
     const weekLabel = currentLotteryWeek 
-      ? `${currentLotteryWeek.week_name} (Week ${currentLotteryWeek.week_number}, ${currentLotteryWeek.year})`
+      ? `${currentLotteryWeek.week_number} `
       : 'Current Week';
 
     // Example prize pool (later make dynamic: 80% of all entries)
     const prizeMoney = "₦100,000";
 
-    // Welcome text with Game Theory branding
-    const welcomeText = `👋 Welcome to *Game Theory* 🎭  
-Where chance meets strategy.  
-
-📅 *This Round:* ${weekLabel}  
-💰 *Prize Pool:* ${prizeMoney}  
-
-Choose your arena below to make your move:`;  
+    // Fixed welcome text with proper HTML formatting
+    const welcomeText = 
+        `👋 Welcome to <b>Game Theory </b>\n\n` +
+        `Where numbers meet strategy.\n\n` +
+        `<b style="color:blue;">This Round:</b>  ${weekLabel}\n` +
+        `<b>Prize Pool:</b>  ${prizeMoney}\n\n` +
+        `<b>Play Window:</b>  Monday–Friday\n` +
+        `<b>Result Drop:</b>  Sunday 6:00 PM (Africa/Lagos)\n\n` +
+        `Choose your arena below to make your move:`;
 
     const options = {
-      parse_mode: 'HTML',
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: '💰 Alpha Arena (₦100/entry)', callback_data: `select_pool:Alpha` }],
-          [{ text: '🔒 Beta Arena (₦500/10 entries)', callback_data: `select_pool:Beta` }],
-          [{ text: '🔒 HighRollers Arena (₦1000/ 20 entries)', callback_data: `select_pool:HighRollers` }],
-          [{ text: 'ℹ️ How It Works', callback_data: 'how_it_works' }],
-          [{ text: '📋 My Moves', callback_data: 'view_entries' }],
-          [{ text: '🎯 Referral Dashboard', callback_data: 'referral_dashboard' }],
-        ]
-      }
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: 'Alpha Arena (₦100/entry)', callback_data: `select_pool:Alpha` }],
+                [{ text: '🔒 Beta Arena (₦500/10 entries)', callback_data: `select_pool:Beta` }],
+                [{ text: 'How It Works', callback_data: 'how_it_works' }],
+                [{ text: 'My Moves', callback_data: 'view_entries' }],
+                [{ text: '🎯 Referral Dashboard', callback_data: 'referral_dashboard' }],
+            ]
+        }
     };
 
     let messageId;
 
     if (ctx.callbackQuery) {
-      // Editing existing message (button press)
-      await ctx.editMessageText(welcomeText, options);
-      messageId = ctx.callbackQuery.message.message_id;
+        // Editing existing message (button press)
+        await ctx.editMessageText(welcomeText, options);
+        messageId = ctx.callbackQuery.message.message_id;
     } else {
-      // Fresh start
-      const welcomeMessage = await ctx.reply(welcomeText, options);
-      messageId = welcomeMessage.message_id;
+        // Fresh start
+        const welcomeMessage = await ctx.reply(welcomeText, options);
+        messageId = welcomeMessage.message_id;
     }
 
     // Store welcome message ID in session
@@ -493,14 +493,14 @@ How many would you like to apply?
     });
 }
 
-async function awardReferralBonusIfFirstPurchase(userId, currentQuantity, transaction, bot) {
+async function awardReferralBonusIfFirstPurchase(userId, currentQuantity, transactionId, bot, t) {
     try {
-        // console.log('userId', userId)
- 
-    const users = await User.findAll({
-        where: { id: userId },
-        attributes: ['id', 'referred_by']
-    });
+        console.log('transaction', t)
+   const users = await User.findAll({
+            where: { id: userId },
+            attributes: ['id', 'referred_by'],
+           transaction:t // Pass transaction here
+        });
     
     const user = users[0]; // Get first result
     // console.log('User found:', user);
@@ -514,15 +514,19 @@ async function awardReferralBonusIfFirstPurchase(userId, currentQuantity, transa
         // This avoids complex WHERE clauses that might cause the UUID error
         const allUserPayments = await Payment.findAll({
             where: { user_id: userId },
-            attributes: ['id', 'status']
+            attributes: ['id', 'status'],
+             transaction:t
             
         });
         // Filter successful payments manually
         const successfulPayments = allUserPayments.filter(payment => payment.status === 'success');
-        
+        console.log('allUserPayments', allUserPayments)
+        // console.log('successfulPayments', successfulPayments)
+        console.log('successfulPayments.length', successfulPayments.length)
         // If this is the first successful payment, award bonus
         if (successfulPayments.length === 1) { // Current payment + 0 previous = 1 total
-            await awardReferralBonus(user.referred_by, currentQuantity, user.id, bot);
+            console.log('enter')
+            await awardReferralBonus(user.referred_by, currentQuantity, user.id, bot, t);
             return true;
         }
         
@@ -533,21 +537,30 @@ async function awardReferralBonusIfFirstPurchase(userId, currentQuantity, transa
     }
 }
 
-async function awardReferralBonus(referrerId, purchasedEntriesCount, referredUserId, bot) {
+async function awardReferralBonus(referrerId, purchasedEntriesCount, referredUserId, bot,t ) {
+    console.log('adding referral bonus')
+    console.log('adding referral bonus')
+    console.log('adding referral bonus')
+    console.log('adding referral bonus')
+    console.log('adding purchasedEntriesCount', purchasedEntriesCount)
     try {
         const referrer = await User.findByPk(referrerId);
         if (!referrer) {
             console.log('Referrer not found with ID:', referrerId);
             return;
         }
+    console.log(referrer)
 
         // Award bonus entries based on the first purchase quantity
         const bonusEntriesToAward = purchasedEntriesCount; // 1:1 ratio
-        
+           console.log('bonusEntriesToAward', bonusEntriesToAward) 
         if (bonusEntriesToAward > 0) {
-            referrer.bonus_entries += bonusEntriesToAward;
-            referrer.active_referrals += 1;
-            await referrer.save();
+    
+            await referrer.increment({
+                bonus_entries: bonusEntriesToAward,
+                active_referrals: 1
+            });
+
             
             // Notify referrer
             try {
