@@ -48,7 +48,8 @@ async function showPaymentConfirmation(ctx) {
 }
 async function initiatePayment(bot, ctx) {
     const session = ctx.session;
-    console.log('hello')
+  console.log('hello')
+  console.log(`${process.env.callback_url}/paymentredirect`)
     try {
         const pool = await RafflePool.findOne({ where: { name: session.poolName } });
         if (!pool) return ctx.reply('⚠️ Pool not found.');
