@@ -119,27 +119,31 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Payment redirect route
-app.get("/paymentredirect", async (req, res) => {
-  try {
-    // const { reference } = req.query;
-    // if (!reference) return res.status(400).send("Missing reference");
+app.get("/paymentredirect", (req, res) => {
+  return res.send(`
+    <html>
+      <head><title>Redirecting to Telegram...</title></head>
+      <body style="font-family: Arial; text-align: center; padding: 50px;">
+        <h2>✅ Payment Complete</h2>
+        <p>You’ll be redirected back to Telegram in a moment...</p>
 
-    // console.log("🔎 Paystack redirect hit. Reference:", reference);
+        <a href="https://t.me/${process.env.BOT_NAME}" 
+           style="padding: 10px 20px; background: #0088cc; color: white; 
+                  text-decoration: none; border-radius: 5px; display:inline-block; margin-top:20px;">
+          🚀 Open Telegram Bot
+        </a>
 
-    // (Optional) verify payment with Paystack
-    // const verify = await axios.get(
-    //   `https://api.paystack.co/transaction/verify/${reference}`,
-    //   { headers: { Authorization: `Bearer ${process.env.PAYSTACK_SEC_TEST}` } }
-    // );
-    // console.log("✅ Verified payment:", verify.data);
-
-    // Redirect user back to bot
-    return res.redirect(`https://t.me/${process.env.BOT_NAME}?start}`);
-  } catch (err) {
-    console.error("❌ Error in paymentredirect:", err.message);
-    res.status(500).send("Payment redirect failed");
-  }
+        <script>
+          setTimeout(() => {
+            window.location.href = "https://t.me/${process.env.BOT_NAME}";
+          }, 4000);
+        </script>
+      </body>
+    </html>
+  `);
 });
+
+
 
 // Start express server
 app.listen(PORT, () => {
