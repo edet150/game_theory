@@ -1,5 +1,7 @@
 require('dotenv').config();
 const db = require('./models');
+const express = require("express");
+const axios = require("axios");
 
 // Handlers
 const startHandler = require('./handlers/start');
@@ -21,8 +23,7 @@ const { getLast4Digits, showStartScreen } = require('./startFunction');
 const bot = getbotInstance();
 const redis = getRedisClient();
 //WINNING
-let lst = getLast4Digits('000000000000000000014d7c1dee8492516a87cf61c277f824364932b48ce3f3')
-console.log(lst)
+
 // Handle commands first - this should be registered BEFORE your message handler
 bot.on('text', async (ctx, next) => {
   // Check if the message starts with a command
@@ -51,7 +52,11 @@ historyHandler(bot);
 bot.use(cleanupMiddleware);
 
 
-
+bot.use((ctx, next) => {
+  console.log('sippiose')
+  console.log("Update type:", ctx.updateType, ctx.update);
+  return next();
+});
 
 bot.action('initiate_payment', async (ctx) => {
   await ctx.answerCbQuery();
@@ -108,6 +113,40 @@ bot.catch((err, ctx) => {
 
 // Handlers
 bot.start();
+
+// ---- Express app ----
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Payment redirect route
+app.get("/paymentredirect", async (req, res) => {
+  try {
+    // const { reference } = req.query;
+    // if (!reference) return res.status(400).send("Missing reference");
+
+    // console.log("🔎 Paystack redirect hit. Reference:", reference);
+
+    // (Optional) verify payment with Paystack
+    // const verify = await axios.get(
+    //   `https://api.paystack.co/transaction/verify/${reference}`,
+    //   { headers: { Authorization: `Bearer ${process.env.PAYSTACK_SEC_TEST}` } }
+    // );
+    // console.log("✅ Verified payment:", verify.data);
+
+    // Redirect user back to bot
+    return res.redirect(`https://t.me/${process.env.BOT_NAME}?start}`);
+  } catch (err) {
+    console.error("❌ Error in paymentredirect:", err.message);
+    res.status(500).send("Payment redirect failed");
+  }
+});
+
+// Start express server
+app.listen(PORT, () => {
+  console.log(`🌍 Web server running at http://localhost:${PORT}`);
+});
+
+
 // Graceful shutdown
 process.once('SIGINT', () => {
   redis.quit();

@@ -33,7 +33,7 @@ async function showStartScreen(ctx) {
         `Where numbers meet strategy.\n\n` +
         `<b style="color:blue;">This Round:</b>  ${weekLabel}\n` +
         `<b>Prize Pool:</b>  ${prizeMoney}\n\n` +
-        `<b>Play Window:</b>  Monday–Friday\n` +
+        `<b>Entry Window:</b>  Monday–Friday\n` +
         `<b>Result Drop:</b>  Sunday 6:00 PM (Africa/Lagos)\n\n` +
         `Choose your arena below to make your move:`;
 
@@ -473,9 +473,9 @@ async function showBonusEntrySelection(ctx, user) {
     }]);
 
 const message = `
-<b>🎁 Bonus Plays</b>
+<b>🎁 Bonus entries</b>
 
-You have <b>${availableEntries}</b> bonus plays available.  
+You have <b>${availableEntries}</b> bonus entries available.  
 
 How many would you like to apply?
 `;
@@ -566,16 +566,16 @@ async function awardReferralBonus(referrerId, purchasedEntriesCount, referredUse
             try {
                 await bot.telegram.sendMessage(
                     referrer.telegram_id,
-                    `🎉 Your referral just made their first move with ${purchasedEntriesCount} plays!\n` +
-                    `You earned ${bonusEntriesToAward} bonus ${bonusEntriesToAward === 1 ? 'play' : 'plays'}.\n` +
-                    `Total bonus plays: ${referrer.bonus_entries}`,
+                    `🎉 Your referral just made their first move with ${purchasedEntriesCount} entries!\n` +
+                    `You earned ${bonusEntriesToAward} bonus ${bonusEntriesToAward === 1 ? 'entry' : 'entries'}.\n` +
+                    `Total bonus entries: ${referrer.bonus_entries}`,
                     { parse_mode: 'HTML' }
                 );
             } catch (error) {
                 console.log('Could not notify referrer:', error.message);
             }
             
-            console.log(`Awarded ${bonusEntriesToAward} bonus plays to referrer ${referrerId}`);
+            console.log(`Awarded ${bonusEntriesToAward} bonus entries to referrer ${referrerId}`);
         }
 
     } catch (error) {

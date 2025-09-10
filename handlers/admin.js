@@ -817,145 +817,190 @@ async function sendToTelegramChannelHTML(ctx, message) {
     }
 }
 
-// HTML version of compileWinnerAnnouncement
-async function compileWinnerAnnouncementHTML() {
-    try {
-        // Get current week
-        const today = new Date();
-        const { Op } = require('sequelize');
+    // HTML version of compileWinnerAnnouncement with inverse strategy
+    async function compileWinnerAnnouncementHTML() {
+        try {
+            // Get current week
+            const today = new Date();
+            const { Op } = require('sequelize');
 
-        // Get current week (based on dates)
-        const currentWeek = await Week.findOne({
-            where: {
-                starts_at: { [Op.lte]: today },
-                ends_at: { [Op.gte]: today }
+            // Get current week (based on dates)
+            const currentWeek = await Week.findOne({
+                where: {
+                    starts_at: { [Op.lte]: today },
+                    ends_at: { [Op.gte]: today }
+                }
+            });
+
+            if (!currentWeek) {
+                throw new Error('No current week found');
             }
-        });
 
-        if (!currentWeek) {
-            throw new Error('No current week found');
-        }
+            // Get the winning record for this week
+            const winningRecord = await Winning.findOne({
+                where: { week_code: currentWeek.code }
+            });
 
-        // Get the winning record for this week
-        const winningRecord = await Winning.findOne({
-            where: { week_code: currentWeek.code }
-        });
+            if (!winningRecord) {
+                throw new Error('No winning number found for this week');
+            }
 
-        if (!winningRecord) {
-            throw new Error('No winning number found for this week');
-        }
+            const winningNumber = winningRecord.winning_number;
 
-        const winningNumber = winningRecord.winning_number;
-
-        // Try exact match first
-        let winningEntries = await Entry.findAll({
-            where: {
-                week_code: currentWeek.code,
-                entry_number: winningNumber,
-                status: 'paid'
-            },
-            include: [
-                { model: User },
-                { model: RafflePool }
-            ]
-        });
-
-        let winMethod = "exact match";
-        let winnerType = "winner";
-
-        // If no exact match, use modulo fallback
-        if (winningEntries.length === 0) {
-            const allEntries = await Entry.findAll({
-                where: { 
+            // Try exact match first
+            let winningEntries = await Entry.findAll({
+                where: {
                     week_code: currentWeek.code,
+                    entry_number: winningNumber,
                     status: 'paid'
                 },
-                order: [['id', 'ASC']],
                 include: [
                     { model: User },
                     { model: RafflePool }
                 ]
             });
 
-            if (allEntries.length > 0) {
-                const winningPosition = winningNumber % allEntries.length;
-                const winnerEntry = allEntries[winningPosition];
-                winningEntries = [winnerEntry];
-                winMethod = "modulo positioning";
-                winnerType = "modulo winner";
-            }
-        }
+            let winMethod = "exact match";
+            let winnerType = "winner";
 
-        if (winningEntries.length === 0) {
-            throw new Error('No winners found for this week');
-        }
-
-        // Get current date
-        const now = new Date();
-        const options = { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-        };
-        const currentDate = now.toLocaleDateString('en-US', options);
-        
-        // Compile announcement message using HTML
-        let message = `<b>🎉 OFFICIAL WINNER ANNOUNCEMENT</b>\n\n`;
-        message += `<b>Date:</b> ${currentDate}\n`;
-        message += `<b>Week:</b> ${currentWeek.week_name}\n`;
-        message += `<b>Winning Number:</b> ${winningNumber}\n`;
-        message += `<b>Prize Money:</b> ₦${(Number(winningRecord.winning_amount)).toLocaleString()}\n`;
-        message += `<b>Win Method:</b> ${winMethod}\n\n`;
-        message += "━━━━━━━━━━━━━━━━━━━━\n\n";
-
-        // Add winner(s) information
-        for (const [index, entry] of winningEntries.entries()) {
-            message += `<b>${winnerType.toUpperCase()} ${index + 1}:</b>\n`;
-            message += `👤 <b>Name:</b> ${entry.User.telegram_username}\n`;
-
-            if (entry.User.phone) {
-                message += `📞 <b>Phone:</b> ${entry.User.phone}\n`;
-            }
-            if (entry.User.email) {
-                message += `📧 <b>Email:</b> ${entry.User.email}\n`;
+            // If no exact match, try inverse match
+            if (winningEntries.length === 0) {
+                const inverseNumber = winningNumber.split('').reverse().join('');
+                winningEntries = await Entry.findAll({
+                    where: {
+                        week_code: currentWeek.code,
+                        entry_number: inverseNumber,
+                        status: 'paid'
+                    },
+                    include: [
+                        { model: User },
+                        { model: RafflePool }
+                    ]
+                });
+                
+                if (winningEntries.length > 0) {
+                    winMethod = "inverse match";
+                    winnerType = "inverse winner";
+                }
             }
 
-            message += `🏊 <b>Arena:</b> ${entry.RafflePool.name}\n`;
-            message += `🔢 <b>Winning Entry:</b> #${entry.entry_number}\n`;
-
-            if (winMethod === "modulo positioning") {
+            // If no exact or inverse match, use modulo fallback
+            if (winningEntries.length === 0) {
                 const allEntries = await Entry.findAll({
                     where: { 
                         week_code: currentWeek.code,
                         status: 'paid'
                     },
-                    order: [['id', 'ASC']]
+                    order: [['id', 'ASC']],
+                    include: [
+                        { model: User },
+                        { model: RafflePool }
+                    ]
                 });
 
-                const position = allEntries.findIndex(e => e.id === entry.id) + 1;
-                message += `📊 <b>Position:</b> ${position}\n`;
+                if (allEntries.length > 0) {
+                    const winningPosition = parseInt(winningNumber) % allEntries.length;
+                    const winnerEntry = allEntries[winningPosition];
+                    winningEntries = [winnerEntry];
+                    winMethod = "modulo positioning";
+                    winnerType = "modulo winner";
+                }
             }
 
-            message += `💰 <b>Prize Won:</b> ₦${winningRecord.winning_amount.toLocaleString()}\n\n`;
+            if (winningEntries.length === 0) {
+                throw new Error('No winners found for this week');
+            }
+
+            // Get current date
+            const now = new Date();
+            const options = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            };
+            const currentDate = now.toLocaleDateString('en-US', options);
+            
+            // Compile announcement message using HTML
+            let message = `<b>🎉 OFFICIAL WINNER ANNOUNCEMENT</b>\n\n`;
+            message += `<b>Date:</b> ${currentDate}\n`;
+            message += `<b>Week:</b> ${currentWeek.week_name}\n`;
+            message += `<b>Winning Number:</b> ${winningNumber}\n`;
+            
+            // Add inverse number if applicable
+            if (winMethod === "inverse match") {
+                const inverseNumber = winningNumber.split('').reverse().join('');
+                message += `<b>Inverse Number:</b> ${inverseNumber}\n`;
+            }
+            
+            message += `<b>Prize Money:</b> ₦${(Number(winningRecord.winning_amount)).toLocaleString()}\n`;
+            message += `<b>Win Method:</b> ${winMethod}\n\n`;
+            message += "━━━━━━━━━━━━━━━━━━━━\n\n";
+
+            // Add winner(s) information
+            for (const [index, entry] of winningEntries.entries()) {
+                message += `<b>${winnerType.toUpperCase()} ${index + 1}:</b>\n`;
+                message += `👤 <b>Name:</b> ${entry.User.telegram_username}\n`;
+
+                if (entry.User.phone) {
+                    message += `📞 <b>Phone:</b> ${entry.User.phone}\n`;
+                }
+                if (entry.User.email) {
+                    message += `📧 <b>Email:</b> ${entry.User.email}\n`;
+                }
+
+                message += `🏊 <b>Arena:</b> ${entry.RafflePool.name}\n`;
+                
+                // Show both entry number and inverse if applicable
+                if (winMethod === "inverse match") {
+                    message += `🔢 <b>Entry Number:</b> #${entry.entry_number}\n`;
+                    message += `🔄 <b>Matched Inverse Of:</b> #${winningNumber}\n`;
+                } else {
+                    message += `🔢 <b>Winning Entry:</b> #${entry.entry_number}\n`;
+                }
+
+                if (winMethod === "modulo positioning") {
+                    const allEntries = await Entry.findAll({
+                        where: { 
+                            week_code: currentWeek.code,
+                            status: 'paid'
+                        },
+                        order: [['id', 'ASC']]
+                    });
+
+                    const position = allEntries.findIndex(e => e.id === entry.id) + 1;
+                    message += `📊 <b>Position:</b> ${position}\n`;
+                }
+
+                message += `💰 <b>Prize Won:</b> ₦${winningRecord.winning_amount.toLocaleString()}\n\n`;
+            }
+
+            message += "━━━━━━━━━━━━━━━━━━━━\n\n";
+            
+            // Add explanation of win method
+            if (winMethod === "exact match") {
+                message += "<i>This winner matched the exact winning number!</i>\n\n";
+            } else if (winMethod === "inverse match") {
+                message += `<i>This winner matched the inverse of the winning number (${winningNumber.split('').reverse().join('')})!</i>\n\n`;
+            } else {
+                message += "<i>This winner was selected using modulo positioning when no exact or inverse matches were found.</i>\n\n";
+            }
+            
+            message += "<b>🎊 CONGRATULATIONS! 🎊</b>\n\n";
+            message += "To claim your prize, please:\n";
+            message += "1. Contact the admin via private message\n";
+            message += "2. Provide your bank account details for payment\n";
+            message += "3. Payments are processed within 24-48 hours\n\n";
+            message += "<b>Admin Contact:</b> @YourAdminUsername\n\n";
+            message += "Thank you to everyone who participated!\n";
+            message += "Next draw begins tomorrow";
+
+            return message;
+        } catch (error) {
+            console.error('Error compiling winner announcement:', error);
+            throw new Error('Failed to compile winner announcement: ' + error.message);
         }
-
-        message += "━━━━━━━━━━━━━━━━━━━━\n\n";
-        message += "<b>🎊 CONGRATULATIONS! 🎊</b>\n\n";
-        message += "To claim your prize, please:\n";
-        message += "1. Contact the admin via private message\n";
-        message += "2. Provide your bank account details for payment\n";
-        message += "3. Payments are processed within 24-48 hours\n\n";
-        message += "<b>Admin Contact:</b> @YourAdminUsername\n\n";
-        message += "Thank you to everyone who participated!\n";
-        message += "Next draw begins tomorrow";
-
-        return message;
-    } catch (error) {
-        console.error('Error compiling winner announcement:', error);
-        throw new Error('Failed to compile winner announcement: ' + error.message);
     }
-}
 
     async function compileWinningNumberAnnouncement() {
         try {
@@ -1003,7 +1048,6 @@ async function compileWinnerAnnouncementHTML() {
                     status: 'paid'
                 }
             });
-
             // Compile winning number announcement
             let message = `🎯 *OFFICIAL WINNING NUMBER ANNOUNCEMENT* 🎯\n\n`;
             message += `*Date:* ${currentDate}\n`;
@@ -1013,18 +1057,20 @@ async function compileWinnerAnnouncementHTML() {
             message += `🏆 *THE WINNING NUMBER IS:*\n`;
             message += `# ${winningNumber} #\n\n`;
             message += "━━━━━━━━━━━━━━━━━━━━\n\n";
-            message += "*How the winner is determined:*\n\n";
+            message += "*How the winner will be determined:*\n\n";
             message += "1. *Exact Match Priority:*\n";
             message += "   - We first look for entries with the exact winning number\n";
             message += "   - If found, those entry holders win the prize\n\n";
-            message += "2. *Modulo Positioning (Fallback):*\n";
+            message += "2. *Inverse Match (Fairness Feature):*\n";
             message += "   - If no exact match is found\n";
+            message += "   - We look for entries matching the INVERSE of the winning number\n";
+            message += "   - Example: If winning number is 1234, we look for 4321\n";
+            message += "   - If found, those entry holders win the prize\n\n";
+            message += "3. *Modulo Positioning (Guaranteed Winner):*\n";
+            message += "   - If no exact or inverse match is found\n";
             message += "   - We use: winning_number % total_entries = position\n";
-            message += "   - The entry at that position wins\n\n";
-            message += "3. *Example:*\n";
-            message += "   - Winning Number: 15\n";
-            message += "   - Total Entries: 100\n";
-            message += "   - 15 % 100 = 15 → Entry at position 15 wins\n\n";
+            message += "   - The entry at that position wins\n";
+            message += "   - Example: Winning #15 with 100 entries → position 15 wins\n\n";
             message += "━━━━━━━━━━━━━━━━━━━━\n\n";
             message += `*Prize Money:* ₦${(Number(winningRecord.winning_amount)).toLocaleString()}\n\n`;
             message += "The winner will be announced shortly!\n";
