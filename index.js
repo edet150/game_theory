@@ -125,7 +125,7 @@ app.get("/paymentredirect", (req, res) => {
       <head><title>Redirecting to Telegram...</title></head>
       <body style="font-family: Arial; text-align: center; padding: 50px;">
         <h2>✅ Payment Complete</h2>
-        <p>You’ll be redirected back to Telegram in a moment...</p>
+        <p>Kindly close the browser session to return to your bot</p>
 
         <a href="https://t.me/${process.env.BOT_NAME}" 
            style="padding: 10px 20px; background: #0088cc; color: white; 

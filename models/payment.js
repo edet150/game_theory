@@ -48,7 +48,7 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     sequelize,
     modelName: 'Payment',
-    tableName: 'Payments', // Conventionally, table names are plural
+    tableName: 'payments', // Conventionally, table names are plural
     timestamps: true // Payments should have timestamps for auditing
   });
   return Payment;
