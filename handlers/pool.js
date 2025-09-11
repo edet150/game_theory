@@ -192,7 +192,7 @@ bot.action(/^set_quantity:(\d+)/, async (ctx) => {
              parse_mode: 'Markdown', 
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: 'Random', callback_data: 'assign_method:random' }],
+                    [{ text: '🎲 Random Pick', callback_data: 'assign_method:random' }],
                     [{ text: 'I\'ll Choose My Numbers', callback_data: 'assign_method:choose' }]
                 ]
             }
@@ -223,7 +223,7 @@ const assignmentMessage = await ctx.reply(
         parse_mode: 'Markdown', // Add this line
         reply_markup: {
             inline_keyboard: [
-                [{ text: 'Random', callback_data: 'assign_method:random' }],
+                [{ text: '🎲 Random Pick', callback_data: 'assign_method:random' }],
                 [{ text: 'I\'ll Choose My Numbers', callback_data: 'assign_method:choose' }]
             ]
         }

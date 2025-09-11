@@ -406,7 +406,7 @@ Select your strategy below:
             inline_keyboard: [
                 [
                     { text: '🎲 Random Pick', callback_data: 'assign_method:random' },
-                    { text: '📝 Manual Pick', callback_data: 'assign_method:choose' }
+                    { text: '📝 ', callback_data: 'assign_method:choose' }
                 ],
                 [
                     { text: '🔙 Back', callback_data: 'use_bonus_entries' }
