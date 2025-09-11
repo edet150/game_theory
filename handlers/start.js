@@ -237,7 +237,7 @@ bot.start(async (ctx) => {
 
     if (!isInChannel) {
       return await ctx.reply(
-          `<b>❌ Error:</b> You havent joined our channel yet`+
+          `<b>❌ Error:</b> You havent joined our channel yet\n\n `+
           `To enjoy the full experience, please join our official channel.`,
         {
             parse_mode: "HTML",
