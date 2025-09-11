@@ -196,21 +196,24 @@ bot.start(async (ctx) => {
     if (!isInChannel) {
       // If not in channel, show join + verify buttons
       return await ctx.reply(
-         `🎉 <b>Welcome!</b> To enjoy the full experience, please join our official channel.  
-      📢 <b>Inside the channel, you’ll get:</b>  
-      - 🏆 <b>Winner announcements</b> (see who’s winning in real time!)  
-      - 🎁 <b>Exclusive offers</b> and bonus opportunities  
-      - 🔔 <b>Updates</b> on new draws and promotions  
-      - 👥 <b>Transparency</b>: see entries made by other players and total winning amounts  
+`🎉 <b>Welcome!</b> To enjoy the full experience, please join our official channel.  
+<b>Inside the channel, you’ll get:</b>  
+  - 🏆 <b>Winner announcements</b> (see who’s winning in real time!)
+   
+  - 🎁 <b>Exclusive offers</b> and bonus opportunities
+   
+  - 🔔 <b>Updates</b> on new draws and promotions
+   
+  - 👥 <b>Transparency</b>: see entries made by other players and total winning amounts  
 
-      👉 <b>Join now</b> and then click <b>✅ Verify</b> to unlock access!`,
+  👉 <b>Join now</b> and then click <b>✅ Verify</b> to unlock access!`,
        {
           parse_mode: "HTML",
           disable_web_page_preview: true,
           reply_markup: {
             inline_keyboard: [
               [{ text: "📢 Join Channel", url: `https://t.me/${REQUIRED_CHANNEL.replace('@','')}` }],
-              [{ text: "✅ Verify", callback_data: "verify_channel" }]
+              [{ text: " Verify", callback_data: "verify_channel" }]
             ]
           }
         }
@@ -242,7 +245,7 @@ bot.start(async (ctx) => {
             reply_markup: {
               inline_keyboard: [
                 [{ text: "📢 Join Channel", url: `https://t.me/${REQUIRED_CHANNEL.replace('@','')}` }],
-                [{ text: "✅ Verify", callback_data: "verify_channel" }]
+                [{ text: " Verify", callback_data: "verify_channel" }]
               ]
             }
           }
