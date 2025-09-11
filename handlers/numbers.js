@@ -683,12 +683,12 @@ bot.action("random_refresh", async (ctx) => {
       try {
           // Initiate payment
           await initiatePayment(bot, ctx);
-          if (ctx.session.confirmationMessageId) {
+          if (ctx.session.confirmationMessageId_) {
             try {
               setTimeout(async () => {
                 try {
-                  await ctx.deleteMessage(ctx.session.confirmationMessageId);
-                  delete ctx.session.confirmationMessageId;
+                  await ctx.deleteMessage(ctx.session.confirmationMessageId_);
+                  // delete ctx.session.confirmationMessageId_;
                 } catch (err) {
                   console.log('Could not delete confirmation message:', err.message);
                 }
