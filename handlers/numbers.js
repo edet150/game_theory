@@ -57,7 +57,20 @@ async function showPaymentConfirmation(ctx) {
             ]
         }
     });
-
+      if (ctx.session.confirmationMessageId_) {
+            try {
+              setTimeout(async () => {
+                try {
+                  await ctx.deleteMessage(ctx.session.confirmationMessageId_);
+                  // delete ctx.session.confirmationMessageId_;
+                } catch (err) {
+                  console.log('Could not delete confirmation message:', err.message);
+                }
+              }, 4000); // ⏳ delete after 4 seconds
+            } catch (error) {
+              console.log('Could not schedule confirmation message deletion:', error.message);
+            }
+          }
 
     // ⬅️ Store confirmation message ID
     ctx.session.confirmationMessageId_ = confirmation.message_id;
@@ -683,20 +696,7 @@ bot.action("random_refresh", async (ctx) => {
       try {
           // Initiate payment
           await initiatePayment(bot, ctx);
-          if (ctx.session.confirmationMessageId_) {
-            try {
-              setTimeout(async () => {
-                try {
-                  await ctx.deleteMessage(ctx.session.confirmationMessageId_);
-                  // delete ctx.session.confirmationMessageId_;
-                } catch (err) {
-                  console.log('Could not delete confirmation message:', err.message);
-                }
-              }, 4000); // ⏳ delete after 4 seconds
-            } catch (error) {
-              console.log('Could not schedule confirmation message deletion:', error.message);
-            }
-          }
+    
           // The processing message will auto-delete after the specified duration
       } catch (error) {
           console.error('Error initiating payment:', error);
