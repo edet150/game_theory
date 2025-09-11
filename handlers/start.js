@@ -31,7 +31,7 @@ bot.action('how_it_works', async (ctx) => {
     {
       reply_markup: {
         inline_keyboard: [
-          [{ text: "🔙 Back", callback_data: "start" }]
+          [{ text: "🔙 Back", callback_data: "start_over" }]
         ]
       }
     }
