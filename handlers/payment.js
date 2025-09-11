@@ -539,16 +539,28 @@ async function finalizeEntries(
 
     const existingNumbers = new Set(existingEntries.map(e => e.entry_number));
 
-    // Step 2: Unique numbers
+    // Step 2: Filter out already taken
     const uniqueNumbers = numbers.filter(num => !existingNumbers.has(num));
     if (uniqueNumbers.length === 0) {
       return { success: false, message: "All selected numbers are already taken." };
     }
 
-    // Step 3: Bulk insert
+    // Step 3: Prepare new entries
+    const entries = uniqueNumbers.map((num) => ({
+      user_id: userId,
+      pool_id: poolId,
+      entry_number: num,
+      week_code: lottery_week_code,
+      week_name: lottery_week_name,
+      transaction_id: transactionId,
+      status: "paid",
+      is_bonus_entry: isBonus
+    }));
+
+    // Step 4: Bulk insert with SAME transaction
     await Entry.bulkCreate(entries, { transaction });
 
-    // Step 4: Deduct bonus inside SAME transaction
+    // Step 5: Deduct bonus inside SAME transaction
     if (isBonus) {
       await User.increment(
         { bonus_entries: -uniqueNumbers.length },
@@ -562,6 +574,7 @@ async function finalizeEntries(
     return { success: false, message: "An error occurred while finalizing entries." };
   }
 }
+
 
 
 function buildGrid(available, selected, quantity, method, finalized = false) {
