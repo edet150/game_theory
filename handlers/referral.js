@@ -293,7 +293,7 @@ ${referredUsers.map(u => `
                 inline_keyboard: [
                     [
                         { text: '🎲 Random Pick', callback_data: 'assign_method:random' },
-                        { text: '📝 Choose Numbers', callback_data: 'assign_method:choose' }
+                        { text: '📝 Manual Pick', callback_data: 'assign_method:choose' }
                     ],
                     [
                         { text: '🔙 Back', callback_data: 'use_bonus_entries' }

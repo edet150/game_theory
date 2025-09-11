@@ -9,26 +9,35 @@ module.exports = (bot) => {
 
 
 bot.action('how_it_works', async (ctx) => {
-    await ctx.answerCbQuery();  
-    const message = await messageManager.sendAndTrack(ctx, 
-      '🎭 *The Rules of the Game*\n\n' +
-      'Every Sunday at 6:00 PM WAT, we select *one strategist (winner)* from each pool. The system is built on fairness and transparency.\n\n' +
-      
-      '1️⃣ *Winning Number*: We take the first Bitcoin block hash mined after 6:00 PM Lagos Time. The *last 4 digits* of this hash form the winning number.\n\n' +
-      
-      '2️⃣ *Exact Match Wins*: If any entry matches those 4 digits exactly, that player wins instantly.\n\n' +
-      
-      '3️⃣ *Inverse Match (Fairness Fallback)*: If no exact match exists, we look for entries that match the *inverse* of the winning number. ' +
-      '(Example: If winning number is 1234, we look for entries with 4321)\n\n' +
-      
-      '4️⃣ *Game Theory Balance*: If no exact or inverse match, we map the number to the pool size using modulo arithmetic. ' +
-      'This guarantees a winner every single round.\n\n' +
-      
-      '5️⃣ *Verify the Winning Number*: Anyone can check the block hash on btcscan.org to confirm fairness.\n\n' +
-      
-      '✅ This isn\'t luck alone — it\'s strategy, randomness, and transparency working together.'
-    );
+  await ctx.answerCbQuery();
+
+  const message = await messageManager.sendAndTrack(ctx, 
+    '🎭 *The Rules of the Game*\n\n' +
+    'Every Sunday at 6:00 PM WAT, we select *one strategist (winner)* from each pool. The system is built on fairness and transparency.\n\n' +
+    
+    '1️⃣ *Winning Number*: We take the first Bitcoin block hash mined after 6:00 PM Lagos Time. The *last 4 digits* of this hash form the winning number.\n\n' +
+    
+    '2️⃣ *Exact Match Wins*: If any entry matches those 4 digits exactly, that player wins instantly.\n\n' +
+    
+    '3️⃣ *Inverse Match (Fairness Fallback)*: If no exact match exists, we look for entries that match the *inverse* of the winning number. ' +
+    '(Example: If winning number is 1234, we look for entries with 4321)\n\n' +
+    
+    '4️⃣ *Game Theory Balance*: If no exact or inverse match, we map the number to the pool size using modulo arithmetic. ' +
+    'This guarantees a winner every single round.\n\n' +
+    
+    '5️⃣ *Verify the Winning Number*: Anyone can check the block hash on btcscan.org to confirm fairness.\n\n' +
+    
+    '✅ This isn\'t luck alone — it\'s strategy, randomness, and transparency working together.', 
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "⬅️ Back", callback_data: "back_to_start" }]
+        ]
+      }
+    }
+  );
 });
+
 
 // Modified start command
 bot.start(async (ctx) => {

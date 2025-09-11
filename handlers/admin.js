@@ -155,129 +155,129 @@ module.exports = (bot) => {
     });
 
     // Handle admin messages based on state
-bot.on('message', async (ctx) => {
-    // Skip processing if it's a command (starts with /)
-    if (ctx.message.text && ctx.message.text.startsWith('/')) {
-        return;
-    }
-
-    // 1. Check for bonus quantity input first (highest priority)
-    if (ctx.session.waitingForBonusQuantity && ctx.message.text) {
-        const quantity = parseInt(ctx.message.text, 10);
-        const user = await User.findOne({ where: { telegram_id: ctx.from.id } });
-    
-        if (isNaN(quantity) || quantity < 1 || quantity > user.bonus_entries) {
-            return sendError(ctx, `Please enter a valid number between 1 and ${user.bonus_entries}`);
-        }
-
-        ctx.session.quantity = quantity;
-        ctx.session.bonusEntryFlow = true;
-        ctx.session.waitingForBonusQuantity = false;
-    
-        // Delete the input message
-        try {
-            await ctx.deleteMessage();
-        } catch (error) {
-            console.log('Could not delete message:', error.message);
-        }
-    
-        // Proceed to assignment method selection
-        await showAssignmentMethodSelection(ctx);
-        return; // Important: return after handling
-    }
-
-    // 2. Check for admin states
-    if (ctx.session.adminState) {
-        // Track all admin messages for cleanup
-        trackMessage(ctx, `adminMsg_${Date.now()}`);
-
-        switch (ctx.session.adminState) {
-            case ADMIN_STATES.AWAITING_USERNAME:
-                await handleAdminUsername(ctx);
-                break;
-            case ADMIN_STATES.AWAITING_PASSWORD:
-                await handleAdminPassword(ctx);
-                break;
-            case ADMIN_STATES.AWAITING_WINNING_NUMBER:
-                await handleWinningNumber(ctx);
-                break;
-            case ADMIN_STATES.AWAITING_WINNING_AMOUNT:
-                await handleWinningAmount(ctx);
-                break;
-            case ADMIN_STATES.AWAITING_POOL_NAME:
-                await handlePoolName(ctx);
-                break;
-            case ADMIN_STATES.AWAITING_POOL_PRICE:
-                await handlePoolPrice(ctx);
-                break;
-            case ADMIN_STATES.AWAITING_POOL_MAX_ENTRIES:
-                await handlePoolMaxEntries(ctx);
-                break;
-        }
-        return; // Important: return after handling
-    }
-
-    // 3. Check for quantity prompt
-    if (ctx.session.nextAction === 'prompt_quantity' && ctx.message.text) {
-        const quantity = parseInt(ctx.message.text, 10);
-        if (isNaN(quantity) || quantity <= 0) {
-            ctx.reply('Please enter a valid number of entries.');
+    bot.on('message', async (ctx) => {
+        // Skip processing if it's a command (starts with /)
+        if (ctx.message.text && ctx.message.text.startsWith('/')) {
             return;
         }
 
-        ctx.session.quantity = quantity;
-        ctx.session.nextAction = null; // Clear the next action
+        // 1. Check for bonus quantity input first (highest priority)
+        if (ctx.session.waitingForBonusQuantity && ctx.message.text) {
+            const quantity = parseInt(ctx.message.text, 10);
+            const user = await User.findOne({ where: { telegram_id: ctx.from.id } });
         
-        // Store the custom quantity message ID for deletion
-        ctx.session.customQuantityMessageId = ctx.message.message_id;
-        
-        const assignmentMessage = await ctx.reply(
-            `Great! You've chosen to buy *${quantity} entries*.\n\nHow would you like them assigned?`,
-            {
-                parse_mode: 'Markdown',
-                reply_markup: {
-                    inline_keyboard: [
-                        [{ text: 'Random', callback_data: 'assign_method:random' }],
-                        [{ text: 'I\'ll Choose My Numbers', callback_data: 'assign_method:choose' }]
-                    ]
-                }
+            if (isNaN(quantity) || quantity < 1 || quantity > user.bonus_entries) {
+                return sendError(ctx, `Please enter a valid number between 1 and ${user.bonus_entries}`);
             }
-        );
-        
-        // Store assignment message ID for deletion
-        ctx.session.assignmentMessageId = assignmentMessage.message_id;
-        return; // Important: return after handling
-    }
 
-    // 4. Default fallback for unexpected messages
-    if (ctx.message.text) {
-        // If there's a previous prompt, delete it
-        if (ctx.session?.startPromptMessageId) {
+            ctx.session.quantity = quantity;
+            ctx.session.bonusEntryFlow = true;
+            ctx.session.waitingForBonusQuantity = false;
+        
+            // Delete the input message
             try {
-                await ctx.deleteMessage(ctx.session.startPromptMessageId);
-            } catch (e) {
-                console.log("Message already deleted or can't delete");
+                await ctx.deleteMessage();
+            } catch (error) {
+                console.log('Could not delete message:', error.message);
             }
+        
+            // Proceed to assignment method selection
+            await showAssignmentMethodSelection(ctx);
+            return; // Important: return after handling
         }
 
-        // Send new prompt
-        const startPromptMessage = await ctx.reply(
-            "Please use /start to enter the game:",
-            {
-                reply_markup: {
-                inline_keyboard: [
-                    [{ text: "🚀 Enter Game", callback_data: "start_over" }],
-                ],
-                },
+        // 2. Check for admin states
+        if (ctx.session.adminState) {
+            // Track all admin messages for cleanup
+            trackMessage(ctx, `adminMsg_${Date.now()}`);
+
+            switch (ctx.session.adminState) {
+                case ADMIN_STATES.AWAITING_USERNAME:
+                    await handleAdminUsername(ctx);
+                    break;
+                case ADMIN_STATES.AWAITING_PASSWORD:
+                    await handleAdminPassword(ctx);
+                    break;
+                case ADMIN_STATES.AWAITING_WINNING_NUMBER:
+                    await handleWinningNumber(ctx);
+                    break;
+                case ADMIN_STATES.AWAITING_WINNING_AMOUNT:
+                    await handleWinningAmount(ctx);
+                    break;
+                case ADMIN_STATES.AWAITING_POOL_NAME:
+                    await handlePoolName(ctx);
+                    break;
+                case ADMIN_STATES.AWAITING_POOL_PRICE:
+                    await handlePoolPrice(ctx);
+                    break;
+                case ADMIN_STATES.AWAITING_POOL_MAX_ENTRIES:
+                    await handlePoolMaxEntries(ctx);
+                    break;
             }
+            return; // Important: return after handling
+        }
+
+        // 3. Check for quantity prompt
+        if (ctx.session.nextAction === 'prompt_quantity' && ctx.message.text) {
+            const quantity = parseInt(ctx.message.text, 10);
+            if (isNaN(quantity) || quantity <= 0) {
+                ctx.reply('Please enter a valid number of entries.');
+                return;
+            }
+
+            ctx.session.quantity = quantity;
+            ctx.session.nextAction = null; // Clear the next action
+            
+            // Store the custom quantity message ID for deletion
+            ctx.session.customQuantityMessageId = ctx.message.message_id;
+            
+            const assignmentMessage = await ctx.reply(
+                `Great! You've chosen to buy *${quantity} entries*.\n\nHow would you like them assigned?`,
+                {
+                    parse_mode: 'Markdown',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [{ text: 'Random Pick', callback_data: 'assign_method:random' }],
+                            [{ text: 'Manual Pick', callback_data: 'assign_method:choose' }]
+                        ]
+                    }
+                }
             );
+            
+            // Store assignment message ID for deletion
+            ctx.session.assignmentMessageId = assignmentMessage.message_id;
+            return; // Important: return after handling
+        }
+
+        // 4. Default fallback for unexpected messages
+        if (ctx.message.text) {
+            // If there's a previous prompt, delete it
+            if (ctx.session?.startPromptMessageId) {
+                try {
+                    await ctx.deleteMessage(ctx.session.startPromptMessageId);
+                } catch (e) {
+                    console.log("Message already deleted or can't delete");
+                }
+            }
+
+            // Send new prompt
+            const startPromptMessage = await ctx.reply(
+                "Please use /start to enter the game:",
+                {
+                    reply_markup: {
+                    inline_keyboard: [
+                        [{ text: "🚀 Enter Game", callback_data: "start_over" }],
+                    ],
+                    },
+                }
+                );
 
 
-        // Save message ID in session
-        if (!ctx.session) ctx.session = {};
-        ctx.session.startPromptMessageId = startPromptMessage.message_id;
-    }
-});
+            // Save message ID in session
+            if (!ctx.session) ctx.session = {};
+            ctx.session.startPromptMessageId = startPromptMessage.message_id;
+        }
+    });
 
     // Admin login handlers
     async function handleAdminUsername(ctx) {
@@ -388,6 +388,33 @@ bot.on('message', async (ctx) => {
         const message = await ctx.reply('🛠️ Admin Dashboard\n\nSelect an action:', keyboard);
         trackMessage(ctx, 'adminDashboard');
     }
+    async function showAssignmentMethodSelection(ctx) {
+        const message = `
+    <b>🎯 How would you like to place your ${ctx.session.quantity} entries?</b>
+
+    Select your strategy below:
+        `;
+
+        const keyboard = {
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        { text: '🎲 Random Pick', callback_data: 'assign_method:random' },
+                        { text: '📝 Manual Pick', callback_data: 'assign_method:choose' }
+                    ],
+                    [
+                        { text: '🔙 Back', callback_data: 'use_bonus_entries' }
+                    ]
+                ]
+            }
+        };
+
+        await ctx.editMessageText(message, {
+            parse_mode: 'HTML',
+            reply_markup: keyboard.reply_markup
+        });
+    }
+
 
     // Admin action handlers
     bot.action('admin_set_winning_number', async (ctx) => {
