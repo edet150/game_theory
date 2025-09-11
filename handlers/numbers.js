@@ -235,6 +235,15 @@ bot.action(/^assign_method:(\w+)/, async (ctx) => {
     ctx.session.selectedNumbers = randomNumbers;
 
     const { text, reply_markup } = buildRandomGrid(randomNumbers);
+      // ⬅️ ⬅️ FIRST DELETE PREVIOUS ID THEN CREATE
+      // Delete the previous grid message if it exists
+      if (ctx.session.randomGridMessageId) {
+        try {
+          await ctx.deleteMessage(ctx.session.randomGridMessageId);
+        } catch (e) {
+          console.log("Previous grid already gone:", e.message);
+        }
+      }
     
     // STORE THE RANDOM GRID MESSAGE ID
     const randomGridMessage = await ctx.reply(text, { reply_markup });
