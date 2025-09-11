@@ -210,15 +210,16 @@ async function initiatePayment(bot, ctx) {
         );
       
         // Use finalizeEntries to create the entries
-        const result = await finalizeEntries(
-            user.id,
-            pool.id,
-            selectedNumbers,
-            lottery_week_code,
-          lottery_week_name,
-            id,
-            t // Pass transaction
-        );
+     const result = await finalizeEntries(
+        user.id,
+        pool.id,
+        selectedNumbers,
+        lottery_week_code,
+        lottery_week_name,
+        id,
+        false,  // isBonus
+        t       // ✅ pass transaction
+      );
 
         if (!result.success) {
             throw new Error(`Failed to create entries: ${result.message}`);
@@ -298,94 +299,12 @@ async function initiatePayment(bot, ctx) {
         const telegramId = paystackTransaction.metadata?.telegram_id;
         if (telegramId) {
             await bot.telegram.sendMessage(
-                telegram_id,
+                telegramId,
                 "❌ An error occurred while processing your payment. Please contact support."
             );
         }
     }
 }
-async function _handleSuccessfulPayment(bot, paystackTransaction) {
-  const t = await sequelize.transaction(); // Start a database transaction
-
-  try {
-    const { id, reference, amount, metadata, status } = paystackTransaction;
-    console.log("Paystack Txn:", paystackTransaction);
-
-    // Extract from metadata
-    const { telegram_id, user_id, pool_id, pool: poolName, quantity, assignmentMethod, chosenNumbers } = metadata;
-
-    // Resolve actual user and pool
-    let user = null;
-    if (user_id) {
-      user = await User.findByPk(user_id);
-    } else if (telegram_id) {
-      user = await User.findOne({ where: { telegram_id } });
-    }
-
-    const pool = pool_id
-      ? await RafflePool.findByPk(pool_id)
-      : await RafflePool.findOne({ where: { name: poolName } });
-
-    if (!user || !pool) {
-      throw new Error(`User or Arena not found (user=${user?.id}, pool=${pool?.id})`);
-    }
-
-    // First, check if this payment has already been processed
-    const existingPayment = await Payment.findOne({
-      where: { paystack_transaction_id: id },
-      transaction: t
-    });
-
-    if (existingPayment) {
-      console.log(`Payment with transaction ID ${id} already processed. Skipping.`);
-      await t.commit();
-      return;
-    }
-
-    // Insert new payment record directly with valid foreign keys
-    const paymentRecord = await Payment.create(
-      {
-        user_id: user.id,
-        pool_id: pool.id,
-        paystack_transaction_id: id,
-        paystack_reference: reference,
-        amount: amount / 100, // Convert from kobo
-        status
-      },
-      { transaction: t }
-    );
-
-    // Now create the entries
-    // await createEntries(bot, user.id, pool.id, quantity, assignmentMethod, chosenNumbers, telegram_id);
-
-    await t.commit(); // Commit everything
-    console.log(`✅ Processed transaction ${id}, entries created.`);
-
-    // Notify user in Telegram
-    await bot.telegram.sendMessage(
-      telegram_id,
-      `✅ Payment successful! You bought ${quantity} entries in the ${pool.name} Pool. Good luck! 🎉`
-    );
-
-  } catch (error) {
-    await t.rollback();
-    console.error("❌ Error handling successful payment:", error);
-
-    const telegramId = paystackTransaction.metadata?.telegram_id;
-    if (telegramId) {
-      // bot.telegram.sendMessage(
-      //   telegramId,
-      //   "❌ An error occurred while processing your payment. Please contact support."
-      // );
-      await messageManager.sendAndTrackByBot(
-            bot,
-            telegramId,
-            "❌ An error occurred while processing your payment. Please contact support."
-        );
-    }
-  }
-}
-
 
 
 
@@ -543,26 +462,7 @@ async function updateSelectionView(ctx, selectedNumbers, quantity) {
         ctx.session.selectionMessageId = message.message_id;
     }
 }
-async function _finalizeEntries(userId, poolId, numbers, lottery_week_code, lottery_week_name, id) {
-  console.log('lottery_week_code', lottery_week_code)  
-  try {
-        const entries = numbers.map((num) => ({
-            user_id: userId,
-            pool_id: poolId,
-            entry_number: num,
-            week_code:lottery_week_code ,
-            transaction_id:id ,
-            week_name:lottery_week_name ,
-            status: "paid", // Assuming payment is confirmed
-        }));
 
-        await Entry.bulkCreate(entries);
-        return { success: true, message: `Entries created: ${numbers.join(", ")}` };
-    } catch (error) {
-        console.error("Error creating entries:", error);
-        return { success: false, message: "An error occurred while finalizing entries." };
-    }
-}
 // Modified finalizeEntries function
 async function finalizeEntries(userId, poolId, numbers, lottery_week_code, lottery_week_name, transactionId = null, isBonus = false) {
   try {
@@ -607,6 +507,54 @@ if (isBonus) {
     { where: { id: userId } }
   );
 }
+
+    return { success: true, message: `Entries created: ${uniqueNumbers.join(", ")}` };
+  } catch (error) {
+    console.error("Error creating entries:", error);
+    return { success: false, message: "An error occurred while finalizing entries." };
+  }
+}
+
+async function finalizeEntries(
+  userId,
+  poolId,
+  numbers,
+  lottery_week_code,
+  lottery_week_name,
+  transactionId = null,
+  isBonus = false,
+  transaction = null
+) {
+  try {
+    // Step 1: Fetch already taken numbers
+    const existingEntries = await Entry.findAll({
+      where: {
+        pool_id: poolId,
+        week_code: lottery_week_code,
+        entry_number: numbers
+      },
+      attributes: ["entry_number"],
+      transaction
+    });
+
+    const existingNumbers = new Set(existingEntries.map(e => e.entry_number));
+
+    // Step 2: Unique numbers
+    const uniqueNumbers = numbers.filter(num => !existingNumbers.has(num));
+    if (uniqueNumbers.length === 0) {
+      return { success: false, message: "All selected numbers are already taken." };
+    }
+
+    // Step 3: Bulk insert
+    await Entry.bulkCreate(entries, { transaction });
+
+    // Step 4: Deduct bonus inside SAME transaction
+    if (isBonus) {
+      await User.increment(
+        { bonus_entries: -uniqueNumbers.length },
+        { where: { id: userId }, transaction }
+      );
+    }
 
     return { success: true, message: `Entries created: ${uniqueNumbers.join(", ")}` };
   } catch (error) {
