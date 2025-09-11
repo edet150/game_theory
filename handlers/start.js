@@ -196,9 +196,16 @@ bot.start(async (ctx) => {
     if (!isInChannel) {
       // If not in channel, show join + verify buttons
       return await ctx.reply(
-        `🚨 You must join our channel to use this bot!\n\n📢 Join below, then click ✅ Verify.`,
-        {
-          parse_mode: "Markdown",
+         `🎉 <b>Welcome!</b> To enjoy the full experience, please join our official channel.  
+      📢 <b>Inside the channel, you’ll get:</b>  
+      - 🏆 <b>Winner announcements</b> (see who’s winning in real time!)  
+      - 🎁 <b>Exclusive offers</b> and bonus opportunities  
+      - 🔔 <b>Updates</b> on new draws and promotions  
+      - 👥 <b>Transparency</b>: see entries made by other players and total winning amounts  
+
+      👉 <b>Join now</b> and then click <b>✅ Verify</b> to unlock access!`,
+       {
+          parse_mode: "HTML",
           disable_web_page_preview: true,
           reply_markup: {
             inline_keyboard: [
@@ -226,7 +233,20 @@ bot.start(async (ctx) => {
     const isInChannel = await isUserInChannel(ctx, REQUIRED_CHANNEL);
 
     if (!isInChannel) {
-      return ctx.reply("❌ You still haven’t joined the channel. Please join and try again.");
+      return await ctx.reply(
+          `<b>❌ Error:</b> You havent joined our channel yet`
+          `To enjoy the full experience, please join our official channel.`,
+        {
+            parse_mode: "HTML",
+            disable_web_page_preview: true,
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: "📢 Join Channel", url: `https://t.me/${REQUIRED_CHANNEL.replace('@','')}` }],
+                [{ text: "✅ Verify", callback_data: "verify_channel" }]
+              ]
+            }
+          }
+        );
     }
 
     // ✅ Verified → continue
