@@ -32,9 +32,9 @@ async function showPaymentConfirmation(ctx) {
     `;
 
     // ⬅️ Delete previous confirmation if it exists
-    if (ctx.session.confirmationMessageId) {
+    if (ctx.session.confirmationMessageId_) {
         try {
-            await ctx.deleteMessage(ctx.session.confirmationMessageId);
+            await ctx.deleteMessage(ctx.session.confirmationMessageId_);
         } catch (e) {
             console.log("Previous confirmation already gone:", e.message);
         }
@@ -58,8 +58,9 @@ async function showPaymentConfirmation(ctx) {
         }
     });
 
+
     // ⬅️ Store confirmation message ID
-    ctx.session.confirmationMessageId = confirmation.message_id;
+    ctx.session.confirmationMessageId_ = confirmation.message_id;
 
     return confirmation;
 }
@@ -629,52 +630,73 @@ bot.action("random_refresh", async (ctx) => {
     
   });
   
-  // Handler for proceeding to payment after confirmation
-  bot.action("proceed_to_payment", async (ctx) => {
-    try {
-      await ctx.answerCbQuery();
-      // Initiate payment
-      await initiatePayment(bot, ctx);
-      // Delete confirmation message
-      if (ctx.session.confirmationMessageId) {
-        try {
-          await ctx.deleteMessage(ctx.session.confirmationMessageId);
-          delete ctx.session.confirmationMessageId;
-        } catch (error) {
-          console.log('Could not delete confirmation message:', error.message);
-        }
-      }
-    } catch (error){
-      console.log('Ccatch:', error.message);
-    }
+  // // Handler for proceeding to payment after confirmation
+  // bot.action("proceed_to_payment", async (ctx) => {
+  //   try {
+  //     await ctx.answerCbQuery();
+  //     // Initiate payment
+  //     await initiatePayment(bot, ctx);
+  //     // Delete confirmation message
+  //     // if (ctx.session.confirmationMessageId) {
+  //     //   try {
+  //     //     setTimeout(async () => {
+  //     //       try {
+  //     //         await ctx.deleteMessage(ctx.session.confirmationMessageId);
+  //     //         delete ctx.session.confirmationMessageId;
+  //     //       } catch (err) {
+  //     //         console.log('Could not delete confirmation message:', err.message);
+  //     //       }
+  //     //     }, 4000); // ⏳ delete after 4 seconds
+  //     //   } catch (error) {
+  //     //     console.log('Could not schedule confirmation message deletion:', error.message);
+  //     //   }
+  //     // }
 
-  });
+  //   } catch (error){
+  //     console.log('Ccatch:', error.message);
+  //   }
+
+  // });
   
   // Handler for proceeding to payment after confirmation
   bot.action("proceed_to_payment", async (ctx) => {
-      await ctx.answerCbQuery();
+    await ctx.answerCbQuery();
+    console.log('his')
       
-      // Delete confirmation message
-      if (ctx.session.confirmationMessageId) {
-          try {
-              await ctx.deleteMessage(ctx.session.confirmationMessageId);
-              delete ctx.session.confirmationMessageId;
-          } catch (error) {
-              console.log('Could not delete confirmation message:', error.message);
-          }
-      }
+      // // Delete confirmation message
+      // if (ctx.session.confirmationMessageId) {
+      //     try {
+      //         await ctx.deleteMessage(ctx.session.confirmationMessageId);
+      //         delete ctx.session.confirmationMessageId;
+      //     } catch (error) {
+      //         console.log('Could not delete confirmation message:', error.message);
+      //     }
+      // }
       
       // Show temporary processing message using sendError (or create a similar function for info messages)
       const processingMsg = await sendTemporaryMessage(
           ctx, 
           "⏳ Processing your request, please wait...",
-          10000 // Show for 10 seconds
+          3000 // Show for 10 seconds
       );
       
       try {
           // Initiate payment
           await initiatePayment(bot, ctx);
-          
+          if (ctx.session.confirmationMessageId) {
+            try {
+              setTimeout(async () => {
+                try {
+                  await ctx.deleteMessage(ctx.session.confirmationMessageId);
+                  delete ctx.session.confirmationMessageId;
+                } catch (err) {
+                  console.log('Could not delete confirmation message:', err.message);
+                }
+              }, 4000); // ⏳ delete after 4 seconds
+            } catch (error) {
+              console.log('Could not schedule confirmation message deletion:', error.message);
+            }
+          }
           // The processing message will auto-delete after the specified duration
       } catch (error) {
           console.error('Error initiating payment:', error);

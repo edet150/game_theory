@@ -31,13 +31,13 @@ async function showPaymentConfirmation(ctx) {
     `;
 
     // ⬅️ Delete previous confirmation if it exists
-    if (ctx.session.confirmationMessageId) {
-        try {
-            await ctx.deleteMessage(ctx.session.confirmationMessageId);
-        } catch (e) {
-            console.log("Previous confirmation already gone:", e.message);
-        }
-    }
+    // if (ctx.session.confirmationMessageId) {
+    //     try {
+    //         await ctx.deleteMessage(ctx.session.confirmationMessageId);
+    //     } catch (e) {
+    //         console.log("Previous confirmation already gone:", e.message);
+    //     }
+    // }
 
     // Send new confirmation
     const confirmation = await ctx.reply(confirmationMessage, {
@@ -136,11 +136,18 @@ async function initiatePayment(bot, ctx) {
         );
 
         const paymentLink = paystackResponse.data.data.authorization_url;
-
+        // ⬅️ FIRST DELETE PAYMENT MESSAGE ID IF EXISTS
+        if (ctx.session.paymentMessageId) {
+          try {
+            await ctx.deleteMessage(ctx.session.paymentMessageId);
+          } catch (e) {
+            console.log("Previous quantity message already gone:", e.message);
+          }
+        }
         // Show payment button
         const paymentMessage = await ctx.reply(
             `💳 Ready to complete your purchase!\n\n` +
-            `Total: ₦${totalAmount}\n` +
+            `Total: *₦${totalAmount}*\n` +
             `Click the button below to proceed to payment:`,
             {
                 parse_mode: "markdown",
@@ -154,14 +161,6 @@ async function initiatePayment(bot, ctx) {
             }
       );
       
-        // ⬅️ FIRST DELETE PAYMENT MESSAGE ID IF EXISTS
-        if (ctx.session.paymentMessageId) {
-          try {
-            await ctx.deleteMessage(ctx.session.paymentMessageId);
-          } catch (e) {
-            console.log("Previous quantity message already gone:", e.message);
-          }
-        }
 
 
         // Store payment message ID for cleanup
