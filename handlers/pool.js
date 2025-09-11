@@ -132,11 +132,31 @@ bot.action(/^select_pool:(\w+)/, async (ctx) => {
       { parse_mode: 'Markdown', reply_markup: options.reply_markup }
     );
 
+    // ⬅️ FIRST DELETE PREVIOUS QUANTITY MESSAGE IF EXISTS
+    if (ctx.session.quantityMessageId) {
+      try {
+        await ctx.deleteMessage(ctx.session.quantityMessageId);
+      } catch (e) {
+        console.log("Previous quantity message already gone:", e.message);
+      }
+    }
+
+    // Send quantity selection prompt
     ctx.session.quantityMessageId = quantityMessage.message_id;
 
-    // Send the custom prompt and store its message ID
-    const customPromptMessage = await ctx.reply('Or, type a custom number of entries.');
+    // ⬅️ FIRST DELETE PREVIOUS CUSTOM PROMPT MESSAGE IF EXISTS
+    if (ctx.session.customPromptMessageId) {
+      try {
+        await ctx.deleteMessage(ctx.session.customPromptMessageId);
+      } catch (e) {
+        console.log("Previous custom prompt already gone:", e.message);
+      }
+    }
+
+    // Send custom prompt and store its message ID
+    const customPromptMessage = await ctx.reply("Or, type a custom number of entries.");
     ctx.session.customPromptMessageId = customPromptMessage.message_id;
+
 
     ctx.session.nextAction = 'prompt_quantity';
 
