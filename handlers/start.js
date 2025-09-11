@@ -209,8 +209,8 @@ bot.action("start_over", async (ctx) => {
          [{ text: 'Alpha Arena (₦100/entry)', callback_data: `select_pool:Alpha` }],
                 [{ text: '🔒 Beta Arena (₦500/10 entries)', callback_data: `select_pool:Beta` }],
                 [{ text: 'How It Works', callback_data: 'how_it_works' }],
-                [{ text: 'My Moves', callback_data: 'view_entries' }],
-                [{ text: '🎯 Referral Dashboard', callback_data: 'referral_dashboard' }],
+                [{ text: 'My Entries', callback_data: 'view_entries' }],
+                [{ text: 'Referral Dashboard', callback_data: 'referral_dashboard' }],
         ]
       }
     });
@@ -235,12 +235,12 @@ bot.action("start_over", async (ctx) => {
         parse_mode: 'markdown',
         reply_markup: {
            inline_keyboard: [
-          [{ text: '💰 Alpha Arena (₦100/entry)', callback_data: `select_pool:Alpha` }],
+          [{ text: 'Alpha Arena (₦100/entry)', callback_data: `select_pool:Alpha` }],
           [{ text: '🔒 Beta Arena (₦500/10 entries)', callback_data: `select_pool:Beta` }],
         //   [{ text: '🔒 HighRollers Arena (₦1000/ 20 entries)', callback_data: `select_pool:HighRollers` }],
-          [{ text: 'ℹ️ How It Works', callback_data: 'how_it_works' }],
-          [{ text: '📋 My Moves', callback_data: 'view_entries' }],
-          [{ text: '🎯 Referral Dashboard', callback_data: 'referral_dashboard' }],
+          [{ text: 'How It Works', callback_data: 'how_it_works' }],
+          [{ text: 'My Entries', callback_data: 'view_entries' }],
+          [{ text: 'Referral Dashboard', callback_data: 'referral_dashboard' }],
         ]
         }
       }

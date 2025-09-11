@@ -44,8 +44,8 @@ async function showStartScreen(ctx) {
                 [{ text: 'Alpha Arena (₦100/entry)', callback_data: `select_pool:Alpha` }],
                 [{ text: '🔒 Beta Arena (₦500/10 entries)', callback_data: `select_pool:Beta` }],
                 [{ text: 'How It Works', callback_data: 'how_it_works' }],
-                [{ text: 'My Moves', callback_data: 'view_entries' }],
-                [{ text: '🎯 Referral Dashboard', callback_data: 'referral_dashboard' }],
+                [{ text: 'My Entries', callback_data: 'view_entries' }],
+                [{ text: 'Referral Dashboard', callback_data: 'referral_dashboard' }],
             ]
         }
     };
