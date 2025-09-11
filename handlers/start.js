@@ -37,90 +37,6 @@ bot.action('how_it_works', async (ctx) => {
     }
   );
 });
-async function isUserInChannel(ctx, channelUsername) {
-  try {
-    const member = await ctx.telegram.getChatMember(channelUsername, ctx.from.id);
-
-    // Check if user is actually in the channel
-    if (['member', 'administrator', 'creator'].includes(member.status)) {
-      return true;
-    }
-    return false;
-  } catch (error) {
-    console.error("⚠️ Error checking channel membership:", error.message);
-    return false; // Default to not in channel if error
-  }
-}
-
-
-// Modified start command
-bot.start(async (ctx) => {
-  await cleanupSelectionMessages(ctx);
-
-  try {
-    // 🔍 Check if user is in required channel
-    const requiredChannel = "@YourChannelUsername"; // <-- replace with your channel
-    const isInChannel = await isUserInChannel(ctx, requiredChannel);
-
-    if (!isInChannel) {
-      return await ctx.reply(
-        `🚨 You must join our channel first to use this bot!\n\n👉 [Join Channel](${`https://t.me/${requiredChannel.replace('@','')}`})\n\nAfter joining, click /start again.`,
-        { parse_mode: "Markdown", disable_web_page_preview: true }
-      );
-    }
-
-    // ✅ Continue with your existing referral + start logic
-    const isLocked = await redis.get('entries_locked');
-    if (isLocked) {
-      return await ctx.reply('🔒 Entries are currently locked. Please try again later.');
-    }
-
-    const startParams = ctx.startPayload;
-    let referrer = null;
-
-    if (startParams && startParams.startsWith('ref_')) {
-      const referralCode = startParams.replace('ref_', '');
-      referrer = await User.findOne({ where: { referral_code: referralCode } });
-    }
-
-    const telegramId = ctx.from.id;
-    const telegramUsername = ctx.from.username || `user_${telegramId}`;
-
-    const [user, created] = await User.findOrCreate({
-      where: { telegram_id: telegramId },
-      defaults: { 
-        telegram_username: telegramUsername,
-        referred_by: referrer ? referrer.id : null,
-        referral_code: telegramUsername,
-      }
-    });
-
-    if (!created && !user.referral_code) {
-      user.referral_code = Math.random().toString(36).substring(2, 10).toUpperCase();
-      await user.save();
-    }
-
-    if (referrer && created) {
-      referrer.total_referrals += 1;
-      await referrer.save();
-      await sendSuccess(ctx, `🎉 Welcome! You were referred by ${referrer.telegram_username}`);
-    }
-
-    if (!created && referrer && !user.referred_by) {
-      user.referred_by = referrer.id;
-      await user.save();
-
-      referrer.total_referrals += 1;
-      await referrer.save();
-    }
-
-    await showStartScreen(ctx);
-
-  } catch (error) {
-    console.error('❌ Error in start command:', error);
-    await sendError(ctx, 'Something went wrong. Please try again.');
-  }
-});
 
 
   
@@ -255,4 +171,117 @@ bot.action("start_over", async (ctx) => {
     ctx.session.welcomeMessageId = fallbackMessage.message_id;
   }
 });
+  
+  
+  // 🔍 Utility to check membership
+async function isUserInChannel(ctx, channelUsername) {
+  try {
+    const member = await ctx.telegram.getChatMember(channelUsername, ctx.from.id);
+    return ['member', 'administrator', 'creator'].includes(member.status);
+  } catch (error) {
+    console.error("⚠️ Error checking channel membership:", error.message);
+    return false;
+  }
+}
+
+const REQUIRED_CHANNEL = `@${process.env.CHANNEL_NAME}`; // <-- replace with your channel
+
+// Modified /start command
+bot.start(async (ctx) => {
+  await cleanupSelectionMessages(ctx);
+
+  try {
+    const isInChannel = await isUserInChannel(ctx, REQUIRED_CHANNEL);
+
+    if (!isInChannel) {
+      // If not in channel, show join + verify buttons
+      return await ctx.reply(
+        `🚨 You must join our channel to use this bot!\n\n📢 Join below, then click ✅ Verify.`,
+        {
+          parse_mode: "Markdown",
+          disable_web_page_preview: true,
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "📢 Join Channel", url: `https://t.me/${REQUIRED_CHANNEL.replace('@','')}` }],
+              [{ text: "✅ Verify", callback_data: "verify_channel" }]
+            ]
+          }
+        }
+      );
+    }
+
+    // ✅ Already in channel → proceed directly
+    await handleReferralAndStart(ctx);
+
+  } catch (error) {
+    console.error('❌ Error in start command:', error);
+    await sendError(ctx, 'Something went wrong. Please try again.');
+  }
+});
+
+  // 🔁 Verify button callback
+  bot.action("verify_channel", async (ctx) => {
+    await ctx.answerCbQuery("Checking… ⏳");
+
+    const isInChannel = await isUserInChannel(ctx, REQUIRED_CHANNEL);
+
+    if (!isInChannel) {
+      return ctx.reply("❌ You still haven’t joined the channel. Please join and try again.");
+    }
+
+    // ✅ Verified → continue
+    // await ctx.reply("✅ Verified! Welcome aboard 🎉");
+    await sendSuccess(ctx, `✅ Verified! Welcome aboard 🎉`);
+    await handleReferralAndStart(ctx);
+  });
+
+// 🔧 Extracted function to handle your referral + start logic
+async function handleReferralAndStart(ctx) {
+  const isLocked = await redis.get('entries_locked');
+  if (isLocked) {
+    return await ctx.reply('🔒 Entries are currently locked. Please try again later.');
+  }
+
+  const startParams = ctx.startPayload;
+  let referrer = null;
+
+  if (startParams && startParams.startsWith('ref_')) {
+    const referralCode = startParams.replace('ref_', '');
+    referrer = await User.findOne({ where: { referral_code: referralCode } });
+  }
+
+  const telegramId = ctx.from.id;
+  const telegramUsername = ctx.from.username || `user_${telegramId}`;
+
+  const [user, created] = await User.findOrCreate({
+    where: { telegram_id: telegramId },
+    defaults: { 
+      telegram_username: telegramUsername,
+      referred_by: referrer ? referrer.id : null,
+      referral_code: telegramUsername,
+    }
+  });
+
+  if (!created && !user.referral_code) {
+    user.referral_code = Math.random().toString(36).substring(2, 10).toUpperCase();
+    await user.save();
+  }
+
+  if (referrer && created) {
+    referrer.total_referrals += 1;
+    await referrer.save();
+    await sendSuccess(ctx, `🎉 Welcome! You were referred by ${referrer.telegram_username}`);
+  }
+
+  if (!created && referrer && !user.referred_by) {
+    user.referred_by = referrer.id;
+    await user.save();
+
+    referrer.total_referrals += 1;
+    await referrer.save();
+  }
+
+  await showStartScreen(ctx);
+}
+
 };
