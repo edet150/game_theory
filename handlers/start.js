@@ -196,7 +196,15 @@ bot.start(async (ctx) => {
     if (!isInChannel) {
       // If not in channel, show join + verify buttons
       return await ctx.reply(
-        `🚨 You must join our channel to use this bot!\n\n📢 Join below, then click ✅ Verify.`,
+        `🎉 Welcome! To enjoy the full experience, please join our official channel.  
+
+      📢 In the channel, you’ll get:  
+      - 🏆 Winner announcements (see who’s winning in real time!)  
+      - 🎁 Exclusive offers and bonus opportunities  
+      - 🔔 Updates on new draws and promotions  
+      - 👥 Transparency: see entries made by other players and total winning amounts  
+
+      👉 Join now and then click ✅ Verify to unlock access!`,
         {
           parse_mode: "Markdown",
           disable_web_page_preview: true,
@@ -208,6 +216,7 @@ bot.start(async (ctx) => {
           }
         }
       );
+
     }
 
     // ✅ Already in channel → proceed directly
@@ -226,7 +235,12 @@ bot.start(async (ctx) => {
     const isInChannel = await isUserInChannel(ctx, REQUIRED_CHANNEL);
 
     if (!isInChannel) {
-      return ctx.reply("❌ You still haven’t joined the channel. Please join and try again.");
+     return ctx.reply(
+      `❌ Looks like you haven’t joined the channel yet. ` 
+      `📢 Remember, the channel is where we share winner updates, special bonuses, and all the latest offers.  `
+      `👉 Please join first, then tap ✅ Verify again.`
+    );
+
     }
 
     // ✅ Verified → continue
