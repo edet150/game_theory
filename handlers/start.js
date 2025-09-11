@@ -37,85 +37,91 @@ bot.action('how_it_works', async (ctx) => {
     }
   );
 });
+async function isUserInChannel(ctx, channelUsername) {
+  try {
+    const member = await ctx.telegram.getChatMember(channelUsername, ctx.from.id);
+
+    // Check if user is actually in the channel
+    if (['member', 'administrator', 'creator'].includes(member.status)) {
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error("⚠️ Error checking channel membership:", error.message);
+    return false; // Default to not in channel if error
+  }
+}
 
 
 // Modified start command
 bot.start(async (ctx) => {
   await cleanupSelectionMessages(ctx);
-try {
-    // Check if entries are locked
-    const isLocked = await redis.get('entries_locked');
-    if (isLocked) {
-        console.log("⛔ Entries are locked.");
-        return await ctx.reply('🔒 Entries are currently locked. Please try again later.');
+
+  try {
+    // 🔍 Check if user is in required channel
+    const requiredChannel = "@YourChannelUsername"; // <-- replace with your channel
+    const isInChannel = await isUserInChannel(ctx, requiredChannel);
+
+    if (!isInChannel) {
+      return await ctx.reply(
+        `🚨 You must join our channel first to use this bot!\n\n👉 [Join Channel](${`https://t.me/${requiredChannel.replace('@','')}`})\n\nAfter joining, click /start again.`,
+        { parse_mode: "Markdown", disable_web_page_preview: true }
+      );
     }
 
-    // Check for referral parameter
+    // ✅ Continue with your existing referral + start logic
+    const isLocked = await redis.get('entries_locked');
+    if (isLocked) {
+      return await ctx.reply('🔒 Entries are currently locked. Please try again later.');
+    }
+
     const startParams = ctx.startPayload;
     let referrer = null;
 
-    console.log("👉 Start params:", startParams);
-
     if (startParams && startParams.startsWith('ref_')) {
-        const referralCode = startParams.replace('ref_', '');
-        console.log("🔑 Extracted referralCode:", referralCode);
-        referrer = await User.findOne({ where: { referral_code: referralCode } });
-        console.log("👥 Referrer found:", referrer ? referrer.toJSON() : null);
+      const referralCode = startParams.replace('ref_', '');
+      referrer = await User.findOne({ where: { referral_code: referralCode } });
     }
 
     const telegramId = ctx.from.id;
     const telegramUsername = ctx.from.username || `user_${telegramId}`;
 
-    console.log("🙋 User Telegram ID:", telegramId, "Username:", telegramUsername);
-
-    // Create or update user with referral info
     const [user, created] = await User.findOrCreate({
-        where: { telegram_id: telegramId },
-        defaults: { 
-            telegram_username: telegramUsername,
-            referred_by: referrer ? referrer.id : null,
-            referral_code: telegramUsername, // ⚠️ Might need random generator
-        }
+      where: { telegram_id: telegramId },
+      defaults: { 
+        telegram_username: telegramUsername,
+        referred_by: referrer ? referrer.id : null,
+        referral_code: telegramUsername,
+      }
     });
 
-    console.log("🆕 User created?:", created);
-    console.log("📌 User record after findOrCreate:", user.toJSON());
-
-    // If user already exists but doesn't have a referral code
     if (!created && !user.referral_code) {
-        console.log("⚡ Assigning new referral code to existing user");
-        user.referral_code = Math.random().toString(36).substring(2, 10).toUpperCase();
-        await user.save();
+      user.referral_code = Math.random().toString(36).substring(2, 10).toUpperCase();
+      await user.save();
     }
 
-    // If user was referred and this is their first time
     if (referrer && created) {
-        console.log(`🎉 New user referred by: ${referrer.telegram_username} (ID: ${referrer.id})`);
-        referrer.total_referrals += 1;
-        await referrer.save();
-        await sendSuccess(ctx, `🎉 Welcome! You were referred by ${referrer.telegram_username}`);
+      referrer.total_referrals += 1;
+      await referrer.save();
+      await sendSuccess(ctx, `🎉 Welcome! You were referred by ${referrer.telegram_username}`);
     }
 
-    // Update existing user if they didn’t already have a referrer
     if (!created && referrer && !user.referred_by) {
-        console.log(`🔗 Adding referrer to existing user: ${referrer.id}`);
-        user.referred_by = referrer.id;
-        await user.save();
+      user.referred_by = referrer.id;
+      await user.save();
 
-        referrer.total_referrals += 1;
-        await referrer.save();
+      referrer.total_referrals += 1;
+      await referrer.save();
     }
-
-    console.log("✅ Done handling referral flow for user:", user.id);
 
     await showStartScreen(ctx);
 
-} catch (error) {
+  } catch (error) {
     console.error('❌ Error in start command:', error);
     await sendError(ctx, 'Something went wrong. Please try again.');
-}
-
+  }
 });
+
 
   
 bot.action("start_over", async (ctx) => {
