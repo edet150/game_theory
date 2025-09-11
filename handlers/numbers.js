@@ -31,8 +31,18 @@ async function showPaymentConfirmation(ctx) {
 ⚠️ *Please review your order before proceeding to payment.*
     `;
 
+    // ⬅️ Delete previous confirmation if it exists
+    if (ctx.session.confirmationMessageId) {
+        try {
+            await ctx.deleteMessage(ctx.session.confirmationMessageId);
+        } catch (e) {
+            console.log("Previous confirmation already gone:", e.message);
+        }
+    }
+
+    // Send new confirmation
     const confirmation = await ctx.reply(confirmationMessage, {
-        parse_mode: 'markdown',
+        parse_mode: 'Markdown',
         reply_markup: {
             inline_keyboard: [
                 [
@@ -42,16 +52,18 @@ async function showPaymentConfirmation(ctx) {
                     { text: '✏️ Edit Selection', callback_data: 'edit_selection' }
                 ],
                 [
-                    { text: '🔄 Start Game Selection', callback_data: 'start_over' }
+                    { text: '🔄 Re-start Game Selection', callback_data: 'start_over' }
                 ]
             ]
         }
     });
 
-    // Store confirmation message ID for cleanup
-    // ctx.session.confirmationMessageId = confirmation.message_id;
+    // ⬅️ Store confirmation message ID
+    ctx.session.confirmationMessageId = confirmation.message_id;
+
     return confirmation;
 }
+
 
 function clearSelectionSession(session) {
   // Clear only selection-related session data, keep user info and finalized entries
@@ -705,7 +717,15 @@ bot.action("random_refresh", async (ctx) => {
   bot.action("edit_selection", async (ctx) => {
       await ctx.answerCbQuery();
       
-
+     // Delete confirmation message
+      if (ctx.session.confirmationMessageId) {
+          try {
+              await ctx.deleteMessage(ctx.session.confirmationMessageId);
+              delete ctx.session.confirmationMessageId;
+          } catch (error) {
+              console.log('Could not delete confirmation message:', error.message);
+          }
+      }
       // Go back to quantity selection
     if (ctx.session.bonusEntryFlow) {
       const user = await User.findOne({ where: { telegram_id: ctx.from.id } });

@@ -19,6 +19,7 @@ require('./cron/paystack_checker');
 require('./cron/sundayCron'); 
 const { getbotInstance, getRedisClient } = require('./bot/botInstance.js');
 const { getLast4Digits, showStartScreen } = require('./startFunction');
+const { checkPaystackTransactions } = require('./cron/paystack_checker');
 
 const bot = getbotInstance();
 const redis = getRedisClient();
@@ -120,8 +121,9 @@ const PORT = process.env.PORT || 3000;
 
 // Payment redirect route
 app.get("/paymentredirect", (req, res) => {
+  checkPaystackTransactions()
   return res.send(`
-    <html>
+        <html>
       <head><title>Redirecting to Telegram...</title></head>
       <body style="font-family: Arial; text-align: center; padding: 50px;">
         <h2>✅ Payment Complete</h2>

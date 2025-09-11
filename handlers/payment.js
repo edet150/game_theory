@@ -17,35 +17,52 @@ async function showPaymentConfirmation(ctx) {
     const sortedNumbers = session.selectedNumbers ? [...session.selectedNumbers].sort((a, b) => a - b) : [];
 
     const confirmationMessage = `
-🎯 **ORDER CONFIRMATION**
+🎯 *ORDER CONFIRMATION*
 
-🏷️ **Pool:** ${pool.name}
-💰 **Price per entry:** ₦${pool.price_per_entry}
-📊 **Entries purchased:** ${session.quantity}
-🎲 **Selection method:** ${methodName}
-🔢 **Your numbers:** ${sortedNumbers.join(', ')}
+🏷️ *Pool:* ${pool.name}
+💰 *Price per entry:* ₦${pool.price_per_entry}
+📊 *Entries purchased:* ${session.quantity}
+🎲 *Selection method:* ${methodName}
+🔢 *Your numbers:* ${sortedNumbers.join(', ')}
 
-💵 **Total Amount:** ₦${pool.price_per_entry * session.quantity}
+💵 *Total Amount:* ₦${pool.price_per_entry * session.quantity}
 
 ⚠️ *Please review your order before proceeding to payment.*
     `;
 
+    // ⬅️ Delete previous confirmation if it exists
+    if (ctx.session.confirmationMessageId) {
+        try {
+            await ctx.deleteMessage(ctx.session.confirmationMessageId);
+        } catch (e) {
+            console.log("Previous confirmation already gone:", e.message);
+        }
+    }
+
+    // Send new confirmation
     const confirmation = await ctx.reply(confirmationMessage, {
-        parse_mode: 'markdown',
+        parse_mode: 'Markdown',
         reply_markup: {
             inline_keyboard: [
                 [
-                    { text: '✅ Confirm & Pay', callback_data: 'proceed_to_payment' },
+                    { text: '✅ Confirm & Pay', callback_data: 'proceed_to_payment' }
+                ],
+                [
                     { text: '✏️ Edit Selection', callback_data: 'edit_selection' }
+                ],
+                [
+                    { text: '🔄 Re-start Game Selection', callback_data: 'start_over' }
                 ]
             ]
         }
     });
 
-    // Store confirmation message ID for cleanup
+    // ⬅️ Store confirmation message ID
     ctx.session.confirmationMessageId = confirmation.message_id;
+
     return confirmation;
 }
+
 async function initiatePayment(bot, ctx) {
     const session = ctx.session;
   console.log('hello')

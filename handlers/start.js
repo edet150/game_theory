@@ -10,25 +10,25 @@ module.exports = (bot) => {
 
 bot.action('how_it_works', async (ctx) => {
   await ctx.answerCbQuery();
-
   const message = await messageManager.sendAndTrack(ctx, 
-    '🎭 *The Rules of the Game*\n\n' +
-    'Every Sunday at 6:00 PM WAT, we select *one strategist (winner)* from each pool. The system is built on fairness and transparency.\n\n' +
+    '🎭 <b>The Rules of the Game</b>\n\n' +
+    'Every Sunday at 6:00 PM WAT, we select <b>one strategist (winner)</b> from each pool. The system is built on fairness and transparency.\n\n' +
     
-    '1️⃣ *Winning Number*: We take the first Bitcoin block hash mined after 6:00 PM Lagos Time. The *last 4 digits* of this hash form the winning number.\n\n' +
+    '1️⃣ <b>Winning Number</b>: We take the first Bitcoin block hash mined after 6:00 PM Lagos Time. The <b>last 4 digits</b> of this hash form the winning number.\n\n' +
     
-    '2️⃣ *Exact Match Wins*: If any entry matches those 4 digits exactly, that player wins instantly.\n\n' +
+    '2️⃣ <b>Exact Match Wins</b>: If any entry matches those 4 digits exactly, that player wins instantly.\n\n' +
     
-    '3️⃣ *Inverse Match (Fairness Fallback)*: If no exact match exists, we look for entries that match the *inverse* of the winning number. ' +
+    '3️⃣ <b>Inverse Match (Fairness Fallback)</b>: If no exact match exists, we look for entries that match the <b>inverse</b> of the winning number. ' +
     '(Example: If winning number is 1234, we look for entries with 4321)\n\n' +
     
-    '4️⃣ *Game Theory Balance*: If no exact or inverse match, we map the number to the pool size using modulo arithmetic. ' +
+    '4️⃣ <b>Game Theory Balance</b>: If no exact or inverse match, we map the number to the pool size using modulo arithmetic. ' +
     'This guarantees a winner every single round.\n\n' +
     
-    '5️⃣ *Verify the Winning Number*: Anyone can check the block hash on btcscan.org to confirm fairness.\n\n' +
+    '5️⃣ <b>Verify the Winning Number</b>: Anyone can check the block hash on btcscan.org to confirm fairness.\n\n' +
     
     '✅ This isn\'t luck alone — it\'s strategy, randomness, and transparency working together.', 
     {
+      parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [
           [{ text: "🔙 Back", callback_data: "start_over" }]

@@ -155,6 +155,7 @@ async function cleanupSelectionMessages(ctx) {
             ctx.session.paymentMessageId,
             ctx.session.welcomeMessageId,
             
+            
             // Additional message IDs from my implementation
             ctx.session.startPromptMessageId,
             ctx.session.loginPrompt,
