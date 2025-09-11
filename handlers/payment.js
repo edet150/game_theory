@@ -135,7 +135,17 @@ async function initiatePayment(bot, ctx) {
                     ]
                 }
             }
-        );
+      );
+      
+        // ⬅️ FIRST DELETE PAYMENT MESSAGE ID IF EXISTS
+        if (ctx.session.paymentMessageId) {
+          try {
+            await ctx.deleteMessage(ctx.session.paymentMessageId);
+          } catch (e) {
+            console.log("Previous quantity message already gone:", e.message);
+          }
+        }
+
 
         // Store payment message ID for cleanup
         ctx.session.paymentMessageId = paymentMessage.message_id;

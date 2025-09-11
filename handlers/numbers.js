@@ -225,7 +225,15 @@ bot.action(/^assign_method:(\w+)/, async (ctx) => {
       parse_mode: 'markdown',
       reply_markup: initialGrid.reply_markup
     });
-    
+      // ⬅️ FIRST DELETE PREVIOUS BUILD GRID MESSAGE IF EXISTS
+      if (ctx.session.gridMessageId) {
+        try {
+          await ctx.deleteMessage(ctx.session.gridMessageId);
+        } catch (e) {
+          console.log("Previous quantity message already gone:", e.message);
+        }
+      }
+
     ctx.session.gridMessageId = gridMessage.message_id;
     console.log( 'grid', ctx.session.gridMessageId)
 
@@ -235,6 +243,10 @@ bot.action(/^assign_method:(\w+)/, async (ctx) => {
     ctx.session.selectedNumbers = randomNumbers;
 
     const { text, reply_markup } = buildRandomGrid(randomNumbers);
+
+    // SEND MESSAGE REPLYS
+    const randomGridMessage = await ctx.reply(text, { reply_markup });
+
       // ⬅️ ⬅️ FIRST DELETE PREVIOUS ID THEN CREATE
       // Delete the previous grid message if it exists
       if (ctx.session.randomGridMessageId) {
@@ -244,9 +256,7 @@ bot.action(/^assign_method:(\w+)/, async (ctx) => {
           console.log("Previous grid already gone:", e.message);
         }
       }
-    
-    // STORE THE RANDOM GRID MESSAGE ID
-    const randomGridMessage = await ctx.reply(text, { reply_markup });
+      // STORE THE RANDOM GRID MESSAGE ID
     ctx.session.randomGridMessageId = randomGridMessage.message_id;
   }
 });
