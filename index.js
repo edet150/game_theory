@@ -55,6 +55,7 @@ bot.use(cleanupMiddleware);
 
 bot.use((ctx, next) => {
   console.log('sippiose')
+  console.log(ctx)
   console.log("Update type:", ctx.updateType, ctx.update);
   return next();
 });

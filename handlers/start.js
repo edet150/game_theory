@@ -118,7 +118,7 @@ bot.action("start_over", async (ctx) => {
         `👋 Welcome to <b>Game Theory </b>\n\n` +
         `Where numbers meet strategy.\n\n` +
         `<b>This Round:</b>  ${weekLabel}\n` +
-        `<b>Prize Pool:</b>  ${prizeMoney}\n\n` +
+        `<b>Prize Amount:</b>  ${prizeMoney}\n\n` +
         `<b>Play Window:</b>  Monday–Friday\n` +
         `<b>Result Drop:</b>  Sunday 6:00 PM (Africa/Lagos)\n\n` +
         `Choose your arena below to make your move:`
@@ -143,6 +143,45 @@ bot.action("start_over", async (ctx) => {
     
   } catch (error) {
     console.error('Error fetching week information:', error);
+
+    // Fetch latest week info
+        const today = new Date();
+  
+          // Get current week (based on dates)
+          const currentWeek = await Week.findOne({
+          where: {
+              starts_at: { [Op.lte]: today },
+              ends_at: { [Op.gte]: today }
+          }
+          });
+    // If no current week found, get the latest week
+    let weekLabel = 'Current Week';
+    let weekCode = '';
+    
+    if (currentWeek) {
+      weekLabel = `${currentWeek.week_name} (Week ${currentWeek.week_number}, ${currentWeek.year})`;
+      weekCode = currentWeek.code;
+    } else {
+      // Fallback: get the most recent week
+      const latestWeek = await Week.findOne({
+        order: [['createdAt', 'DESC']]
+      });
+      if (latestWeek) {
+        weekLabel = `${latestWeek.week_number} `;
+        weekCode = latestWeek.code;
+      }
+    }
+        let prizeMoney = "₦100,000"; // Default value
+    if (weekCode) {
+      const winning = await Winning.findOne({
+        where: { week_code: weekCode }
+      });
+
+      if (winning) {
+        prizeMoney = `₦${winning.winning_amount.toLocaleString()}`;
+      }
+    }
+
     // Fallback welcome message if there's an error
     const fallbackMessage = await ctx.reply(
 
@@ -196,7 +235,8 @@ bot.start(async (ctx) => {
     if (!isInChannel) {
       // If not in channel, show join + verify buttons
       return await ctx.reply(
-`🎉 <b>Welcome!</b> To enjoy the full experience, please join our official channel.  
+`🎉 <b>Welcome!</b> To enjoy the full experience, please join our official channel.
+
 <b>Inside the channel, you’ll get:</b>  
   - 🏆 <b>Winner announcements</b> (see who’s winning in real time!)
    
@@ -229,34 +269,75 @@ bot.start(async (ctx) => {
   }
 });
 
+  // // 🔁 Verify button callback
+  // bot.action("verify_channel", async (ctx) => {
+  //   await ctx.answerCbQuery("Checking… ⏳");
+
+  //   const isInChannel = await isUserInChannel(ctx, REQUIRED_CHANNEL);
+
+  //   if (!isInChannel) {
+  //     return await ctx.reply(
+  //         `<b>❌ Error:</b> You havent joined our channel yet\n\n `+
+  //         `To enjoy the full experience, please join our official channel.`,
+  //       {
+  //           parse_mode: "HTML",
+  //           disable_web_page_preview: true,
+  //           reply_markup: {
+  //             inline_keyboard: [
+  //               [{ text: "📢 Join Channel", url: `https://t.me/${REQUIRED_CHANNEL.replace('@','')}` }],
+  //               [{ text: " Verify", callback_data: "verify_channel" }]
+  //             ]
+  //           }
+  //         }
+  //       );
+  //   }
+
+  //   // ✅ Verified → continue
+  //   // await ctx.reply("✅ Verified! Welcome aboard 🎉");
+  //   await sendSuccess(ctx, `✅ Verified! Welcome aboard 🎉`);
+  //   await handleReferralAndStart(ctx);
+  // });
   // 🔁 Verify button callback
-  bot.action("verify_channel", async (ctx) => {
-    await ctx.answerCbQuery("Checking… ⏳");
+bot.action("verify_channel", async (ctx) => {
+  await ctx.answerCbQuery("Checking… ⏳");
 
-    const isInChannel = await isUserInChannel(ctx, REQUIRED_CHANNEL);
+  const isInChannel = await isUserInChannel(ctx, REQUIRED_CHANNEL);
 
-    if (!isInChannel) {
-      return await ctx.reply(
-          `<b>❌ Error:</b> You havent joined our channel yet\n\n `+
-          `To enjoy the full experience, please join our official channel.`,
-        {
-            parse_mode: "HTML",
-            disable_web_page_preview: true,
-            reply_markup: {
-              inline_keyboard: [
-                [{ text: "📢 Join Channel", url: `https://t.me/${REQUIRED_CHANNEL.replace('@','')}` }],
-                [{ text: " Verify", callback_data: "verify_channel" }]
-              ]
-            }
-          }
-        );
-    }
+  if (!isInChannel) {
+    return await ctx.reply(
+      `<b>❌ Error:</b> You haven’t joined our channel yet.<br><br>` +
+      `To enjoy the full experience, please join our official channel.`,
+      {
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "📢 Join Channel", url: `https://t.me/${REQUIRED_CHANNEL.replace('@','')}` }],
+            [{ text: "✅ Verify", callback_data: "verify_channel" }]
+          ]
+        }
+      }
+    );
+  }
 
-    // ✅ Verified → continue
-    // await ctx.reply("✅ Verified! Welcome aboard 🎉");
-    await sendSuccess(ctx, `✅ Verified! Welcome aboard 🎉`);
-    await handleReferralAndStart(ctx);
-  });
+  // ✅ Verified → continue
+  await sendSuccess(ctx, `✅ Verified! Welcome aboard 🎉`);
+  await handleReferralAndStart(ctx);
+
+  // 🎉 Send a welcome message to the channel
+  try {
+    await ctx.telegram.sendMessage(
+      REQUIRED_CHANNEL, // channel username or numeric ID
+      `🎉 Please welcome <a href="tg://user?id=${ctx.from.id}">${ctx.from.first_name}</a>!  
+      
+      They just verified and joined our community 🚀`,
+      { parse_mode: "HTML" }
+    );
+  } catch (err) {
+    console.error("⚠️ Could not send welcome message to channel:", err.message);
+  }
+});
+
 
 // 🔧 Extracted function to handle your referral + start logic
 async function handleReferralAndStart(ctx) {

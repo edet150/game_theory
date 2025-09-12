@@ -19,20 +19,23 @@ async function showStartScreen(ctx) {
     const currentLotteryWeek = await Week.findOne({
       order: [['week_number', 'DESC']]
     });
-
+   const winningRecord = await Winning.findOne({
+            where: { week_code: currentWeek.code }
+        });
     const weekLabel = currentLotteryWeek 
       ? `${currentLotteryWeek.week_number} `
       : 'Current Week';
 
     // Example prize pool (later make dynamic: 80% of all entries)
-    const prizeMoney = "₦100,000";
+    const prizeMoney = winningRecord.winning_amount ?? "₦100,000";
+
 
     // Fixed welcome text with proper HTML formatting
     const welcomeText = 
         `👋 Welcome to <b>Game Theory </b>\n\n` +
         `Where numbers meet strategy.\n\n` +
         `<b style="color:blue;">This Round:</b>  ${weekLabel}\n` +
-        `<b>Prize Pool:</b>  ${prizeMoney}\n\n` +
+        `<b>Prize Amount:</b>  ${prizeMoney}\n\n` +
         `<b>Entry Window:</b>  Monday–Friday\n` +
         `<b>Result Drop:</b>  Sunday 6:00 PM (Africa/Lagos)\n\n` +
         `Choose your arena below to make your move:`;
