@@ -313,7 +313,7 @@ bot.action("verify_channel", async (ctx) => {
         reply_markup: {
           inline_keyboard: [
             [{ text: "📢 Join Channel", url: `https://t.me/${REQUIRED_CHANNEL.replace('@','')}` }],
-            [{ text: "✅ Verify", callback_data: "verify_channel" }]
+            [{ text: "Verify", callback_data: "verify_channel" }]
           ]
         }
       }
