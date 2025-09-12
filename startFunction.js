@@ -1,7 +1,8 @@
 // In a new file, or at the top of an existing one.
 // Let's create a new file `utils/startFlow.js`
 
-const { User , Week, Winning, Entry, Payment} = require('./models');
+const { User, Week, Winning, Entry, Payment } = require('./models');
+const { Op } = require("sequelize");
 
 
 async function showStartScreen(ctx) {
@@ -19,12 +20,42 @@ async function showStartScreen(ctx) {
     const currentLotteryWeek = await Week.findOne({
       order: [['week_number', 'DESC']]
     });
+      
+      
+       // Fetch latest week info
+            const today = new Date();
+      
+              // Get current week (based on dates)
+              const currentWeek = await Week.findOne({
+              where: {
+                  starts_at: { [Op.lte]: today },
+                  ends_at: { [Op.gte]: today }
+              }
+              });
+          // If no current week found, get the latest week
+          let weekLabel = 'Current Week';
+          let weekCode = '';
+          
+          if (currentWeek) {
+            weekLabel = `${currentWeek.week_name} (Week ${currentWeek.week_number}, ${currentWeek.year})`;
+            weekCode = currentWeek.code;
+          } else {
+            // Fallback: get the most recent week
+            const latestWeek = await Week.findOne({
+              order: [['createdAt', 'DESC']]
+            });
+            if (latestWeek) {
+              weekLabel = `${latestWeek.week_number} `;
+              weekCode = latestWeek.code;
+            }
+      }
+      
+
+      
+      
    const winningRecord = await Winning.findOne({
             where: { week_code: currentWeek.code }
         });
-    const weekLabel = currentLotteryWeek 
-      ? `${currentLotteryWeek.week_number} `
-      : 'Current Week';
 
     // Example prize pool (later make dynamic: 80% of all entries)
     const prizeMoney = winningRecord.winning_amount ?? "₦100,000";
