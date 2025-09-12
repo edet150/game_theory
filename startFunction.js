@@ -66,7 +66,7 @@ async function showStartScreen(ctx) {
         `👋 Welcome to <b>Game Theory </b>\n\n` +
         `Where numbers meet strategy.\n\n` +
         `<b style="color:blue;">This Round:</b>  ${weekLabel}\n` +
-        `<b>Price Amount:</b> ₦${Number(prizeMoney).toLocaleString()}\n\n` +
+        `<b>Price Amount:</b>  ₦${Number(prizeMoney).toLocaleString()}\n\n` +
         `<b>Entry Window:</b>  Monday–Friday\n` +
         `<b>Result Drop:</b>  Sunday 6:00 PM (Africa/Lagos)\n\n` +
         `Choose your arena below to make your move:`;
