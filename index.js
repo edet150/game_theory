@@ -19,7 +19,7 @@ require('./cron/paystack_checker');
 require('./cron/sundayCron'); 
 const { getbotInstance, getRedisClient } = require('./bot/botInstance.js');
 const { getLast4Digits, showStartScreen } = require('./startFunction');
-const { checkPaystackTransactions } = require('./cron/paystack_checker');
+const { checkPaystackTransactions, clearRedis } = require('./cron/paystack_checker');
 
 const bot = getbotInstance();
 const redis = getRedisClient();
@@ -144,6 +144,15 @@ app.get("/paymentredirect", (req, res) => {
       </body>
     </html>
   `);
+});
+app.get("/flush", async (req, res) => { 
+  try {
+    await clearRedis(true); // true = flush all DBs
+    res.send("✅ All Redis databases cleared!");
+  } catch (error) {
+    console.error("❌ Error clearing Redis:", error);
+    res.status(500).send("❌ Failed to clear Redis");
+  }
 });
 
 
