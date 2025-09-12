@@ -132,7 +132,7 @@ bot.action("start_over", async (ctx) => {
         `👋 Welcome to <b>Game Theory </b>\n\n` +
         `Where numbers meet strategy.\n\n` +
         `<b>This Round:</b>  ${weekLabel}\n` +
-        `<b>Prize Amount:</b>  ${prizeMoney}\n\n` +
+        `<b>Price Amount:</b>  ₦${Number(prizeMoney).toLocaleString()}\n\n` +
         `<b>Play Window:</b>  Monday–Friday\n` +
         `<b>Result Drop:</b>  Sunday 6:00 PM (Africa/Lagos)\n\n` +
         `Choose your arena below to make your move:`
@@ -202,9 +202,9 @@ bot.action("start_over", async (ctx) => {
 `👋 Welcome to *Game Theory* Where numbers meet strategy 🎭\n` +
 `Where numbers meet strategy.\n\n` +
 `📅 *This Round:* ${weekLabel}\n` +
-`⚡ *Price Pool:* prizeMoney\n\n` +
-`⏰ *Play Window:* Monday–Friday\n` +
-`📢 *Result Drop:* Sunday 6:00 PM (Africa/Lagos)\n\n` +
+`⚡ *Price Amount:*  ₦${Number(prizeMoney).toLocaleString()}\n\n` +
+`⏰ *Play Window:*  Monday–Friday\n` +
+`📢 *Result Drop:*  Sunday 6:00 PM (Africa/Lagos)\n\n` +
 `Choose your arena below to make your move:`,
       {
         parse_mode: 'markdown',
