@@ -14,7 +14,7 @@ bot.action('how_it_works', async (ctx) => {
     '🎭 <b>The Rules of the Game</b>\n\n' +
     'Every Sunday at 6:00 PM WAT, we select <b>one strategist (winner)</b> from each pool. The system is built on fairness and transparency.\n\n' +
     
-    '1️⃣ <b>Winning Number</b>: We take the first Bitcoin block hash mined after 6:00 PM Lagos Time. The <b>last 4 digits</b> of this hash form the winning number.\n\n' +
+    '1️⃣ <b>Winning Number</b>: We take the first Bitcoin block hash mined after 6:00 PM. The <b>last 4 digits</b> of this hash form the winning number.\n\n' +
     
     '2️⃣ <b>Exact Match Wins</b>: If any entry matches those 4 digits exactly, that player wins instantly.\n\n' +
     
@@ -24,9 +24,9 @@ bot.action('how_it_works', async (ctx) => {
     '4️⃣ <b>Game Theory Balance</b>: If no exact or inverse match, we map the number to the pool size using modulo arithmetic. ' +
     'This guarantees a winner every single round.\n\n' +
     
-    '5️⃣ <b>Verify the Winning Number</b>: Anyone can check the block hash on btcscan.org to confirm fairness.\n\n' +
+    '5️⃣ <b>Verify the Winning Number</b>: Anyone can check the block hash on btcscan.org to confirm fairness.\n\n',
     
-    '✅ This isn\'t luck alone — it\'s strategy, randomness, and transparency working together.', 
+    // '✅ This isn\'t luck alone — it\'s strategy, randomness, and transparency working together.', 
     {
       parse_mode: 'HTML',
       reply_markup: {
@@ -42,7 +42,21 @@ bot.action('how_it_works', async (ctx) => {
   
 bot.action("start_over", async (ctx) => {
   await ctx.answerCbQuery();
+      if (ctx.session.welcomeMessageId) {
+        try {
   
+            try {
+              await ctx.deleteMessage(ctx.session.welcomeMessageId);
+              // delete ctx.session.welcomeMessageId;
+            } catch (err) {
+              console.log('Could not delete confirmation message:', err.message);
+            }
+
+        } catch (error) {
+          console.log('Could not schedule confirmation message deletion:', error.message);
+        }
+      }
+
   try {
     // Delete the bot's prompt message if it exists
     if (ctx.session.startPromptMessageId) {
@@ -73,16 +87,16 @@ bot.action("start_over", async (ctx) => {
   ctx.session = essentialData;
   
   try {
-    // Fetch latest week info
-        const today = new Date();
-  
-          // Get current week (based on dates)
-          const currentWeek = await Week.findOne({
-          where: {
-              starts_at: { [Op.lte]: today },
-              ends_at: { [Op.gte]: today }
-          }
-          });
+  // Fetch latest week info
+      const today = new Date();
+
+        // Get current week (based on dates)
+        const currentWeek = await Week.findOne({
+        where: {
+            starts_at: { [Op.lte]: today },
+            ends_at: { [Op.gte]: today }
+        }
+        });
     // If no current week found, get the latest week
     let weekLabel = 'Current Week';
     let weekCode = '';
@@ -323,19 +337,35 @@ bot.action("verify_channel", async (ctx) => {
   // ✅ Verified → continue
   await sendSuccess(ctx, `✅ Verified! Welcome aboard 🎉`);
   await handleReferralAndStart(ctx);
-  const fullName = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(" ");
+  // const fullName = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(" ");
   // 🎉 Send a welcome message to the channel
-  try {
-    await ctx.telegram.sendMessage(
-      REQUIRED_CHANNEL, // channel username or numeric ID
+
+try {
+  const fullName = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(" ");
+
+  await ctx.telegram.sendMessage(
+    REQUIRED_CHANNEL, // channel username or numeric ID
 `🎉 Please welcome <a href="tg://user?id=${ctx.from.id}">${fullName}</a>!  
       
 They just verified and joined our community 🚀`,
-      { parse_mode: "HTML" }
-    );
-  } catch (err) {
-    console.error("⚠️ Could not send welcome message to channel:", err.message);
-  }
+    {
+      parse_mode: "HTML",
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: "🎭 Return to Game Theory Bot",
+              url: `https://t.me/${process.env.BOT_NAME}`
+            }
+          ]
+        ]
+      }
+    }
+  );
+} catch (err) {
+  console.error("⚠️ Could not send welcome message to channel:", err.message);
+}
+
 });
 
 
