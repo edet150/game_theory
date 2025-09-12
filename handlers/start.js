@@ -305,7 +305,7 @@ bot.action("verify_channel", async (ctx) => {
 
   if (!isInChannel) {
     return await ctx.reply(
-      `<b>❌ Error:</b> You haven’t joined our channel yet.<br><br>` +
+      `<b>❌ Error:</b> You haven’t joined our channel yet.\n\n` +
       `To enjoy the full experience, please join our official channel.`,
       {
         parse_mode: "HTML",
