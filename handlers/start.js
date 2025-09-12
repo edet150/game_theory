@@ -323,14 +323,14 @@ bot.action("verify_channel", async (ctx) => {
   // ✅ Verified → continue
   await sendSuccess(ctx, `✅ Verified! Welcome aboard 🎉`);
   await handleReferralAndStart(ctx);
-
+  const fullName = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(" ");
   // 🎉 Send a welcome message to the channel
   try {
     await ctx.telegram.sendMessage(
       REQUIRED_CHANNEL, // channel username or numeric ID
-      `🎉 Please welcome <a href="tg://user?id=${ctx.from.id}">${ctx.from.first_name}</a>!  
+`🎉 Please welcome <a href="tg://user?id=${ctx.from.id}">${fullName}</a>!  
       
-      They just verified and joined our community 🚀`,
+They just verified and joined our community 🚀`,
       { parse_mode: "HTML" }
     );
   } catch (err) {
