@@ -1,7 +1,7 @@
 // In a new file, or at the top of an existing one.
 // Let's create a new file `utils/startFlow.js`
 
-const { User , Week, Winnning, Entry, Payment} = require('./models');
+const { User , Week, Winning, Entry, Payment} = require('./models');
 
 
 async function showStartScreen(ctx) {
