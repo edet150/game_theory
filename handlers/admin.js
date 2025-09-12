@@ -237,7 +237,7 @@ module.exports = (bot) => {
                     parse_mode: 'Markdown',
                     reply_markup: {
                         inline_keyboard: [
-                            [{ text: 'Random Pick', callback_data: 'assign_method:random' }],
+                            [{ text: '🎲 Random Pick', callback_data: 'assign_method:random' }],
                             [{ text: 'I\'ll Choose My Numbers', callback_data: 'assign_method:choose' }]
                         ]
                     }
@@ -1448,7 +1448,7 @@ async function sendToTelegramChannel(ctx, message) {
         
         for (let i = 0; i < messageParts.length; i++) {
             await ctx.telegram.sendMessage(
-                `@${CHANNEL_USERNAME}`,
+                `@${process.env.CHANNEL_NAME}`,
                 messageParts[i],
                 { 
                     parse_mode: 'Markdown',

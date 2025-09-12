@@ -726,7 +726,7 @@ bot.action("random_refresh", async (ctx) => {
           {
               reply_markup: {
                   inline_keyboard: [
-                      [{ text: 'Random', callback_data: 'assign_method:random' }],
+                      [{ text: '🎲 Random Pick', callback_data: 'assign_method:random' }],
                       [{ text: 'I\'ll Choose My Numbers', callback_data: 'assign_method:choose' }]
                   ]
               }
