@@ -691,8 +691,9 @@ async function generateRandomNumbers(poolId, quantity) {
 
 // New function to build the grid for random numbers
 function buildRandomGrid(numbers, finalized = false) {
-  const text = `Your ${finalized ? 'finalized' : 'randomly selected'} numbers: ${numbers.join(", ")}`;
-  
+  const boldNumbers = numbers.join(", ").replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1"); // Escape special chars
+  const text = `Your ${finalized ? 'finalized' : 'randomly selected'} numbers: *${boldNumbers}*`;
+
   let keyboard;
   if (finalized) {
     // Read-only view for finalized entries
@@ -708,9 +709,14 @@ function buildRandomGrid(numbers, finalized = false) {
       ],
     ]);
   }
-  
-  return { text, reply_markup: keyboard.reply_markup };
+
+  return {
+    text,
+    parse_mode: "MarkdownV2",
+    reply_markup: keyboard.reply_markup
+  };
 }
+
 async function checkQueryExpiry(ctx, restartOnExpire = false) {
   const now = Date.now();
 console.log('working')

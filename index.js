@@ -170,8 +170,8 @@ return res.send(`
 
       <script>
         setTimeout(() => {
-          window.location.href = "https://t.me/${process.env.CHANNEL_NAME}";
-        }, 4000);
+          window.location.href = "https://t.me/${process.env.BOT_NAME}";
+        }, 6000);
       </script>
     </body>
   </html>
