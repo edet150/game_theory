@@ -1017,7 +1017,7 @@ async function sendToTelegramChannelHTML(ctx, message) {
             
             message += "<b>🎊 CONGRATULATIONS! 🎊</b>\n\n";
             message += "To claim your prize, please:\n";
-            message += "1. Contact the admin via private message\n";
+            message += "1. Contact the admin via private message or click the chat icon at the bottom left corner\n";
             message += "2. Provide your bank account details for payment\n";
             message += "3. Payments are processed within 24-48 hours\n\n";
             message += "<b>Admin Contact:</b> @gametheory_admim\n\n";

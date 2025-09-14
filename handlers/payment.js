@@ -309,7 +309,7 @@ await bot.telegram.sendMessage(
 
   `📢 Stay updated! Join our channel to see winning numbers, winners, and important announcements.\n\n` +
 
-  `🎭 <b>How Winners Are Chosen:</b>\n` +
+  `🎭 <b>How Winners Are Chosen:</b>\n\n` +
   `1️⃣ <b>Exact Match</b>: If your number matches the last 4 digits of the Bitcoin block hash, you win instantly.\n` +
   `2️⃣ <b>Inverse Match</b>: If no exact match, we look for the reversed number (e.g., 1234 → 4321).\n` +
   `3️⃣ <b>Modulo Fallback</b>: If still no winner, the hash is mapped to the pool size using modulo — this guarantees a winner every round.\n\n` +
