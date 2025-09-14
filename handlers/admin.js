@@ -1020,9 +1020,9 @@ async function sendToTelegramChannelHTML(ctx, message) {
             message += "1. Contact the admin via private message\n";
             message += "2. Provide your bank account details for payment\n";
             message += "3. Payments are processed within 24-48 hours\n\n";
-            message += "<b>Admin Contact:</b> @YourAdminUsername\n\n";
+            message += "<b>Admin Contact:</b> @gametheory_admim\n\n";
             message += "Thank you to everyone who participated!\n";
-            message += "Next draw begins tomorrow";
+            message += "Next draw begins on Monday";
 
             return message;
         } catch (error) {
