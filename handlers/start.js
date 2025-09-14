@@ -192,15 +192,16 @@ console.log(winning)
           prizeMoney = `₦${winning.winning_amount.toLocaleString()}`;
         }
       }
-console.log(Number(prizeMoney))
-console.log(Number(prizeMoney).toLocaleString())
-console.log('weekCode', weekCode)
+      const cleanedPrizeMoney = prizeMoney.replace(/[^0-9.-]+/g, ''); // removes commas, $, etc.
+
+      const numericPrizeMoney = Number(cleanedPrizeMoney);
+      console.log('weekCode', numericPrizeMoney)
       // Compose welcome message
       const welcomeText =
           `👋 Welcome to <b>Game Theory </b>\n\n` +
           `Where numbers meet strategy.\n\n` +
           `<b>This Round:</b>  ${weekLabel}\n` +
-          `<b>Price Amount:</b>  ₦${Number(prizeMoney).toLocaleString()}\n\n` +
+          `<b>Price Amount:</b>  ₦${numericPrizeMoney.toLocaleString()}\n\n` +
           `<b>Entry Window:</b>  Monday–Saturday\n` +
           `<b>Result Drop:</b>  Sunday 6:00 PM (Africa/Lagos)\n\n` +
           `Choose your arena below to make your move:`
