@@ -46,7 +46,7 @@ async function showPaymentConfirmation(ctx) {
         reply_markup: {
             inline_keyboard: [
                 [
-                    { text: '✅ Confirm & Pay', callback_data: 'proceed_to_payment' }
+                    { text: '✅ Confirm & Pay with Paystack', callback_data: 'proceed_to_payment' }
                 ],
                 [
                     { text: '✏️ Edit Selection', callback_data: 'edit_selection' }

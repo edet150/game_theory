@@ -108,7 +108,7 @@ ${referredUsers.length > 0 ? referredUsers.map(u =>
 
 <b>📋 How it works:</b>
 • Share your link below
-• Get 1 bonus entry for each friend's first purchase
+• Earn the same number of bonus entries as your friend’s first purchase (e.g., if they buy 6 entries, you get 6 bonus entries)
 • Use bonus entries for free plays
 
 <b>🔗 Your referral link: (tap and hold to copy)</b>

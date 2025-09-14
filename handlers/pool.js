@@ -200,17 +200,20 @@ bot.action(/^set_quantity:(\d+)/, async (ctx) => {
     );
     
     // Store new assignment message ID
-    ctx.session.assignmentMessageId = assignmentMessage.message_id;
+  ctx.session.assignmentMessageId = assignmentMessage.message_id;
+  // Remove nextPrompt
+  ctx.session.nextAction = ''
 });
   
   bot.on('message', async (ctx) => {
   
     if (ctx.session.nextAction === 'prompt_quantity' && ctx.message.text) {
         const quantity = parseInt(ctx.message.text, 10);
-        if (isNaN(quantity) || quantity <= 0) {
-            ctx.reply('Please enter a valid number of entries.');
+        if (isNaN(quantity) || quantity <= 0 || quantity > 100) {
+            ctx.reply('❌ Please enter a valid number between 1 and 100.');
             return;
         }
+
 
         ctx.session.quantity = quantity;
         ctx.session.nextAction = null; // Clear the next action

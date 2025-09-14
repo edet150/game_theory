@@ -45,7 +45,7 @@ async function showPaymentConfirmation(ctx) {
         reply_markup: {
             inline_keyboard: [
                 [
-                    { text: '✅ Confirm & Pay', callback_data: 'proceed_to_payment' }
+                    { text: '✅ Confirm & Pay with Paystack', callback_data: 'proceed_to_payment' }
                 ],
                 [
                     { text: '✏️ Edit Selection', callback_data: 'edit_selection' }
@@ -291,7 +291,7 @@ async function initiatePayment(bot, ctx) {
 🏆 *Lottery Week:* ${lottery_week_number}
 ✅ *Status:* Confirmed and paid
 
-💡 *Remember: Draw happens every sunday at 6:00 PM*
+💡 *Remember: This draw will take place on 28th September, 2025 at 6:00 PM*
         `;
 
         // Send success message with summary to user
@@ -303,19 +303,29 @@ async function initiatePayment(bot, ctx) {
         );
 
         // Additional confirmation message
-    await bot.telegram.sendMessage(
-        telegram_id,
-        `✅ Successful! Your ${quantity} entries in the ${pool.name} Pool for week ${lottery_week_number} have been confirmed. Good luck! 🎉\n\n` +
-        `📢 Stay updated! Join our channel to see winning numbers, winners, and important announcements.`,
-        {
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: "🔄 Start Over", callback_data: "start_over" }],
-                    [{ text: "📢 Join Updates Channel", url: `https://t.me/${process.env.CHANNEL_NAME}` }]
-                ]
-            }
-        }
-    );
+await bot.telegram.sendMessage(
+  telegram_id,
+  `✅ Successful! Your ${quantity} entries in the <b>${pool.name}</b> Pool for week <b>${lottery_week_number}</b> have been confirmed. Good luck! 🎉\n\n` +
+
+  `📢 Stay updated! Join our channel to see winning numbers, winners, and important announcements.\n\n` +
+
+  `🎭 <b>How Winners Are Chosen:</b>\n` +
+  `1️⃣ <b>Exact Match</b>: If your number matches the last 4 digits of the Bitcoin block hash, you win instantly.\n` +
+  `2️⃣ <b>Inverse Match</b>: If no exact match, we look for the reversed number (e.g., 1234 → 4321).\n` +
+  `3️⃣ <b>Modulo Fallback</b>: If still no winner, the hash is mapped to the pool size using modulo — this guarantees a winner every round.\n\n` +
+
+  `💡 <b>Strategy Tip:</b> Since modulo can trigger if no matches exist, it’s smarter to <b>spread your entries across different numbers</b> instead of stacking them. This increases your chance of being closest to the modulo position! 🔑`,
+  {
+    parse_mode: "HTML",
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "➕ Buy More Entries", callback_data: "start_over" }],
+        [{ text: "📢 Join Channel", url: `https://t.me/${process.env.CHANNEL_NAME}` }]
+      ]
+    }
+  }
+);
+
 
 
     } catch (error) {
@@ -527,12 +537,12 @@ async function finalizeEntries(userId, poolId, numbers, lottery_week_code, lotte
     await Entry.bulkCreate(entries);
 
     // Step 5: Deduct bonus entries if needed
-if (isBonus) {
-  await User.increment(
-    { bonus_entries: -uniqueNumbers.length },
-    { where: { id: userId } }
-  );
-}
+    if (isBonus) {
+      await User.increment(
+        { bonus_entries: -uniqueNumbers.length },
+        { where: { id: userId } }
+      );
+    }
 
     return { success: true, message: `Entries created: ${uniqueNumbers.join(", ")}` };
   } catch (error) {

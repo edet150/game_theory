@@ -220,8 +220,8 @@ module.exports = (bot) => {
         // 3. Check for quantity prompt
         if (ctx.session.nextAction === 'prompt_quantity' && ctx.message.text) {
             const quantity = parseInt(ctx.message.text, 10);
-            if (isNaN(quantity) || quantity <= 0) {
-                ctx.reply('Please enter a valid number of entries.');
+            if (isNaN(quantity) || quantity <= 0 || quantity > 100) {
+                ctx.reply('❌ Please enter a valid number between 1 and 100.');
                 return;
             }
 

@@ -67,7 +67,7 @@ async function showStartScreen(ctx) {
         `Where numbers meet strategy.\n\n` +
         `<b style="color:blue;">This Round:</b>  ${weekLabel}\n` +
         `<b>Price Amount:</b>  ₦${Number(prizeMoney).toLocaleString()}\n\n` +
-        `<b>Entry Window:</b>  Monday–Friday\n` +
+        `<b>Entry Window:</b>  Monday–Saturday\n` +
         `<b>Result Drop:</b>  Sunday 6:00 PM (Africa/Lagos)\n\n` +
         `Choose your arena below to make your move:`;
 

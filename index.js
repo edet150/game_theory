@@ -123,27 +123,60 @@ const PORT = process.env.PORT || 3000;
 // Payment redirect route
 app.get("/paymentredirect", (req, res) => {
   checkPaystackTransactions()
-  return res.send(`
-        <html>
-      <head><title>Redirecting to Telegram...</title></head>
-      <body style="font-family: Arial; text-align: center; padding: 50px;">
-        <h2>✅ Payment Complete</h2>
-        <p>Kindly close the browser session to return to your bot</p>
+return res.send(`
+  <!DOCTYPE html>
+  <html>
+    <head>
+      <title>Redirecting to Telegram...</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          text-align: center;
+          padding: 40px 20px;
+          margin: 0;
+          background-color: #f9f9f9;
+        }
 
-        <a href="https://t.me/${process.env.BOT_NAME}" 
-           style="padding: 10px 20px; background: #0088cc; color: white; 
-                  text-decoration: none; border-radius: 5px; display:inline-block; margin-top:20px;">
-          🚀 Open Telegram Bot
-        </a>
+        h2 {
+          color: #28a745;
+          font-size: 24px;
+        }
 
-        <script>
-          setTimeout(() => {
-            window.location.href = "https://t.me/${process.env.BOT_NAME}";
-          }, 4000);
-        </script>
-      </body>
-    </html>
-  `);
+        p {
+          font-size: 16px;
+          color: #333;
+        }
+
+        a {
+          padding: 12px 24px;
+          background: #0088cc;
+          color: white;
+          text-decoration: none;
+          border-radius: 6px;
+          display: inline-block;
+          margin-top: 24px;
+          font-size: 16px;
+        }
+      </style>
+    </head>
+    <body>
+      <h2>✅ Payment Complete</h2>
+      <p>Kindly close the browser session to return to your bot</p>
+
+      <a href="https://t.me/${process.env.CHANNEL_NAME}">
+        🚀 Open Telegram Channel
+      </a>
+
+      <script>
+        setTimeout(() => {
+          window.location.href = "https://t.me/${process.env.CHANNEL_NAME}";
+        }, 4000);
+      </script>
+    </body>
+  </html>
+`);
+
 });
 app.get("/flush", async (req, res) => { 
   try {

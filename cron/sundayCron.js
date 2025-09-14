@@ -19,7 +19,8 @@ cron.schedule("0 0 0 * * 0", async () => { // Run every Sunday at midnight
         const fullCode = `POOL-${code}`;
         const weekName = `Week ${weekNumber}, ${year}`;
         const startsAt = now.startOf("isoWeek").toDate();
-        const endsAt = now.endOf("isoWeek").toDate();
+        // const endsAt = now.endOf("isoWeek").toDate();
+        const endsAt = now.add(2, 'weeks').endOf('isoWeek').toDate();
         console.log('startsAt', startsAt)
         console.log('endsAt', endsAt)
         // Create or find week

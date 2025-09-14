@@ -5,162 +5,157 @@ const { sendError, sendSuccess } = require('../utils/responseUtils');
 const { Op } = require("sequelize");
 const { getbotInstance, getRedisClient } = require('../bot/botInstance.js');
 const redis = getRedisClient();
+const fs = require('fs');
+const path = require('path');
 module.exports = (bot) => {
 
 
-bot.action('how_it_works', async (ctx) => {
+  bot.action('how_it_work', async (ctx) => {
   await ctx.answerCbQuery();
-  const message = await messageManager.sendAndTrack(ctx, 
-    '🎭 <b>The Rules of the Game</b>\n\n' +
-    'Every Sunday at 6:00 PM WAT, we select <b>one strategist (winner)</b> from each pool. The system is built on fairness and transparency.\n\n' +
-    
-    '1️⃣ <b>Winning Number</b>: We take the first Bitcoin block hash mined after 6:00 PM. The <b>last 4 digits</b> of this hash form the winning number.\n\n' +
-    
-    '2️⃣ <b>Exact Match Wins</b>: If any entry matches those 4 digits exactly, that player wins instantly.\n\n' +
-    
-    '3️⃣ <b>Inverse Match (Fairness Fallback)</b>: If no exact match exists, we look for entries that match the <b>inverse</b> of the winning number. ' +
-    '(Example: If winning number is 1234, we look for entries with 4321)\n\n' +
-    
-    '4️⃣ <b>Game Theory Balance</b>: If no exact or inverse match, we map the number to the pool size using modulo arithmetic. ' +
-    'This guarantees a winner every single round.\n\n' +
-    
-    '5️⃣ <b>Verify the Winning Number</b>: Anyone can check the block hash on btcscan.org to confirm fairness.\n\n',
-    
-    // '✅ This isn\'t luck alone — it\'s strategy, randomness, and transparency working together.', 
-    {
-      parse_mode: 'HTML',
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "🔙 Back", callback_data: "start_over" }]
-        ]
-      }
+
+  const photoPaths = [
+    "./images/A6.jpg",
+    "./images/images.jpg"
+  ];
+
+  await messageManager.sendMediaGroupAndTrack(ctx, photoPaths, {
+    caption:
+      '🎭 <b>The Rules of the Game</b>\n\n' +
+      'Every Sunday at 6:00 PM WAT, we select <b>one strategist (winner)</b> from each pool. The system is built on fairness and transparency.\n\n' +
+      
+      '1️⃣ <b>Winning Number</b>: We take the first Bitcoin block hash mined after 6:00 PM. The <b>last 4 digits</b> of this hash form the winning number.\n\n' +
+      
+      '2️⃣ <b>Exact Match Wins</b>: If any entry matches those 4 digits exactly, that player wins instantly.\n\n' +
+      
+      '3️⃣ <b>Inverse Match (Fairness Fallback)</b>: If no exact match exists, we look for entries that match the <b>inverse</b> of the winning number. ' +
+      '(Example: If winning number is 1234, we look for entries with 4321)\n\n' +
+      
+      '4️⃣ <b>Game Theory Balance</b>: If no exact or inverse match, we map the number to the pool size using modulo arithmetic. ' +
+      'This guarantees a winner every single round.\n\n' +
+      
+      '5️⃣ <b>Verify the Winning Number</b>: Anyone can check the block hash on btcscan.org to confirm fairness.\n\n',
+    parse_mode: "HTML"
+  });
+
+  // Optionally add back button as a separate message
+  await messageManager.sendAndTrack(ctx, "⬅️ Back to menu", {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "🔙 Back", callback_data: "start_over" }]
+      ]
     }
-  );
+  });
 });
 
 
-  
-bot.action("start_over", async (ctx) => {
+  bot.action('how_it_works', async (ctx) => {
   await ctx.answerCbQuery();
-      if (ctx.session.welcomeMessageId) {
+
+  // Send image from local `/images` folder in your project root
+  const imagePath = "./images/block.jpg"; // adjust path if needed
+  await messageManager.sendPhotoAndTrack(ctx, imagePath, {
+    caption:
+      '🎭 <b>The Rules of the Game</b>\n\n' +
+      'Every Sunday at 6:00 PM WAT, we select <b>one strategist (winner)</b> from each pool.\n\n' +
+      '1️⃣ <b>Winning Number</b>: The last 4 digits of the first Bitcoin block hash mined after 6:00 PM.\n\n' +
+      '2️⃣ <b>Exact Match Wins</b>: Exact 4 digits = instant win.\n\n' +
+      '3️⃣ <b>Inverse Match</b>: If no exact, we check reversed digits.\n\n' +
+      '4️⃣ <b>Game Theory Balance</b>: If no exact or inverse match, we map the number to the pool size using modulo arithmetic. ' +
+      'This guarantees a winner every single round.\n\n' +
+      '5️⃣ <b>Verify</b>: Anyone can check btcscan.org for fairness.\n\n',
+    parse_mode: "HTML",
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "🔙 Back", callback_data: "start_over" }]
+      ]
+    }
+  });
+  });
+
+
+  bot.action('how_it_work', async (ctx) => {
+    await ctx.answerCbQuery();
+      const imagePath = path.join(__dirname, 'images', 'how_it_works.jpg');
+    const message = await messageManager.sendAndTrack(ctx, 
+      '🎭 <b>The Rules of the Game</b>\n\n' +
+      'Every Sunday at 6:00 PM WAT, we select <b>one strategist (winner)</b> from each pool. The system is built on fairness and transparency.\n\n' +
+      
+      '1️⃣ <b>Winning Number</b>: We take the first Bitcoin block hash mined after 6:00 PM. The <b>last 4 digits</b> of this hash form the winning number.\n\n' +
+      
+      '2️⃣ <b>Exact Match Wins</b>: If any entry matches those 4 digits exactly, that player wins instantly.\n\n' +
+      
+      '3️⃣ <b>Inverse Match (Fairness Fallback)</b>: If no exact match exists, we look for entries that match the <b>inverse</b> of the winning number. ' +
+      '(Example: If winning number is 1234, we look for entries with 4321)\n\n' +
+      
+      '4️⃣ <b>Game Theory Balance</b>: If no exact or inverse match, we map the number to the pool size using modulo arithmetic. ' +
+      'This guarantees a winner every single round.\n\n' +
+      
+      '5️⃣ <b>Verify the Winning Number</b>: Anyone can check the block hash on btcscan.org to confirm fairness.\n\n',
+      
+      // '✅ This isn\'t luck alone — it\'s strategy, randomness, and transparency working together.', 
+      {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "🔙 Back", callback_data: "start_over" }]
+          ]
+        }
+      }
+    );
+  });
+
+
+  
+  bot.action("start_over", async (ctx) => {
+    await ctx.answerCbQuery();
+        if (ctx.session.welcomeMessageId) {
+          try {
+    
+              try {
+                await ctx.deleteMessage(ctx.session.welcomeMessageId);
+                // delete ctx.session.welcomeMessageId;
+              } catch (err) {
+                console.log('Could not delete confirmation message:', err.message);
+              }
+
+          } catch (error) {
+            console.log('Could not schedule confirmation message deletion:', error.message);
+          }
+        }
+
+    try {
+      // Delete the bot's prompt message if it exists
+      if (ctx.session.startPromptMessageId) {
         try {
-  
-            try {
-              await ctx.deleteMessage(ctx.session.welcomeMessageId);
-              // delete ctx.session.welcomeMessageId;
-            } catch (err) {
-              console.log('Could not delete confirmation message:', err.message);
-            }
-
+          await ctx.telegram.deleteMessage(ctx.chat.id, ctx.session.startPromptMessageId);
         } catch (error) {
-          console.log('Could not schedule confirmation message deletion:', error.message);
+          console.log('Could not delete prompt message:', error.message);
+        }
+        delete ctx.session.startPromptMessageId;
+      }
+      
+      // Delete the current message with the button
+      if (ctx.callbackQuery && ctx.callbackQuery.message) {
+        try {
+          await ctx.deleteMessage();
+        } catch (error) {
+          console.log('Could not delete callback message:', error.message);
         }
       }
-
-  try {
-    // Delete the bot's prompt message if it exists
-    if (ctx.session.startPromptMessageId) {
-      try {
-        await ctx.telegram.deleteMessage(ctx.chat.id, ctx.session.startPromptMessageId);
-      } catch (error) {
-        console.log('Could not delete prompt message:', error.message);
-      }
-      delete ctx.session.startPromptMessageId;
+    } catch (error) {
+      console.log('Error deleting messages:', error.message);
     }
     
-    // Delete the current message with the button
-    if (ctx.callbackQuery && ctx.callbackQuery.message) {
-      try {
-        await ctx.deleteMessage();
-      } catch (error) {
-        console.log('Could not delete callback message:', error.message);
-      }
-    }
-  } catch (error) {
-    console.log('Error deleting messages:', error.message);
-  }
-  
-  // Clear session (but keep some essential data if needed)
-  const essentialData = {
-    // Preserve any data you want to keep across sessions
-  };
-  ctx.session = essentialData;
-  
-  try {
-  // Fetch latest week info
-      const today = new Date();
-
-        // Get current week (based on dates)
-        const currentWeek = await Week.findOne({
-        where: {
-            starts_at: { [Op.lte]: today },
-            ends_at: { [Op.gte]: today }
-        }
-        });
-    // If no current week found, get the latest week
-    let weekLabel = 'Current Week';
-    let weekCode = '';
+    // Clear session (but keep some essential data if needed)
+    const essentialData = {
+      // Preserve any data you want to keep across sessions
+    };
+    ctx.session = essentialData;
     
-    if (currentWeek) {
-      weekLabel = `${currentWeek.week_name} (Week ${currentWeek.week_number}, ${currentWeek.year})`;
-      weekCode = currentWeek.code;
-    } else {
-      // Fallback: get the most recent week
-      const latestWeek = await Week.findOne({
-        order: [['createdAt', 'DESC']]
-      });
-      if (latestWeek) {
-        weekLabel = `${latestWeek.week_number} `;
-        weekCode = latestWeek.code;
-      }
-    }
-
-    // Fetch current week's winning record using the weekCode
-    let prizeMoney = "₦100,000"; // Default value
-    if (weekCode) {
-      const winning = await Winning.findOne({
-        where: { week_code: weekCode }
-      });
-
-      if (winning) {
-        prizeMoney = `₦${winning.winning_amount.toLocaleString()}`;
-      }
-    }
-
-    // Compose welcome message
-    const welcomeText =
-        `👋 Welcome to <b>Game Theory </b>\n\n` +
-        `Where numbers meet strategy.\n\n` +
-        `<b>This Round:</b>  ${weekLabel}\n` +
-        `<b>Price Amount:</b>  ₦${Number(prizeMoney).toLocaleString()}\n\n` +
-        `<b>Play Window:</b>  Monday–Friday\n` +
-        `<b>Result Drop:</b>  Sunday 6:00 PM (Africa/Lagos)\n\n` +
-        `Choose your arena below to make your move:`
-
-    // Send welcome message
-    const welcomeMessage = await ctx.reply(welcomeText, {
-      parse_mode: 'HTML',
-      reply_markup: {
-        inline_keyboard: [
-         [{ text: 'Alpha Arena (₦100/entry)', callback_data: `select_pool:Alpha` }],
-                [{ text: '🔒 Beta Arena (₦500/10 entries)', callback_data: `select_pool:Beta` }],
-                [{ text: 'How It Works', callback_data: 'how_it_works' }],
-                [{ text: 'My Entries', callback_data: 'view_entries' }],
-                [{ text: 'Referral Dashboard', callback_data: 'referral_dashboard' }],
-        ]
-      }
-    });
-
-  
-    // Store the welcome message ID for future cleanup
-    ctx.session.welcomeMessageId = welcomeMessage.message_id;
-    
-  } catch (error) {
-    console.error('Error fetching week information:', error);
-
+    try {
     // Fetch latest week info
         const today = new Date();
-  
+
           // Get current week (based on dates)
           const currentWeek = await Week.findOne({
           where: {
@@ -168,81 +163,344 @@ bot.action("start_over", async (ctx) => {
               ends_at: { [Op.gte]: today }
           }
           });
-    // If no current week found, get the latest week
-    let weekLabel = 'Current Week';
-    let weekCode = '';
-    
-    if (currentWeek) {
-      weekLabel = `${currentWeek.week_name} (Week ${currentWeek.week_number}, ${currentWeek.year})`;
-      weekCode = currentWeek.code;
-    } else {
-      // Fallback: get the most recent week
-      const latestWeek = await Week.findOne({
-        order: [['createdAt', 'DESC']]
-      });
-      if (latestWeek) {
-        weekLabel = `${latestWeek.week_number} `;
-        weekCode = latestWeek.code;
-      }
-    }
-        let prizeMoney = "₦100,000"; // Default value
-    if (weekCode) {
-      const winning = await Winning.findOne({
-        where: { week_code: weekCode }
-      });
-
-      if (winning) {
-        prizeMoney = `₦${winning.winning_amount.toLocaleString()}`;
-      }
-    }
-
-    // Fallback welcome message if there's an error
-    const fallbackMessage = await ctx.reply(
-
-`👋 Welcome to *Game Theory* Where numbers meet strategy 🎭\n` +
-`Where numbers meet strategy.\n\n` +
-`📅 *This Round:* ${weekLabel}\n` +
-`⚡ *Price Amount:*  ₦${Number(prizeMoney).toLocaleString()}\n\n` +
-`⏰ *Play Window:*  Monday–Friday\n` +
-`📢 *Result Drop:*  Sunday 6:00 PM (Africa/Lagos)\n\n` +
-`Choose your arena below to make your move:`,
-      {
-        parse_mode: 'markdown',
-        reply_markup: {
-           inline_keyboard: [
-          [{ text: 'Alpha Arena (₦100/entry)', callback_data: `select_pool:Alpha` }],
-          [{ text: '🔒 Beta Arena (₦500/10 entries)', callback_data: `select_pool:Beta` }],
-        //   [{ text: '🔒 HighRollers Arena (₦1000/ 20 entries)', callback_data: `select_pool:HighRollers` }],
-          [{ text: 'How It Works', callback_data: 'how_it_works' }],
-          [{ text: 'My Entries', callback_data: 'view_entries' }],
-          [{ text: 'Referral Dashboard', callback_data: 'referral_dashboard' }],
-        ]
+      // If no current week found, get the latest week
+      let weekLabel = 'Current Week';
+      let weekCode = '';
+      
+      if (currentWeek) {
+        weekLabel = `${currentWeek.week_name} (Week ${currentWeek.week_number}, ${currentWeek.year})`;
+        weekCode = currentWeek.code;
+      } else {
+        // Fallback: get the most recent week
+        const latestWeek = await Week.findOne({
+          order: [['createdAt', 'DESC']]
+        });
+        if (latestWeek) {
+          weekLabel = `${latestWeek.week_number} `;
+          weekCode = latestWeek.code;
         }
       }
-    );
 
-    ctx.session.welcomeMessageId = fallbackMessage.message_id;
-  }
-});
+      // Fetch current week's winning record using the weekCode
+      let prizeMoney = "₦100,000"; // Default value
+      if (weekCode) {
+        const winning = await Winning.findOne({
+          where: { week_code: weekCode }
+        });
+console.log(winning)
+        if (winning) {
+          prizeMoney = `₦${winning.winning_amount.toLocaleString()}`;
+        }
+      }
+console.log(Number(prizeMoney))
+console.log(Number(prizeMoney).toLocaleString())
+console.log('weekCode', weekCode)
+      // Compose welcome message
+      const welcomeText =
+          `👋 Welcome to <b>Game Theory </b>\n\n` +
+          `Where numbers meet strategy.\n\n` +
+          `<b>This Round:</b>  ${weekLabel}\n` +
+          `<b>Price Amount:</b>  ₦${Number(prizeMoney).toLocaleString()}\n\n` +
+          `<b>Entry Window:</b>  Monday–Saturday\n` +
+          `<b>Result Drop:</b>  Sunday 6:00 PM (Africa/Lagos)\n\n` +
+          `Choose your arena below to make your move:`
+
+      // Send welcome message
+      const welcomeMessage = await ctx.reply(welcomeText, {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [
+          [{ text: 'Alpha Arena (₦100/entry)', callback_data: `select_pool:Alpha` }],
+                  [{ text: '🔒 Beta Arena (₦500/10 entries)', callback_data: `select_pool:Beta` }],
+                  [{ text: 'How It Works', callback_data: 'how_it_works' }],
+                  [{ text: 'My Entries', callback_data: 'view_entries' }],
+                  [{ text: 'Referral Dashboard', callback_data: 'referral_dashboard' }],
+          ]
+        }
+      });
+
+    
+      // Store the welcome message ID for future cleanup
+      ctx.session.welcomeMessageId = welcomeMessage.message_id;
+      
+    } catch (error) {
+      console.error('Error fetching week information:', error);
+
+      // Fetch latest week info
+          const today = new Date();
+    
+            // Get current week (based on dates)
+            const currentWeek = await Week.findOne({
+            where: {
+                starts_at: { [Op.lte]: today },
+                ends_at: { [Op.gte]: today }
+            }
+            });
+      // If no current week found, get the latest week
+      let weekLabel = 'Current Week';
+      let weekCode = '';
+      
+      if (currentWeek) {
+        weekLabel = `${currentWeek.week_name} (Week ${currentWeek.week_number}, ${currentWeek.year})`;
+        weekCode = currentWeek.code;
+      } else {
+        // Fallback: get the most recent week
+        const latestWeek = await Week.findOne({
+          order: [['createdAt', 'DESC']]
+        });
+        if (latestWeek) {
+          weekLabel = `${latestWeek.week_number} `;
+          weekCode = latestWeek.code;
+        }
+      }
+          let prizeMoney = "₦100,000"; // Default value
+      if (weekCode) {
+        const winning = await Winning.findOne({
+          where: { week_code: weekCode }
+        });
+
+        if (winning) {
+          prizeMoney = `₦${winning.winning_amount.toLocaleString()}`;
+        }
+      }
+
+      // Fallback welcome message if there's an error
+      const fallbackMessage = await ctx.reply(
+
+  `👋 Welcome to *Game Theory* Where numbers meet strategy 🎭\n` +
+  `Where numbers meet strategy.\n\n` +
+  `📅 *This Round:* ${weekLabel}\n` +
+  `⚡ *Price Amount:*  ₦${Number(prizeMoney).toLocaleString()}\n\n` +
+  `⏰ *Play Window:*  Monday–Saturday\n` +
+  `📢 *Result Drop:*  Sunday 6:00 PM (Africa/Lagos)\n\n` +
+  `Choose your arena below to make your move:`,
+        {
+          parse_mode: 'markdown',
+          reply_markup: {
+            inline_keyboard: [
+            [{ text: 'Alpha Arena (₦100/entry)', callback_data: `select_pool:Alpha` }],
+            [{ text: '🔒 Beta Arena (₦500/10 entries)', callback_data: `select_pool:Beta` }],
+          //   [{ text: '🔒 HighRollers Arena (₦1000/ 20 entries)', callback_data: `select_pool:HighRollers` }],
+            [{ text: 'How It Works', callback_data: 'how_it_works' }],
+            [{ text: 'My Entries', callback_data: 'view_entries' }],
+            [{ text: 'Referral Dashboard', callback_data: 'referral_dashboard' }],
+          ]
+          }
+        }
+      );
+
+      ctx.session.welcomeMessageId = fallbackMessage.message_id;
+    }
+  });
+
+    bot.command("start_over", async (ctx) => {
+    // await ctx.answerCbQuery();
+        if (ctx.session.welcomeMessageId) {
+          try {
+    
+              try {
+                await ctx.deleteMessage(ctx.session.welcomeMessageId);
+                // delete ctx.session.welcomeMessageId;
+              } catch (err) {
+                console.log('Could not delete confirmation message:', err.message);
+              }
+
+          } catch (error) {
+            console.log('Could not schedule confirmation message deletion:', error.message);
+          }
+        }
+
+    try {
+      // Delete the bot's prompt message if it exists
+      if (ctx.session.startPromptMessageId) {
+        try {
+          await ctx.telegram.deleteMessage(ctx.chat.id, ctx.session.startPromptMessageId);
+        } catch (error) {
+          console.log('Could not delete prompt message:', error.message);
+        }
+        delete ctx.session.startPromptMessageId;
+      }
+      
+      // Delete the current message with the button
+      if (ctx.callbackQuery && ctx.callbackQuery.message) {
+        try {
+          await ctx.deleteMessage();
+        } catch (error) {
+          console.log('Could not delete callback message:', error.message);
+        }
+      }
+    } catch (error) {
+      console.log('Error deleting messages:', error.message);
+    }
+    
+    // Clear session (but keep some essential data if needed)
+    const essentialData = {
+      // Preserve any data you want to keep across sessions
+    };
+    ctx.session = essentialData;
+    
+    try {
+    // Fetch latest week info
+        const today = new Date();
+
+          // Get current week (based on dates)
+          const currentWeek = await Week.findOne({
+          where: {
+              starts_at: { [Op.lte]: today },
+              ends_at: { [Op.gte]: today }
+          }
+          });
+      // If no current week found, get the latest week
+      let weekLabel = 'Current Week';
+      let weekCode = '';
+      
+      if (currentWeek) {
+        weekLabel = `${currentWeek.week_name} (Week ${currentWeek.week_number}, ${currentWeek.year})`;
+        weekCode = currentWeek.code;
+      } else {
+        // Fallback: get the most recent week
+        const latestWeek = await Week.findOne({
+          order: [['createdAt', 'DESC']]
+        });
+        if (latestWeek) {
+          weekLabel = `${latestWeek.week_number} `;
+          weekCode = latestWeek.code;
+        }
+      }
+
+      // Fetch current week's winning record using the weekCode
+      let prizeMoney = "₦100,000"; // Default value
+      if (weekCode) {
+        const winning = await Winning.findOne({
+          where: { week_code: weekCode }
+        });
+
+        if (winning) {
+          prizeMoney = `₦${winning.winning_amount.toLocaleString()}`;
+        }
+      }
+      console.log(prizeMoney)
+      const cleanPrize = prizeMoney.replace(/[₦,]/g, '');
+
+      // Step 2: Convert to a number
+      const numericPrize = Number(cleanPrize);
+
+      // Compose welcome message
+      const welcomeText =
+          `👋 Welcome to <b>Game Theory </b>\n\n` +
+          `Where numbers meet strategy.\n\n` +
+          `<b>This Round:</b>  ${weekLabel}\n` +
+          `<b>Price Amount:</b>  ₦${numericPrize.toLocaleString()}\n\n` +
+          `<b>Entry Window:</b>  Monday–Saturday\n` +
+          `<b>Result Drop:</b>  Sunday 6:00 PM (Africa/Lagos)\n\n` +
+          `Choose your arena below to make your move:`
+
+      // Send welcome message
+      const welcomeMessage = await ctx.reply(welcomeText, {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [
+          [{ text: 'Alpha Arena (₦100/entry)', callback_data: `select_pool:Alpha` }],
+                  [{ text: '🔒 Beta Arena (₦500/10 entries)', callback_data: `select_pool:Beta` }],
+                  [{ text: 'How It Works', callback_data: 'how_it_works' }],
+                  [{ text: 'My Entries', callback_data: 'view_entries' }],
+                  [{ text: 'Referral Dashboard', callback_data: 'referral_dashboard' }],
+          ]
+        }
+      });
+
+    
+      // Store the welcome message ID for future cleanup
+      ctx.session.welcomeMessageId = welcomeMessage.message_id;
+      
+    } catch (error) {
+      console.error('Error fetching week information:', error);
+
+      // Fetch latest week info
+          const today = new Date();
+    
+            // Get current week (based on dates)
+            const currentWeek = await Week.findOne({
+            where: {
+                starts_at: { [Op.lte]: today },
+                ends_at: { [Op.gte]: today }
+            }
+            });
+      // If no current week found, get the latest week
+      let weekLabel = 'Current Week';
+      let weekCode = '';
+      
+      if (currentWeek) {
+        weekLabel = `${currentWeek.week_name} (Week ${currentWeek.week_number}, ${currentWeek.year})`;
+        weekCode = currentWeek.code;
+      } else {
+        // Fallback: get the most recent week
+        const latestWeek = await Week.findOne({
+          order: [['createdAt', 'DESC']]
+        });
+        if (latestWeek) {
+          weekLabel = `${latestWeek.week_number} `;
+          weekCode = latestWeek.code;
+        }
+      }
+          let prizeMoney = "₦100,000"; // Default value
+      if (weekCode) {
+        const winning = await Winning.findOne({
+          where: { week_code: weekCode }
+        });
+
+        if (winning) {
+          prizeMoney = `₦${winning.winning_amount.toLocaleString()}`;
+        }
+      }
+
+      // Fallback welcome message if there's an error
+      const fallbackMessage = await ctx.reply(
+
+  `👋 Welcome to *Game Theory* Where numbers meet strategy 🎭\n` +
+  `Where numbers meet strategy.\n\n` +
+  `📅 *This Round:* ${weekLabel}\n` +
+  `⚡ *Price Amount:*  ₦${Number(prizeMoney).toLocaleString()}\n\n` +
+  `⏰ *Play Window:*  Monday–Saturday\n` +
+  `📢 *Result Drop:*  Sunday 6:00 PM (Africa/Lagos)\n\n` +
+  `Choose your arena below to make your move:`,
+        {
+          parse_mode: 'markdown',
+          reply_markup: {
+            inline_keyboard: [
+            [{ text: 'Alpha Arena (₦100/entry)', callback_data: `select_pool:Alpha` }],
+            [{ text: '🔒 Beta Arena (₦500/10 entries)', callback_data: `select_pool:Beta` }],
+          //   [{ text: '🔒 HighRollers Arena (₦1000/ 20 entries)', callback_data: `select_pool:HighRollers` }],
+            [{ text: 'How It Works', callback_data: 'how_it_works' }],
+            [{ text: 'My Entries', callback_data: 'view_entries' }],
+            [{ text: 'Referral Dashboard', callback_data: 'referral_dashboard' }],
+          ]
+          }
+        }
+      );
+
+      ctx.session.welcomeMessageId = fallbackMessage.message_id;
+    }
+  });
   
   
   // 🔍 Utility to check membership
-async function isUserInChannel(ctx, channelUsername) {
-  try {
-    const member = await ctx.telegram.getChatMember(channelUsername, ctx.from.id);
-    return ['member', 'administrator', 'creator'].includes(member.status);
-  } catch (error) {
-    console.error("⚠️ Error checking channel membership:", error.message);
-    return false;
+  async function isUserInChannel(ctx, channelUsername) {
+    try {
+      const member = await ctx.telegram.getChatMember(channelUsername, ctx.from.id);
+      return ['member', 'administrator', 'creator'].includes(member.status);
+    } catch (error) {
+      console.error("⚠️ Error checking channel membership:", error.message);
+      return false;
+    }
   }
-}
 
 const REQUIRED_CHANNEL = `@${process.env.CHANNEL_NAME}`; // <-- replace with your channel
 
 // Modified /start command
 bot.start(async (ctx) => {
   await cleanupSelectionMessages(ctx);
-
+  handleUserReferral(ctx)
   try {
     const isInChannel = await isUserInChannel(ctx, REQUIRED_CHANNEL);
 
@@ -283,34 +541,6 @@ bot.start(async (ctx) => {
   }
 });
 
-  // // 🔁 Verify button callback
-  // bot.action("verify_channel", async (ctx) => {
-  //   await ctx.answerCbQuery("Checking… ⏳");
-
-  //   const isInChannel = await isUserInChannel(ctx, REQUIRED_CHANNEL);
-
-  //   if (!isInChannel) {
-  //     return await ctx.reply(
-  //         `<b>❌ Error:</b> You havent joined our channel yet\n\n `+
-  //         `To enjoy the full experience, please join our official channel.`,
-  //       {
-  //           parse_mode: "HTML",
-  //           disable_web_page_preview: true,
-  //           reply_markup: {
-  //             inline_keyboard: [
-  //               [{ text: "📢 Join Channel", url: `https://t.me/${REQUIRED_CHANNEL.replace('@','')}` }],
-  //               [{ text: " Verify", callback_data: "verify_channel" }]
-  //             ]
-  //           }
-  //         }
-  //       );
-  //   }
-
-  //   // ✅ Verified → continue
-  //   // await ctx.reply("✅ Verified! Welcome aboard 🎉");
-  //   await sendSuccess(ctx, `✅ Verified! Welcome aboard 🎉`);
-  //   await handleReferralAndStart(ctx);
-  // });
   // 🔁 Verify button callback
 bot.action("verify_channel", async (ctx) => {
   await ctx.answerCbQuery("Checking… ⏳");
@@ -370,12 +600,67 @@ They just verified and joined our community 🚀`,
 
 
 // 🔧 Extracted function to handle your referral + start logic
-async function handleReferralAndStart(ctx) {
+// async function handleReferralAndStart(ctx) {
+//   const isLocked = await redis.get('entries_locked');
+//   if (isLocked) {
+//     return await ctx.reply('🔒 Entries are currently locked. Please try again later.');
+//   }
+
+//   const startParams = ctx.startPayload;
+//   let referrer = null;
+
+//   if (startParams && startParams.startsWith('ref_')) {
+//     const referralCode = startParams.replace('ref_', '');
+//     referrer = await User.findOne({ where: { referral_code: referralCode } });
+//   }
+
+//   const telegramId = ctx.from.id;
+//   const telegramUsername = ctx.from.username || `user_${telegramId}`;
+
+//   const [user, created] = await User.findOrCreate({
+//     where: { telegram_id: telegramId },
+//     defaults: { 
+//       telegram_username: telegramUsername,
+//       referred_by: referrer ? referrer.id : null,
+//       referral_code: telegramUsername,
+//     }
+//   });
+
+//   if (!created && !user.referral_code) {
+//     user.referral_code = Math.random().toString(36).substring(2, 10).toUpperCase();
+//     await user.save();
+//   }
+
+//   if (referrer && created) {
+//     referrer.total_referrals += 1;
+//     await referrer.save();
+//     await sendSuccess(ctx, `🎉 Welcome! You were referred by ${referrer.telegram_username}`);
+//   }
+
+//   if (!created && referrer && !user.referred_by) {
+//     user.referred_by = referrer.id;
+//     await user.save();
+
+//     referrer.total_referrals += 1;
+//     await referrer.save();
+//   }
+
+//   await showStartScreen(ctx);
+// }
+
+  async function handleReferralAndStart(ctx) {
   const isLocked = await redis.get('entries_locked');
   if (isLocked) {
-    return await ctx.reply('🔒 Entries are currently locked. Please try again later.');
+    return await ctx.reply('🔒 Entries are currently locked.  Please try again later.');
   }
 
+  const user = await handleUserReferral(ctx);
+
+  await showStartScreen(ctx);
+}
+
+  
+async function handleUserReferral(ctx) {
   const startParams = ctx.startPayload;
   let referrer = null;
 
@@ -385,28 +670,38 @@ async function handleReferralAndStart(ctx) {
   }
 
   const telegramId = ctx.from.id;
-  const telegramUsername = ctx.from.username || `user_${telegramId}`;
+  const currentUsername = ctx.from.username || `user_${telegramId}`;
+  const firstName = ctx.from.first_name || 'user';
 
   const [user, created] = await User.findOrCreate({
     where: { telegram_id: telegramId },
-    defaults: { 
-      telegram_username: telegramUsername,
+    defaults: {
+      telegram_username: currentUsername,
       referred_by: referrer ? referrer.id : null,
-      referral_code: telegramUsername,
-    }
+      referral_code: generateReferralCode(firstName),
+    },
   });
 
-  if (!created && !user.referral_code) {
-    user.referral_code = Math.random().toString(36).substring(2, 10).toUpperCase();
+  // 🔄 Update username if it has changed
+  if (!created && user.telegram_username !== currentUsername) {
+    user.telegram_username = currentUsername;
     await user.save();
   }
 
+  // 🔑 Ensure referral_code exists
+  if (!user.referral_code) {
+    user.referral_code = generateReferralCode(firstName);
+    await user.save();
+  }
+
+  // 🤝 Handle referral logic
   if (referrer && created) {
     referrer.total_referrals += 1;
     await referrer.save();
     await sendSuccess(ctx, `🎉 Welcome! You were referred by ${referrer.telegram_username}`);
   }
 
+  // ⚙️ Assign referrer for existing user (only once)
   if (!created && referrer && !user.referred_by) {
     user.referred_by = referrer.id;
     await user.save();
@@ -415,7 +710,23 @@ async function handleReferralAndStart(ctx) {
     await referrer.save();
   }
 
-  await showStartScreen(ctx);
+  return {
+  user,
+  created,
+  referrer,
+};
+
 }
+
+// 🔧 Generate a referral code from first name + random digits
+function generateReferralCode(firstName) {
+  const sanitized = firstName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase(); // Remove non-alphanumerics
+  const trimmed = sanitized.slice(0, 8); // Limit to 8 characters
+  const randomDigits = Math.floor(10000 + Math.random() * 90000); // 5-digit number
+  return `${trimmed}${randomDigits}`;
+}
+
+
+
 
 };
