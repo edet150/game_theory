@@ -413,18 +413,25 @@ bot.action("random_refresh", async (ctx) => {
   ctx.session.selectedNumbers = newRandomNumbers;
 
   // Edit the existing message with the new numbers
-  const { text, reply_markup } = buildRandomGrid(newRandomNumbers);
+const { text, reply_markup } = buildRandomGrid(newRandomNumbers);
+const parse_mode = "HTML"; // Get this from your function or set it explicitly
+
+try {
+  await ctx.editMessageText(text, { 
+    reply_markup, 
+    parse_mode // Add this line
+  });
+  // Message ID stays the same when editing, so no need to update the stored ID
+} catch (error) {
+  console.error('Error refreshing random grid:', error);
   
-  try {
-    await ctx.editMessageText(text, { reply_markup });
-    // Message ID stays the same when editing, so no need to update the stored ID
-  } catch (error) {
-    console.error('Error refreshing random grid:', error);
-    
-    // If editing fails (message might be deleted), create a new one
-    const newRandomGridMessage = await ctx.reply(text, { reply_markup });
-    ctx.session.randomGridMessageId = newRandomGridMessage.message_id;
-  }
+  // If editing fails (message might be deleted), create a new one
+  const newRandomGridMessage = await ctx.reply(text, { 
+    reply_markup, 
+    parse_mode // Add this here too
+  });
+  ctx.session.randomGridMessageId = newRandomGridMessage.message_id;
+}
 });
 
 // New handler for confirming the random selection

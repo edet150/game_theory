@@ -24,10 +24,18 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
       allowNull: false
     },
-    // prize_details: {
-    //   type: DataTypes.TEXT,
-    //   allowNull: true
-    // }
+    type: {
+      type: DataTypes.ENUM('regular', 'bonus'),
+      defaultValue: 'regular'
+    },
+    quantity: {
+      type: DataTypes.INTEGER,
+      allowNull: false
+    },
+    is_locked: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    }
   }, {
     sequelize,
     modelName: 'RafflePool',

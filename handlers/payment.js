@@ -147,13 +147,13 @@ async function initiatePayment(bot, ctx) {
         // Show payment button
         const paymentMessage = await ctx.reply(
             `💳 Ready to complete your purchase!\n\n` +
-            `Total: *₦${totalAmount}*\n` +
+            `Total: *₦${Number(totalAmount).toLocaleString()}*\n` +
             `Click the button below to proceed to payment:`,
             {
                 parse_mode: "markdown",
                 reply_markup: {
                     inline_keyboard: [
-                        [{ text: `💳 Pay ₦${totalAmount}`, url: paymentLink }],
+                        [{ text: `💳 Pay ₦${Number(totalAmount).toLocaleString()}`, url: paymentLink }],
                         [{ text: `Click to Verify Payment`, callback_data: 'verify_payment' }],
                         [{ text: '↩️ Back to Confirmation screen', callback_data: 'back_to_confirmation' }]
                     ]
@@ -692,17 +692,16 @@ async function generateRandomNumbers(poolId, quantity) {
 
 // New function to build the grid for random numbers
 function buildRandomGrid(numbers, finalized = false) {
-  const boldNumbers = numbers.join(", ").replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1"); // Escape special chars
-  const text = `Your ${finalized ? 'finalized' : 'randomly selected'} numbers: *${boldNumbers}*`;
+  // Bold each number individually using HTML
+  const boldNumbers = numbers.map(num => `<b>${num}</b>`).join(", ");
+  const text = `Your ${finalized ? 'finalized' : 'randomly selected'} numbers: ${boldNumbers}`;
 
   let keyboard;
   if (finalized) {
-    // Read-only view for finalized entries
     keyboard = Markup.inlineKeyboard([
       [Markup.button.callback("✅ Finalized - Cannot be changed", "no_action_finalized")]
     ]);
   } else {
-    // Interactive view for selection
     keyboard = Markup.inlineKeyboard([
       [
         Markup.button.callback("🔄 Refresh", "random_refresh"),
@@ -711,10 +710,12 @@ function buildRandomGrid(numbers, finalized = false) {
     ]);
   }
 
+  // Return as a message object with HTML parsing
   return {
     text,
-    parse_mode: "Markdown",
-    reply_markup: keyboard.reply_markup
+    parse_mode: "HTML",
+    reply_markup: keyboard.reply_markup,
+    disable_web_page_preview: true
   };
 }
 

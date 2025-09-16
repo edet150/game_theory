@@ -207,7 +207,7 @@ bot.action('how_it_works', async (ctx) => {
           `👋 Welcome to <b>Game Theory </b>\n\n` +
           `Where numbers meet strategy.\n\n` +
           `<b>This Round:</b>  ${weekLabel}\n` +
-          `<b>Price Amount:</b>  ₦${numericPrizeMoney.toLocaleString()}\n\n` +
+          `<b>Winner Gets:</b>  ₦${numericPrizeMoney.toLocaleString()}\n\n` +
           `<b>Entry Window:</b>  Monday–Saturday\n` +
           `<b>Result Drop:</b>  Sunday 6:00 PM (Africa/Lagos)\n\n` +
           `Choose your arena below to make your move:`
@@ -219,7 +219,7 @@ bot.action('how_it_works', async (ctx) => {
           inline_keyboard: [
                   [{ text: 'How It Works', callback_data: 'how_it_works' }],
                   [{ text: 'Alpha Arena (₦500 per entry)', callback_data: `select_pool:Alpha` }],
-                  [{ text: '🔒 Bonus Arena (₦1000 for 5 entries)', callback_data: `select_pool:Beta` }],
+                  [{ text: '🔒 Bonus Arena (₦1000 for 5 entries)', callback_data: `select_pool:Bonus` }],
                   [{ text: 'My Entries', callback_data: 'view_entries' }],
             [{ text: 'Referral Dashboard', callback_data: 'referral_dashboard' }],
                   [
@@ -281,7 +281,7 @@ bot.action('how_it_works', async (ctx) => {
   `👋 Welcome to *Game Theory* Where numbers meet strategy 🎭\n` +
   `Where numbers meet strategy.\n\n` +
   `📅 *This Round:* ${weekLabel}\n` +
-  `⚡ *Price Amount:*  ₦${Number(prizeMoney).toLocaleString()}\n\n` +
+  `⚡ *Winner Gets:*  ₦${Number(prizeMoney).toLocaleString()}\n\n` +
   `⏰ *Play Window:*  Monday–Saturday\n` +
   `📢 *Result Drop:*  Sunday 6:00 PM (Africa/Lagos)\n\n` +
   `Choose your arena below to make your move:`,
@@ -290,7 +290,7 @@ bot.action('how_it_works', async (ctx) => {
           reply_markup: {
             inline_keyboard: [
             [{ text: 'Alpha Arena (₦100/entry)', callback_data: `select_pool:Alpha` }],
-            [{ text: '🔒 Beta Arena (₦500/10 entries)', callback_data: `select_pool:Beta` }],
+            [{ text: '🔒 Bonus Arena (₦500/10 entries)', callback_data: `select_pool:Bonus` }],
           //   [{ text: '🔒 HighRollers Arena (₦1000/ 20 entries)', callback_data: `select_pool:HighRollers` }],
             [{ text: 'How It Works', callback_data: 'how_it_works' }],
             [{ text: 'My Entries', callback_data: 'view_entries' }],

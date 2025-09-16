@@ -272,6 +272,10 @@ module.exports = (bot, bankSetupState) => {
                         { text: `${lockStatus} Entries`, callback_data: 'admin_toggle_entries_lock' }
                     ],
                     [
+                    { text: '🔒 Toggle Bonus Arena', callback_data: 'admin_toggle_bonus' },
+                    { text: '➕ Create New Bonus', callback_data: 'admin_create_bonus' }
+                    ],
+                    [
                         { text: '🚪 Logout', callback_data: 'admin_logout' }
                     ]
                 ]
@@ -577,8 +581,32 @@ module.exports = (bot, bankSetupState) => {
       ctx.session.assignmentMessageId = assignmentMessage.message_id;
       return; // Important: return after handling
     }
+    // 4. create bonus
+     if (ctx.session.nextAction === 'creating_bonus') {
+    const parts = ctx.message.text.split(',').map(p => p.trim());
+    if (parts.length < 4) {
+      return ctx.reply('⚠️ Invalid format. Try again.');
+    }
 
-    // 4. Default fallback for unexpected messages
+    const [name, price, quantity, max] = parts;
+
+    try {
+      const pool = await RafflePool.create({
+        name,
+        price_per_entry: parseInt(price, 10),
+        quantity: parseInt(quantity, 10),
+        max_entries: parseInt(max, 10),
+        type: 'bonus'
+      });
+
+      ctx.reply(`✅ Bonus Arena "${pool.name}" created successfully!`);
+      ctx.session.nextAction = null;
+    } catch (err) {
+      console.error(err);
+      ctx.reply('⚠️ Failed to create Bonus Arena. Maybe name already exists?');
+    }
+  }
+    // 5. Default fallback for unexpected messages
     if (ctx.message.text) {
       console.log('Processing fallback message'); // Debug log
       // If there's a previous prompt, delete it

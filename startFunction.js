@@ -66,7 +66,7 @@ async function showStartScreen(ctx) {
         `👋 Welcome to <b>Game Theory </b>\n\n` +
         `Where numbers meet strategy.\n\n` +
         `<b style="color:blue;">This Round:</b>  ${weekLabel}\n` +
-        `<b>Price Amount:</b>  ₦ ${Number(prizeMoney).toLocaleString()}\n\n` +
+        `<b>Winner Gets:</b>  ₦ ${Number(prizeMoney).toLocaleString()}\n\n` +
         `<b>Entry Window:</b>  Monday–Saturday\n` +
         `<b>Result Drop:</b>  Sunday 6:00 PM (Africa/Lagos)\n\n` +
         `Choose your arena below to make your move:`;
@@ -77,7 +77,7 @@ async function showStartScreen(ctx) {
             inline_keyboard: [
                 [{ text: 'How It Works', callback_data: 'how_it_works' }],
                 [{ text: 'Alpha Arena (₦500 per entry)', callback_data: `select_pool:Alpha` }],
-                [{ text: '🔒 Bonus Arena (₦1000 for 5 entries)', callback_data: `select_pool:Beta` }],
+                [{ text: '🔒 Bonus Arena (₦1000 for 5 entries)', callback_data: `select_pool:Bonus` }],
                 [{ text: 'My Entries', callback_data: 'view_entries' }],
                 [{ text: 'Referral Dashboard', callback_data: 'referral_dashboard' }],
                 [

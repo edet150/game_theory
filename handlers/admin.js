@@ -560,6 +560,10 @@ module.exports = (bot, bankSetupState) => {
                         { text: `${lockStatus} Entries`, callback_data: 'admin_toggle_entries_lock' }
                     ],
                     [
+                    { text: '🔒 Toggle Bonus Arena', callback_data: 'admin_toggle_bonus' },
+                    { text: '➕ Create New Bonus', callback_data: 'admin_create_bonus' }
+                    ],
+                    [
                         { text: '🚪 Logout', callback_data: 'admin_logout' }
                     ]
                 ]
@@ -710,112 +714,182 @@ module.exports = (bot, bankSetupState) => {
     });
 
     // Announce winner to channel
-// Admin: preview announcement and ask to save
-bot.action('admin_announce_winner', async (ctx) => {
-  await safeAnswerCbQuery(ctx);
+    // Admin: preview announcement and ask to save
+    bot.action('admin_announce_winner', async (ctx) => {
+    await safeAnswerCbQuery(ctx);
 
-  if (!ctx.session?.isAdmin) {
-    await ctx.reply('❌ Please login as admin first using /admin');
-    return;
-  }
-
-  const processingMsg = await ctx.reply('🔄 Preparing winner announcement...');
-  try {
-    const data = await compileWinnerAnnouncementHTML({ structured: true });
-    await ctx.reply(data.message, {
-      parse_mode: 'HTML',
-      reply_markup: {
-        inline_keyboard: [
-          [
-            { text: '✅ Save Winner', callback_data: 'save_winner' },
-            { text: '❌ Cancel', callback_data: 'cancel_winner' }
-          ]
-        ]
-      }
-    });
-
-    // update processing message
-    await ctx.telegram.editMessageText(processingMsg.chat.id, processingMsg.message_id, null, '✅ Winner announcement is ready. Please confirm.');
-  } catch (err) {
-    console.error('Error preparing winner announcement:', err);
-    await ctx.reply(`❌ Error: ${err.message}`);
-  } finally {
-    // try remove processing msg after a short delay
-    setTimeout(async () => {
-      try { await ctx.deleteMessage(processingMsg.message_id); } catch (e) {}
-    }, 3500);
-  }
-});
-
-// Admin: Save winner(s) to DB and announce to channel
-bot.action('save_winner', async (ctx) => {
-  await safeAnswerCbQuery(ctx);
-  if (!ctx.session?.isAdmin) {
-    await ctx.reply('❌ Please login as admin first using /admin');
-    return;
-  }
-
-  try {
-    const data = await compileWinnerAnnouncementHTML({ structured: true });
-    const { winningEntries, winMethod, winningNumber, currentWeek, moduloWinningIndex, message } = data;
-
-    // Save unique winners inside a transaction
-    await sequelize.transaction(async (tx) => {
-      for (const entry of winningEntries) {
-        // ✅ Ensure only one winner record per user_id + week_code
-        const exists = await WeeklyWinner.findOne({
-          where: {
-            week_code: currentWeek.code,
-            user_id: entry.User.id
-          },
-          transaction: tx
-        });
-
-        if (!exists) {
-          await WeeklyWinner.create({
-            week_id: currentWeek.id,
-            week_code: currentWeek.code,
-            entry_id: entry.id,
-            entry_number: entry.entry_number,
-            user_id: entry.User.id,
-            winning_method: winMethod,
-            winning_number: winningNumber,
-            position: moduloWinningIndex !== null ? moduloWinningIndex : null,
-            won_at: new Date()
-          }, { transaction: tx });
-        } else {
-          console.log(`⚠️ Skipped duplicate winner for user ${entry.User.id} in week ${currentWeek.code}`);
-        }
-      }
-    });
-
-    // Announce to channel
-    await sendToTelegramChannelHTML(ctx, message);
-
-    // Delete the inline keyboard message
-    try {
-      await ctx.deleteMessage();
-    } catch (e) {
-      console.log("Could not delete inline message:", e.message);
+    if (!ctx.session?.isAdmin) {
+        await ctx.reply('❌ Please login as admin first using /admin');
+        return;
     }
 
-    // Reply confirmation
-    await ctx.reply('✅ Winner(s) saved uniquely to database and announcement sent to the channel.');
+    const processingMsg = await ctx.reply('🔄 Preparing winner announcement...');
+    try {
+        const data = await compileWinnerAnnouncementHTML({ structured: true });
+        await ctx.reply(data.message, {
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [
+            [
+                { text: '✅ Save Winner', callback_data: 'save_winner' },
+                { text: '❌ Cancel', callback_data: 'cancel_winner' }
+            ]
+            ]
+        }
+        });
 
-  } catch (err) {
-    console.error('Error saving winner:', err);
-    await ctx.reply(`❌ Failed to save winner: ${err.message}`);
-  }
+        // update processing message
+        await ctx.telegram.editMessageText(processingMsg.chat.id, processingMsg.message_id, null, '✅ Winner announcement is ready. Please confirm.');
+    } catch (err) {
+        console.error('Error preparing winner announcement:', err);
+        await ctx.reply(`❌ Error: ${err.message}`);
+    } finally {
+        // try remove processing msg after a short delay
+        setTimeout(async () => {
+        try { await ctx.deleteMessage(processingMsg.message_id); } catch (e) {}
+        }, 3500);
+    }
+    });
+
+    // Admin: Save winner(s) to DB and announce to channel
+    bot.action('save_winner', async (ctx) => {
+    await safeAnswerCbQuery(ctx);
+    if (!ctx.session?.isAdmin) {
+        await ctx.reply('❌ Please login as admin first using /admin');
+        return;
+    }
+
+    try {
+        const data = await compileWinnerAnnouncementHTML({ structured: true });
+        const { winningEntries, winMethod, winningNumber, currentWeek, moduloWinningIndex, message } = data;
+
+        // Save unique winners inside a transaction
+        await sequelize.transaction(async (tx) => {
+        for (const entry of winningEntries) {
+            // ✅ Ensure only one winner record per user_id + week_code
+            const exists = await WeeklyWinner.findOne({
+            where: {
+                week_code: currentWeek.code,
+                user_id: entry.User.id
+            },
+            transaction: tx
+            });
+
+            if (!exists) {
+            await WeeklyWinner.create({
+                week_id: currentWeek.id,
+                week_code: currentWeek.code,
+                entry_id: entry.id,
+                entry_number: entry.entry_number,
+                user_id: entry.User.id,
+                winning_method: winMethod,
+                winning_number: winningNumber,
+                position: moduloWinningIndex !== null ? moduloWinningIndex : null,
+                won_at: new Date()
+            }, { transaction: tx });
+            } else {
+            console.log(`⚠️ Skipped duplicate winner for user ${entry.User.id} in week ${currentWeek.code}`);
+            }
+        }
+        });
+
+        // Announce to channel
+        await sendToTelegramChannelHTML(ctx, message);
+
+        // Delete the inline keyboard message
+        try {
+        await ctx.deleteMessage();
+        } catch (e) {
+        console.log("Could not delete inline message:", e.message);
+        }
+
+        // Reply confirmation
+        await ctx.reply('✅ Winner(s) saved uniquely to database and announcement sent to the channel.');
+
+    } catch (err) {
+        console.error('Error saving winner:', err);
+        await ctx.reply(`❌ Failed to save winner: ${err.message}`);
+    }
+    });
+
+
+
+
+
+    bot.action('admin_toggle_bonus', async (ctx) => {
+    await ctx.answerCbQuery();
+
+    try {
+        // Find all bonus pools
+        const bonusPools = await RafflePool.findAll({ where: { type: 'bonus' } });
+
+        if (!bonusPools.length) {
+        return ctx.reply('❌ No Bonus Arenas available.');
+        }
+
+        const keyboard = bonusPools.map(pool => ([
+        {
+            text: `${pool.is_locked ? '🔒' : '🔓'} ${pool.name}`,
+            callback_data: `admin_toggle_bonus:${pool.id}`
+        }
+        ]));
+
+        await ctx.reply(
+        '🎯 Select a Bonus Arena to lock/unlock:',
+        { reply_markup: { inline_keyboard: keyboard } }
+        );
+    } catch (err) {
+        console.error(err);
+        ctx.reply('⚠️ Error toggling Bonus Arenas.');
+    }
+    });
+
+    // Handle actual toggle
+    bot.action(/^admin_toggle_bonus:(\d+)$/, async (ctx) => {
+    await ctx.answerCbQuery();
+    const poolId = ctx.match[1];
+
+    try {
+        const pool = await RafflePool.findByPk(poolId);
+        if (!pool) return ctx.reply('❌ Pool not found.');
+
+        pool.is_locked = !pool.is_locked;
+        await pool.save();
+
+        await ctx.reply(
+        `✅ ${pool.name} is now ${pool.is_locked ? '🔒 Locked' : '🔓 Unlocked'}`
+        );
+    } catch (err) {
+        console.error(err);
+        ctx.reply('⚠️ Could not update Bonus Arena.');
+    }
+    });
+
+bot.action('admin_create_bonus', async (ctx) => {
+  await ctx.answerCbQuery();
+
+  ctx.session.nextAction = 'creating_bonus';
+  await ctx.reply(
+    '➕ Send me the details in this format:\n\n' +
+    '`Name, PricePerEntry, Quantity, MaxEntries`\n\n' +
+    'Example: `Mega Bonus, 2000, 12, 500`',
+    { parse_mode: 'Markdown' }
+  );
 });
 
+// // Capture reply
+// bot.on('text', async (ctx) => {
+ 
+// });
 
 
 
-// Admin: cancel
-bot.action('cancel_winner', async (ctx) => {
-  await safeAnswerCbQuery(ctx);
-  await ctx.reply('❌ Winner announcement canceled by admin.');
-});
+
+    // Admin: cancel
+    bot.action('cancel_winner', async (ctx) => {
+    await safeAnswerCbQuery(ctx);
+    await ctx.reply('❌ Winner announcement canceled by admin.');
+    });
 
     // Post winning number to channel
     bot.action('admin_post_winning_number', async (ctx) => {

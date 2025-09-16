@@ -46,6 +46,46 @@ bot.action(/^select_pool:(\w+)/, async (ctx) => {
 
   try {
     // Special rules for Beta Arena
+if (poolName === "Bonus") {
+  const pool = await RafflePool.findOne({ where: { name: "Bonus" } });
+  if (!pool) {
+    return ctx.reply('❌ Bonus Arena not found.');
+  }
+
+  // Check if locked by admin
+  if (pool.is_locked) {
+    return ctx.reply(`🔒 ${pool.name} is currently locked by Admin.`);
+  }
+
+  // Pre-set quantity to pool config
+  ctx.session.poolName = pool.name;
+  ctx.session.quantity = pool.quantity;
+
+  // Skip quantity selection, go straight to assignment
+  const assignmentMessage = await ctx.reply(
+    `🎉 You've selected the *${pool.name} Arena*!\n\n` +
+    `💰 *Price:* ₦${pool.price_per_entry} for ${pool.quantity} entries\n` +
+    `🎟️ Entries Locked: ${pool.quantity} (fixed)\n` +
+    `⏳ *Note:* This Bonus offer only lasts for *30 minutes* from when you join.\n\n` +
+    `How would you like your entries assigned?`,
+    {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '🎲 Random Pick', callback_data: 'assign_method:random' }],
+          [{ text: 'I\'ll Choose My Numbers', callback_data: 'assign_method:choose' }]
+        ]
+      }
+    }
+  );
+
+  ctx.session.assignmentMessageId = assignmentMessage.message_id;
+
+  // Store a timestamp for bonus expiry
+  ctx.session.bonusStartTime = Date.now();
+
+  return;
+}
 
     if (poolName === "Beta") {
       const betaMessage = await ctx.reply(
