@@ -208,14 +208,16 @@ bot.action('how_it_works', async (ctx) => {
         reply_markup: {
           inline_keyboard: [
                   [{ text: 'How It Works', callback_data: 'how_it_works' }],
-                  [{ text: 'Alpha Arena (₦500 per entry)', callback_data: `select_pool:Alpha` }],
-                  [{ text: '🔒 Bonus Arena (₦1000 for 5 entries)', callback_data: `select_pool:Bonus` }],
+                [{ text: 'Alpha Arena (₦200 per entry)', callback_data: `select_pool:Alpha` }],
+                               [{ text: 'Beta Arena (₦500 per 5 entries)', callback_data: `select_pool:Beta` }],
+                [{ text: 'HighRollers Arena (₦1000 per 15 entries)', callback_data: `select_pool:HighRollers` }],
+                [{ text: '🔒 Bonus Arena (₦1000 for 25 entries)', callback_data: `select_pool:Bonus` }],
                   [{ text: 'My Entries', callback_data: 'view_entries' }],
-            [{ text: 'Referral Dashboard', callback_data: 'referral_dashboard' }],
+                  [{ text: 'Referral Dashboard', callback_data: 'referral_dashboard' }],
                   [
-        { text: '🏦 Setup Bank Account', callback_data: 'bank_setup' },
-        { text: '📋 My Bank Details', callback_data: 'bank_details' }
-      ]
+                { text: '🏦 Setup Bank Account', callback_data: 'bank_setup' },
+                { text: '📋 My Bank Details', callback_data: 'bank_details' }
+              ],
           ]
         }
       });
@@ -278,17 +280,18 @@ bot.action('how_it_works', async (ctx) => {
         {
           parse_mode: 'markdown',
           reply_markup: {
-            inline_keyboard: [
-            [{ text: 'Alpha Arena (₦100/entry)', callback_data: `select_pool:Alpha` }],
-            [{ text: '🔒 Bonus Arena (₦500/10 entries)', callback_data: `select_pool:Bonus` }],
-          //   [{ text: '🔒 HighRollers Arena (₦1000/ 20 entries)', callback_data: `select_pool:HighRollers` }],
-            [{ text: 'How It Works', callback_data: 'how_it_works' }],
-            [{ text: 'My Entries', callback_data: 'view_entries' }],
-              [{ text: 'Referral Dashboard', callback_data: 'referral_dashboard' }],
-            [
-        { text: '🏦 Setup Bank Account', callback_data: 'bank_setup' },
-        { text: '📋 My Bank Details', callback_data: 'bank_details' }
-      ]
+               inline_keyboard: [
+                  [{ text: 'How It Works', callback_data: 'how_it_works' }],
+                [{ text: 'Alpha Arena (₦200 per entry)', callback_data: `select_pool:Alpha` }],
+                [{ text: 'Beta Arena (₦500 per 5 entries)', callback_data: `select_pool:Beta` }],
+                [{ text: 'HighRollers Arena (₦1000 per 15 entries)', callback_data: `select_pool:HighRollers` }],
+                [{ text: '🔒 Bonus Arena (₦1000 for 25 entries)', callback_data: `select_pool:Bonus` }],
+                  [{ text: 'My Entries', callback_data: 'view_entries' }],
+                  [{ text: 'Referral Dashboard', callback_data: 'referral_dashboard' }],
+                  [
+                { text: '🏦 Setup Bank Account', callback_data: 'bank_setup' },
+                { text: '📋 My Bank Details', callback_data: 'bank_details' }
+              ],
           ]
           }
         }

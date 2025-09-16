@@ -12,71 +12,62 @@ const { checkPaystackTransactions } = require('../cron/paystack_checker');
 
 // Show confirmation summary before payment
 async function showPaymentConfirmation(ctx) {
-    const session = ctx.session;
-    const pool = await RafflePool.findOne({ where: { name: session.poolName } });
-    const methodName = session.assignmentMethod === 'choose' ? 'Manual Selection' : 'Random Assignment';
-    const sortedNumbers = session.selectedNumbers ? [...session.selectedNumbers].sort((a, b) => a - b) : [];
+  const session = ctx.session;
+  const pool = await RafflePool.findOne({ where: { name: session.poolName } });
+  const methodName = session.assignmentMethod === 'choose' ? 'Manual Selection' : 'Random Assignment';
+  const sortedNumbers = session.selectedNumbers ? [...session.selectedNumbers].sort((a, b) => a - b) : [];
 
-    const confirmationMessage = `
+  let totalAmount;
+
+  if (session.quantity === pool.quantity) {
+    // User is buying exactly the package size
+    totalAmount = pool.price_per_entry;
+  } else {
+    // Derive per entry price from package
+    const perEntryPrice = pool.price_per_entry / pool.quantity;
+    totalAmount = perEntryPrice * session.quantity;
+  }
+
+  const confirmationMessage = `
 🎯 *ORDER CONFIRMATION*
 
 🏷️ *Pool:* ${pool.name}
-💰 *Price per entry:* ₦${pool.price_per_entry}
+💰 *Price:* ₦${pool.price_per_entry} for ${pool.quantity} entries
 📊 *Entries purchased:* ${session.quantity}
 🎲 *Selection method:* ${methodName}
 🔢 *Your numbers:* ${sortedNumbers.join(', ')}
 
-💵 *Total Amount:* ₦${pool.price_per_entry * session.quantity}
+💵 *Total Amount:* ₦${totalAmount}
 
 ⚠️ *Please review your order before proceeding to payment.*
-    `;
+  `;
 
-    // ⬅️ Delete previous confirmation if it exists
-    if (ctx.session.confirmationMessageId_) {
-        try {
-            await ctx.deleteMessage(ctx.session.confirmationMessageId_);
-        } catch (e) {
-            console.log("Previous confirmation already gone:", e.message);
-        }
+  // Delete previous confirmation if exists
+  if (ctx.session.confirmationMessageId_) {
+    try {
+      await ctx.deleteMessage(ctx.session.confirmationMessageId_);
+    } catch (e) {
+      console.log("Previous confirmation already gone:", e.message);
     }
+  }
 
-    // Send new confirmation
-    const confirmation = await ctx.reply(confirmationMessage, {
-        parse_mode: 'Markdown',
-        reply_markup: {
-            inline_keyboard: [
-                [
-                    { text: '✅ Confirm & Pay with Paystack', callback_data: 'proceed_to_payment' }
-                ],
-                [
-                    { text: '✏️ Edit Selection', callback_data: 'edit_selection' }
-                ],
-                [
-                    { text: '🔄 Re-start Game Selection', callback_data: 'start_over' }
-                ]
-            ]
-        }
-    });
-      // if (ctx.session.confirmationMessageId_) {
-      //       try {
-      //         setTimeout(async () => {
-      //           try {
-      //             await ctx.deleteMessage(ctx.session.confirmationMessageId_);
-      //             // delete ctx.session.confirmationMessageId_;
-      //           } catch (err) {
-      //             console.log('Could not delete confirmation message:', err.message);
-      //           }
-      //         }, 4000); // ⏳ delete after 4 seconds
-      //       } catch (error) {
-      //         console.log('Could not schedule confirmation message deletion:', error.message);
-      //       }
-      //     }
+  // Send new confirmation
+  const confirmation = await ctx.reply(confirmationMessage, {
+    parse_mode: 'Markdown',
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: '✅ Confirm & Pay with Paystack', callback_data: 'proceed_to_payment' }],
+        [{ text: '✏️ Edit Selection', callback_data: 'edit_selection' }],
+        [{ text: '🔄 Re-start Game Selection', callback_data: 'start_over' }]
+      ]
+    }
+  });
 
-    // ⬅️ Store confirmation message ID
-    ctx.session.confirmationMessageId_ = confirmation.message_id;
+  ctx.session.confirmationMessageId_ = confirmation.message_id;
 
-    return confirmation;
+  return confirmation;
 }
+
 
 
 function clearSelectionSession(session) {
@@ -273,26 +264,47 @@ bot.action(/^assign_method:(\w+)/, async (ctx) => {
 
   // --- Logic for 'random' (interactive card) ---
   } else if (method === 'random') {
-    const randomNumbers = await generateRandomNumbers(ctx.session.poolId, ctx.session.quantityLimit);
-    ctx.session.selectedNumbers = randomNumbers;
+  const randomNumbers = await generateRandomNumbers(ctx.session.poolId, ctx.session.quantityLimit);
+  ctx.session.selectedNumbers = randomNumbers;
 
-    const { text, reply_markup } = buildRandomGrid(randomNumbers);
+  const { text, reply_markup } = buildRandomGrid(randomNumbers);
+  const parse_mode = "HTML";
 
-    // SEND MESSAGE REPLYS
-    const randomGridMessage = await ctx.reply(text, { reply_markup });
+  let sentMessage; // <- store reference safely here
 
-      // ⬅️ ⬅️ FIRST DELETE PREVIOUS ID THEN CREATE
-      // Delete the previous grid message if it exists
-      if (ctx.session.randomGridMessageId) {
-        try {
-          await ctx.deleteMessage(ctx.session.randomGridMessageId);
-        } catch (e) {
-          console.log("Previous grid already gone:", e.message);
-        }
+  try {
+    // Try editing the current message
+    sentMessage = await ctx.editMessageText(text, { 
+      reply_markup, 
+      parse_mode
+    });
+
+    // If edit succeeds, reuse the same message id
+    ctx.session.randomGridMessageId = ctx.callbackQuery.message.message_id;
+
+  } catch (error) {
+    console.error('Error refreshing random grid:', error);
+
+    // Delete old message if it exists
+    if (ctx.session.randomGridMessageId) {
+      try {
+        await ctx.deleteMessage(ctx.session.randomGridMessageId);
+      } catch (e) {
+        console.log("Previous grid already gone:", e.message);
       }
-      // STORE THE RANDOM GRID MESSAGE ID
-    ctx.session.randomGridMessageId = randomGridMessage.message_id;
+    }
+
+    // Send a new message
+    sentMessage = await ctx.reply(text, { 
+      reply_markup, 
+      parse_mode
+    });
+
+    // Store the new ID
+    ctx.session.randomGridMessageId = sentMessage.message_id;
   }
+}
+
 });
   
 // ----------------- Handlers -----------------
@@ -421,26 +433,25 @@ bot.action("random_refresh", async (ctx) => {
   ctx.session.selectedNumbers = newRandomNumbers;
 
   // Edit the existing message with the new numbers
-const { text, reply_markup } = buildRandomGrid(newRandomNumbers);
-const parse_mode = "HTML"; // Get this from your function or set it explicitly
-  // 6027171789
- // key stone
-try {
-  await ctx.editMessageText(text, { 
-    reply_markup, 
-    parse_mode // Add this line
-  });
-  // Message ID stays the same when editing, so no need to update the stored ID
-} catch (error) {
-  console.error('Error refreshing random grid:', error);
-  
-  // If editing fails (message might be deleted), create a new one
-  const newRandomGridMessage = await ctx.reply(text, { 
-    reply_markup, 
-    parse_mode // Add this here too
-  });
-  ctx.session.randomGridMessageId = newRandomGridMessage.message_id;
-}
+  const { text, reply_markup } = buildRandomGrid(newRandomNumbers);
+  const parse_mode = "HTML"; // Get this from your function or set it explicitly
+
+  try {
+    await ctx.editMessageText(text, { 
+      reply_markup, 
+      parse_mode // Add this line
+    });
+    // Message ID stays the same when editing, so no need to update the stored ID
+  } catch (error) {
+    console.error('Error refreshing random grid:', error);
+    
+    // If editing fails (message might be deleted), create a new one
+    const newRandomGridMessage = await ctx.reply(text, { 
+      reply_markup, 
+      parse_mode // Add this here too
+    });
+    ctx.session.randomGridMessageId = newRandomGridMessage.message_id;
+  }
 });
 
 // New handler for confirming the random selection
@@ -797,9 +808,9 @@ try {
         // Send quantity selection message with tracking
         const quantityMessage = await messageManager.sendAndTrack(ctx,
           `You've selected the ${pool.name} Pool!\n\n` +
-          `*Price:* ₦${pool.price_per_entry} per entry\n` +
-          `*Max Entries:* ${pool.max_entries}\n` +
-          `*Current Entries:* ${currentEntriesCount}/${pool.max_entries}\n\n` +
+          `*Price:* ₦${pool.price_per_entry} per entry\n\n` +
+          // `*Max Entries:* ${pool.max_entries}\n` +
+          // `*Current Entries:* ${currentEntriesCount}/${pool.max_entries}\n\n` +
           `How many entries would you like to buy?`,
           { parse_mode: 'markdown', reply_markup: options.reply_markup }
         );

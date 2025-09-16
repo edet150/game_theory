@@ -46,10 +46,10 @@ bot.action(/^select_pool:(\w+)/, async (ctx) => {
 
   try {
     // Special rules for Beta Arena
-if (poolName === "Bonus") {
-  const pool = await RafflePool.findOne({ where: { name: "Bonus" } });
+if (poolName === "Bonus" || poolName === "Beta" || poolName === "HighRollers") {
+  const pool = await RafflePool.findOne({ where: { name: `${poolName}` } });
   if (!pool) {
-    return ctx.reply('❌ Bonus Arena not found.');
+    return ctx.reply(`❌ ${poolName} Arena not found.`);
   }
 
   // Check if locked by admin
@@ -62,11 +62,16 @@ if (poolName === "Bonus") {
   ctx.session.quantity = pool.quantity;
 
   // Skip quantity selection, go straight to assignment
+  let noteText = "";
+  if (pool.name === "Bonus") {
+    noteText = `⏳ *Note:* This Bonus offer only lasts for *30 minutes* from when you join.\n\n`;
+  }
+
   const assignmentMessage = await ctx.reply(
     `🎉 You've selected the *${pool.name} Arena*!\n\n` +
     `💰 *Price:* ₦${pool.price_per_entry} for ${pool.quantity} entries\n` +
-    `🎟️ Entries Locked: ${pool.quantity} (fixed)\n` +
-    `⏳ *Note:* This Bonus offer only lasts for *30 minutes* from when you join.\n\n` +
+    // `🎟️ Entries Locked: ${pool.quantity} (fixed)\n` +
+      noteText +
     `How would you like your entries assigned?`,
     {
       parse_mode: 'Markdown',
@@ -87,7 +92,7 @@ if (poolName === "Bonus") {
   return;
 }
 
-    if (poolName === "Beta") {
+    if (poolName === "Beta_") {
       const betaMessage = await ctx.reply(
         "🔒 *Beta Arena is currently locked!*\n\n" +
         "It is only available to users who have referred new players and on certain days that will be announced on our channel. 📢",
@@ -110,7 +115,7 @@ if (poolName === "Bonus") {
 
     // Special rules for HighRollers Arena
     // Special rules for HighRollers Arena
-  if (poolName === "HighRollers") {
+  if (poolName === "HighRollers_") {
     const highRollersMessage = await ctx.reply(
       "🔒 *HighRollers Arena Access Restricted!*\n\n" +
       "This pool is only available to users who have referred new players. 🎯\n\n" +
@@ -165,9 +170,9 @@ if (poolName === "Bonus") {
     // Send quantity selection message and store its ID
     const quantityMessage = await ctx.reply(
       `You've selected the ${pool.name} Arena!\n\n` +
-      `💰 *Price:* ₦${pool.price_per_entry} per entry\n` +
-      `📊 *Max Entries:* ${pool.max_entries}\n` +
-      `🎲 *Current Entries:* ${currentEntriesCount}/${pool.max_entries}\n\n` +
+      `💰 *Price:* ₦${pool.price_per_entry} per entry\n\n` +
+      // `📊 *Max Entries:* ${pool.max_entries}\n` +
+      // `🎲 *Current Entries:* ${currentEntriesCount}/${pool.max_entries}\n\n` +
       `How many entries would you like to buy?`,
       { parse_mode: 'Markdown', reply_markup: options.reply_markup }
     );

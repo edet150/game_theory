@@ -65,39 +65,38 @@ async function showPaymentConfirmation(ctx) {
 
 async function initiatePayment(bot, ctx) {
     const session = ctx.session;
-  console.log('hello')
-  console.log(`${process.env.callback_url}/paymentredirect`)
     try {
         const pool = await RafflePool.findOne({ where: { name: session.poolName } });
         if (!pool) return ctx.reply('⚠️ Pool not found.');
 
-        const totalAmount = pool.price_per_entry * session.quantity;
+        // ✅ Correct calculation
+        const unitPrice = pool.price_per_entry / pool.quantity;
+        const totalAmount = unitPrice * session.quantity; // in naira
+        const paystackAmount = Math.round(totalAmount * 100); // Paystack requires integer kobo
 
-        // Find user by telegram_id to get DB id
+
         const user = await User.findOne({ where: { telegram_id: ctx.from.id } });
         if (!user) return ctx.reply("⚠️ You must register first.");
 
-        // Get current lottery week
         const currentLotteryWeek = await Week.findOne({
             order: [['week_number', 'DESC']]
         });
-
         if (!currentLotteryWeek) {
             return ctx.reply('⚠️ No active Game week found. Please try again later.');
         }
 
-        // Prepare summary data for metadata
         const methodName = session.assignmentMethod === 'choose' ? 'Manual Selection' : 'Random Assignment';
         const sortedNumbers = session.selectedNumbers ? [...session.selectedNumbers].sort((a, b) => a - b) : [];
 
-        // Prepare metadata for payment
         const metadata = {
             telegram_id: ctx.from.id,
             user_id: user.id,
             pool_id: pool.id,
             pool_name: pool.name,
             price_per_entry: pool.price_per_entry,
+            pool_quantity: pool.quantity,
             quantity: session.quantity,
+            unit_price: unitPrice,
             total_amount: totalAmount,
             assignmentMethod: session.assignmentMethod,
             method_name: methodName,
@@ -110,7 +109,7 @@ async function initiatePayment(bot, ctx) {
             entry_time: new Date().toISOString(),
             summary_data: {
                 pool_name: pool.name,
-                price_per_entry: pool.price_per_entry,
+                unit_price: unitPrice,
                 quantity: session.quantity,
                 method_name: methodName,
                 numbers: sortedNumbers,
@@ -122,7 +121,7 @@ async function initiatePayment(bot, ctx) {
             'https://api.paystack.co/transaction/initialize',
             {
                 email: ctx.from.username ? `${ctx.from.username}@example.com` : `user${ctx.from.id}@example.com`,
-                amount: totalAmount * 100,
+                amount: paystackAmount,
                 currency: 'NGN',
                 callback_url: `${process.env.callback_url}/paymentredirect`,
                 metadata: metadata
@@ -136,21 +135,21 @@ async function initiatePayment(bot, ctx) {
         );
 
         const paymentLink = paystackResponse.data.data.authorization_url;
-        // ⬅️ FIRST DELETE PAYMENT MESSAGE ID IF EXISTS
+
         if (ctx.session.paymentMessageId) {
-          try {
-            await ctx.deleteMessage(ctx.session.paymentMessageId);
-          } catch (e) {
-            console.log("Previous quantity message already gone:", e.message);
-          }
+            try {
+                await ctx.deleteMessage(ctx.session.paymentMessageId);
+            } catch (e) {
+                console.log("Previous payment message already gone:", e.message);
+            }
         }
-        // Show payment button
+
         const paymentMessage = await ctx.reply(
             `💳 Ready to complete your purchase!\n\n` +
             `Total: *₦${Number(totalAmount).toLocaleString()}*\n` +
             `Click the button below to proceed to payment:`,
             {
-                parse_mode: "markdown",
+                parse_mode: "Markdown",
                 reply_markup: {
                     inline_keyboard: [
                         [{ text: `💳 Pay ₦${Number(totalAmount).toLocaleString()}`, url: paymentLink }],
@@ -159,11 +158,8 @@ async function initiatePayment(bot, ctx) {
                     ]
                 }
             }
-      );
-      
+        );
 
-
-        // Store payment message ID for cleanup
         ctx.session.paymentMessageId = paymentMessage.message_id;
 
     } catch (error) {
@@ -171,6 +167,7 @@ async function initiatePayment(bot, ctx) {
         ctx.reply('⚠️ Failed to initiate payment. Please try again later.');
     }
 }
+
 
 
   /**
