@@ -107,68 +107,76 @@ function clearSelectionSession(session) {
 
 // Function to finalize bonus/referral entries
 async function finalizeBonusEntries(ctx, finalNumbers, method) {
-    try {
-        const loadingMsg = await ctx.reply("⏳ Finalizing your bonus entries, please wait...");
-    
-        const pool = await RafflePool.findByPk(ctx.session.poolId);
-        // const currentWeek = await Week.findOne({ where: { is_current: true } });
-        const user = await User.findOne({ where: { telegram_id: ctx.from.id } });
-        const today = new Date();
+  const t = await sequelize.transaction(); // ✅ create a transaction
+  try {
+    const loadingMsg = await ctx.reply("⏳ Finalizing your bonus entries, please wait...");
 
-        // Get current week (based on dates)
-        const currentWeek = await Week.findOne({
-        where: {
-            starts_at: { [Op.lte]: today },
-            ends_at: { [Op.gte]: today }
-        }
-        });
+    const pool = await RafflePool.findByPk(ctx.session.poolId, { transaction: t });
+    const user = await User.findOne({ where: { telegram_id: ctx.from.id }, transaction: t });
+    const today = new Date();
 
-   
-        if (!currentWeek) {
-            await ctx.deleteMessage(loadingMsg.message_id);
-            return sendError(ctx, "No current week found. Please try again later.");
-        }
+    // Get current week (based on dates)
+    let currentWeek = await Week.findOne({
+      where: {
+        starts_at: { [Op.lte]: today },
+        ends_at: { [Op.gte]: today }
+      },
+      transaction: t
+    });
 
-        if (user.bonus_entries < finalNumbers.length) {
-            await ctx.deleteMessage(loadingMsg.message_id);
-            return sendError(ctx, `You don't have enough bonus entries. Available: ${user.bonus_entries}`);
-        }
-
-        // Finalize the entries
-        const result = await finalizeEntries(
-            user.id,
-            ctx.session.poolId,
-            finalNumbers,
-            currentWeek.code,
-            currentWeek.week_name,
-            null, // No transaction ID for bonus entries
-            true  // Mark as bonus entries
-        );
-
-        await ctx.deleteMessage(loadingMsg.message_id);
-
-        if (result.success) {
-            // Deduct used bonus entries
-            user.bonus_entries -= finalNumbers.length;
-            await user.save();
-            
-            // Show success summary
-            await showBonusEntrySummary(ctx, finalNumbers, pool, method);
-        
-            // Clear bonus flow session
-            delete ctx.session.bonusEntryFlow;
-            delete ctx.session.availableBonusEntries;
-        } else {
-            await sendError(ctx, result.message);
-        }
-
-    } catch (error) {
-        console.error("Error finalizing bonus entries:", error);
-        await sendError(ctx, "Something went wrong while finalizing your bonus entries.");
+    if (!currentWeek) {
+      await ctx.deleteMessage(loadingMsg.message_id);
+      await t.rollback();
+      return sendError(ctx, "No current week found. Please try again later.");
     }
 
-    clearSelectionSession(ctx.session);
+    if (user.bonus_entries < finalNumbers.length) {
+      await ctx.deleteMessage(loadingMsg.message_id);
+      await t.rollback();
+      return sendError(ctx, `You don't have enough bonus entries. Available: ${user.bonus_entries}`);
+    }
+
+    // Finalize the entries inside SAME transaction
+    const result = await finalizeEntries(
+      user.id,
+      ctx.session.poolId,
+      finalNumbers,
+      currentWeek.code,
+      currentWeek.week_name,
+      null,   // transactionId
+      true,   // isBonus
+      t       // ✅ pass transaction here
+    );
+
+    if (!result.success) {
+      await ctx.deleteMessage(loadingMsg.message_id);
+      await t.rollback();
+      return sendError(ctx, result.message);
+    }
+
+    // Deduct used bonus entries inside SAME transaction
+    user.bonus_entries -= finalNumbers.length;
+    await user.save({ transaction: t });
+
+    await t.commit(); // ✅ commit only after all is successful
+    await ctx.deleteMessage(loadingMsg.message_id);
+
+    // Show success summary
+    await showBonusEntrySummary(ctx, finalNumbers, pool, method);
+
+    // Clear bonus flow session
+    delete ctx.session.bonusEntryFlow;
+    delete ctx.session.availableBonusEntries;
+
+  } catch (error) {
+    console.error("Error finalizing bonus entries:", error);
+    await t.rollback(); // ✅ rollback on failure
+    await sendError(ctx, "Something went wrong while finalizing your bonus entries.");
+  }
+
+  clearSelectionSession(ctx.session);
 }
+
 
 // Function to show bonus entry summary
 async function showBonusEntrySummary(ctx, finalNumbers, pool, method) {
