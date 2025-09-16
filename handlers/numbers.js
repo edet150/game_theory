@@ -344,67 +344,67 @@ bot.action(/^remove_number:(\d+)$/, async (ctx) => {
 });
   
 // Your existing message handler, but with command protection
-bot.on('message', async (ctx) => {
-  // Skip processing if it's a command
-  if (ctx.message.text && ctx.message.text.startsWith('/')) {
-    return;
-  }
+// bot.on('message', async (ctx) => {
+//   // Skip processing if it's a command
+//   if (ctx.message.text && ctx.message.text.startsWith('/')) {
+//     return;
+//   }
   
-  // Your existing message processing logic
-  if (ctx.session.nextAction === 'process_numbers' && ctx.message.text) {
-    const requestedNumbers = ctx.message.text.split(',').map(n => parseInt(n.trim(), 10));
-    const quantity = ctx.session.quantity;
-    const poolName = ctx.session.poolName;
+//   // Your existing message processing logic
+//   if (ctx.session.nextAction === 'process_numbers' && ctx.message.text) {
+//     const requestedNumbers = ctx.message.text.split(',').map(n => parseInt(n.trim(), 10));
+//     const quantity = ctx.session.quantity;
+//     const poolName = ctx.session.poolName;
 
-    if (requestedNumbers.length !== quantity) {
-      ctx.reply(`Error: You requested ${quantity} entries, but you entered ${requestedNumbers.length} numbers. Please enter exactly ${quantity} numbers.`);
-      return;
-    }
+//     if (requestedNumbers.length !== quantity) {
+//       ctx.reply(`Error: You requested ${quantity} entries, but you entered ${requestedNumbers.length} numbers. Please enter exactly ${quantity} numbers.`);
+//       return;
+//     }
 
-    const pool = await RafflePool.findOne({ where: { name: poolName } });
-    if (!pool) {
-      return ctx.reply('Something went wrong. Please try again from the start.');
-    }
+//     const pool = await RafflePool.findOne({ where: { name: poolName } });
+//     if (!pool) {
+//       return ctx.reply('Something went wrong. Please try again from the start.');
+//     }
 
-    const maxEntries = pool.max_entries;
-    const invalidRange = requestedNumbers.some(n => isNaN(n) || n <= 0 || n > maxEntries);
+//     const maxEntries = pool.max_entries;
+//     const invalidRange = requestedNumbers.some(n => isNaN(n) || n <= 0 || n > maxEntries);
 
-    if (invalidRange) {
-      ctx.reply(`Error: All numbers must be between 1 and ${maxEntries}. Please enter valid numbers.`);
-      return;
-    }
+//     if (invalidRange) {
+//       ctx.reply(`Error: All numbers must be between 1 and ${maxEntries}. Please enter valid numbers.`);
+//       return;
+//     }
 
-    const existingEntries = await Entry.findAll({
-      where: {
-        entry_number: requestedNumbers,
-        pool_id: pool.id
-      }
-    });
+//     const existingEntries = await Entry.findAll({
+//       where: {
+//         entry_number: requestedNumbers,
+//         pool_id: pool.id
+//       }
+//     });
 
-    const takenNumbers = existingEntries.map(e => e.entry_number);
-    const availableNumbers = requestedNumbers.filter(n => !takenNumbers.includes(n));
+//     const takenNumbers = existingEntries.map(e => e.entry_number);
+//     const availableNumbers = requestedNumbers.filter(n => !takenNumbers.includes(n));
 
-    if (takenNumbers.length > 0) {
-      ctx.reply(`❌ Sorry, some of your numbers are already taken.\n\n` +
-        `*Numbers Taken:* ${takenNumbers.join(', ')}\n` +
-        `*Numbers Available:* ${availableNumbers.join(', ')}\n\n` +
-        `Would you like to select new numbers for the ones that are taken, or assign all ${quantity} entries automatically?`, {
-          parse_mode: 'markdown',
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: 'Choose New Numbers', callback_data: 'assign_method:choose' }],
-              [{ text: 'Assign All Automatically', callback_data: 'assign_method:random' }]
-            ]
-          }
-        });
-    } else {
-      ctx.session.chosenNumbers = requestedNumbers;
-      ctx.reply('All numbers are available. Proceeding to payment...');
-      // You will need to trigger the payment flow here
-      // paymentHandler(ctx); // This is a conceptual call
-    }
-  }
-});
+//     if (takenNumbers.length > 0) {
+//       ctx.reply(`❌ Sorry, some of your numbers are already taken.\n\n` +
+//         `*Numbers Taken:* ${takenNumbers.join(', ')}\n` +
+//         `*Numbers Available:* ${availableNumbers.join(', ')}\n\n` +
+//         `Would you like to select new numbers for the ones that are taken, or assign all ${quantity} entries automatically?`, {
+//           parse_mode: 'markdown',
+//           reply_markup: {
+//             inline_keyboard: [
+//               [{ text: 'Choose New Numbers', callback_data: 'assign_method:choose' }],
+//               [{ text: 'Assign All Automatically', callback_data: 'assign_method:random' }]
+//             ]
+//           }
+//         });
+//     } else {
+//       ctx.session.chosenNumbers = requestedNumbers;
+//       ctx.reply('All numbers are available. Proceeding to payment...');
+//       // You will need to trigger the payment flow here
+//       // paymentHandler(ctx); // This is a conceptual call
+//     }
+//   }
+// });
 
 bot.action("random_refresh", async (ctx) => {
   await ctx.answerCbQuery();

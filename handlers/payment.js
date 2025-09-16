@@ -303,28 +303,29 @@ async function initiatePayment(bot, ctx) {
         );
 
         // Additional confirmation message
-await bot.telegram.sendMessage(
-  telegram_id,
-  `✅ Successful! Your ${quantity} entries in the <b>${pool.name}</b> Pool for week <b>${lottery_week_number}</b> have been confirmed. Good luck! 🎉\n\n` +
+// Confirmation message after entries are bought
+    await bot.telegram.sendMessage(
+      telegram_id,
+      `✅ Successful! Your ${quantity} entries in the <b>${pool.name}</b> Pool for week <b>${lottery_week_number}</b> have been confirmed. Good luck! 🎉\n\n` +
 
-  `📢 Stay updated! Join our channel to see winning numbers, winners, and important announcements.\n\n` +
+      `📢 Stay updated! Join our channel to see winning numbers, winners, and important announcements.\n\n` +
 
-  `🎭 <b>How Winners Are Chosen:</b>\n\n` +
-  `1️⃣ <b>Exact Match</b>: If your number matches the last 4 digits of the Bitcoin block hash, you win instantly.\n` +
-  `2️⃣ <b>Inverse Match</b>: If no exact match, we look for the reversed number (e.g., 1234 → 4321).\n` +
-  `3️⃣ <b>Modulo Fallback</b>: If still no winner, the hash is mapped to the pool size using modulo — this guarantees a winner every round.\n\n` +
+      `⚠️ <b>Important:</b> Make sure you set up your bank details so we can pay you instantly if you win!\n\n` +
 
-  `💡 <b>Strategy Tip:</b> Since modulo can trigger if no matches exist, it’s smarter to <b>spread your entries across different numbers</b> instead of stacking them. This increases your chance of being closest to the modulo position! 🔑`,
-  {
-    parse_mode: "HTML",
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "➕ Buy More Entries", callback_data: "start_over" }],
-        [{ text: "📢 Join Channel", url: `https://t.me/${process.env.CHANNEL_NAME}` }]
-      ]
-    }
-  }
-);
+      `🎯 <b>Strategy Tip:</b> Winners are sometimes picked by <b>entry position</b> (when no exact number match is found).\n` +
+      `This means the more you <b>spread your entries across different positions</b>, the better your chance of landing on the winning spot! 🚀`,
+      {
+        parse_mode: "HTML",
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "ℹ️ What is Positions ?", callback_data: "how_it_works" }],
+            [{ text: "➕ Buy More Entries", callback_data: "start_over" }],
+            [{ text: "🏦 Setup Bank Account", callback_data: "bank_setup" }],
+            [{ text: "📢 Join Channel", url: `https://t.me/${process.env.CHANNEL_NAME}` }]
+          ]
+        }
+      }
+    );
 
 
 
@@ -500,56 +501,56 @@ async function updateSelectionView(ctx, selectedNumbers, quantity) {
 }
 
 // Modified finalizeEntries function
-async function finalizeEntries(userId, poolId, numbers, lottery_week_code, lottery_week_name, transactionId = null, isBonus = false) {
-  try {
-    // Step 1: Fetch already taken numbers in this pool & week
-    const existingEntries = await Entry.findAll({
-      where: {
-        pool_id: poolId,
-        week_code: lottery_week_code,
-        entry_number: numbers
-      },
-      attributes: ["entry_number"]
-    });
+// async function finalizeEntries(userId, poolId, numbers, lottery_week_code, lottery_week_name, transactionId = null, isBonus = false) {
+//   try {
+//     // Step 1: Fetch already taken numbers in this pool & week
+//     const existingEntries = await Entry.findAll({
+//       where: {
+//         pool_id: poolId,
+//         week_code: lottery_week_code,
+//         entry_number: numbers
+//       },
+//       attributes: ["entry_number"]
+//     });
 
-    const existingNumbers = new Set(existingEntries.map(e => e.entry_number));
+//     const existingNumbers = new Set(existingEntries.map(e => e.entry_number));
 
-    // Step 2: Filter out numbers that are already taken
-    const uniqueNumbers = numbers.filter(num => !existingNumbers.has(num));
+//     // Step 2: Filter out numbers that are already taken
+//     const uniqueNumbers = numbers.filter(num => !existingNumbers.has(num));
 
-    if (uniqueNumbers.length === 0) {
-      return { success: false, message: "All selected numbers are already taken." };
-    }
+//     if (uniqueNumbers.length === 0) {
+//       return { success: false, message: "All selected numbers are already taken." };
+//     }
 
-    // Step 3: Prepare new entries
-    const entries = uniqueNumbers.map((num) => ({
-      user_id: userId,
-      pool_id: poolId,
-      entry_number: num,
-      week_code: lottery_week_code,
-      week_name: lottery_week_name,
-      transaction_id: transactionId,
-      status: "paid",
-      is_bonus_entry: isBonus
-    }));
+//     // Step 3: Prepare new entries
+//     const entries = uniqueNumbers.map((num) => ({
+//       user_id: userId,
+//       pool_id: poolId,
+//       entry_number: num,
+//       week_code: lottery_week_code,
+//       week_name: lottery_week_name,
+//       transaction_id: transactionId,
+//       status: "paid",
+//       is_bonus_entry: isBonus
+//     }));
 
-    // Step 4: Bulk insert only unique entries
-    await Entry.bulkCreate(entries);
+//     // Step 4: Bulk insert only unique entries
+//     await Entry.bulkCreate(entries);
 
-    // Step 5: Deduct bonus entries if needed
-    if (isBonus) {
-      await User.increment(
-        { bonus_entries: -uniqueNumbers.length },
-        { where: { id: userId } }
-      );
-    }
+//     // Step 5: Deduct bonus entries if needed
+//     if (isBonus) {
+//       await User.increment(
+//         { bonus_entries: -uniqueNumbers.length },
+//         { where: { id: userId } }
+//       );
+//     }
 
-    return { success: true, message: `Entries created: ${uniqueNumbers.join(", ")}` };
-  } catch (error) {
-    console.error("Error creating entries:", error);
-    return { success: false, message: "An error occurred while finalizing entries." };
-  }
-}
+//     return { success: true, message: `Entries created: ${uniqueNumbers.join(", ")}` };
+//   } catch (error) {
+//     console.error("Error creating entries:", error);
+//     return { success: false, message: "An error occurred while finalizing entries." };
+//   }
+// }
 
 async function finalizeEntries(
   userId,
@@ -712,7 +713,7 @@ function buildRandomGrid(numbers, finalized = false) {
 
   return {
     text,
-    parse_mode: "MarkdownV2",
+    parse_mode: "Markdown",
     reply_markup: keyboard.reply_markup
   };
 }

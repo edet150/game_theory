@@ -1,9 +1,9 @@
 // handlers/admin.js
-const { User ,RafflePool,Winning, Payment, Admin, Entry, Week} = require('../models');const { Op } = require("sequelize");
+const { User ,RafflePool, sequelize, Winning, WeeklyWinner,winningEntries, Payment, Admin, Entry, Week} = require('../models');const { Op } = require("sequelize");
 const { getbotInstance, getRedisClient } = require('../bot/botInstance');
 const { sendError, sendSuccess } = require('../utils/responseUtils');
 const redis = getRedisClient();
-module.exports = (bot) => {
+module.exports = (bot, bankSetupState) => {
     // Admin authentication states
     const ADMIN_STATES = {
         AWAITING_USERNAME: 'awaiting_admin_username',
@@ -155,7 +155,7 @@ module.exports = (bot) => {
     });
 
     // Handle admin messages based on state
-    bot.on('message', async (ctx) => {
+    bot.on('message_', async (ctx) => {
         // Skip processing if it's a command (starts with /)
         if (ctx.message.text && ctx.message.text.startsWith('/')) {
             return;
@@ -278,6 +278,192 @@ module.exports = (bot) => {
             ctx.session.startPromptMessageId = startPromptMessage.message_id;
         }
     });
+  async function fetchBanksFromPaystack() {
+    try {
+      const response = await axios.get('https://api.paystack.co/bank', {
+        headers: {
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`
+        }
+      });
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching banks:', error);
+      throw error;
+    }
+  }
+    // bot.on('message', async (ctx) => {
+    // // Skip processing if it's a command (starts with /)
+    // if (ctx.message.text && ctx.message.text.startsWith('/')) {
+    //   return;
+    // }
+
+    // const userId = ctx.from.id;
+    // const state = bankSetupState.get(userId);
+    
+    // // 0. Check for bank setup flow first
+    // if (state && state.step === 'account_number' && ctx.message.text) {
+    //   const text = ctx.message.text;
+      
+    //   // Validate account number
+    //   if (!/^\d{10}$/.test(text)) {
+    //     await ctx.reply('❌ Please enter a valid 10-digit account number:');
+    //     return;
+    //   }
+      
+    //   // Store account number and move to next step
+    //   state.account_number = text;
+    //   state.step = 'bank_selection';
+    //   bankSetupState.set(userId, state);
+      
+    //   // Fetch banks from Paystack
+    //   try {
+    //     const banks = await fetchBanksFromPaystack();
+        
+    //     if (!banks || banks.length === 0) {
+    //       await ctx.reply('❌ Unable to fetch banks at the moment. Please try again later.');
+    //       bankSetupState.delete(userId);
+    //       return;
+    //     }
+        
+    //     // Create keyboard with banks (first 50 to avoid too many buttons)
+    //     const bankButtons = banks.slice(0, 50).map(bank => [
+    //       { text: bank.name, callback_data: `select_bank:${bank.code}:${encodeURIComponent(bank.name)}` }
+    //     ]);
+        
+    //     await ctx.reply(
+    //       '✅ Account number received. Now select your bank:',
+    //       {
+    //         reply_markup: {
+    //           inline_keyboard: bankButtons
+    //         }
+    //       }
+    //     );
+    //   } catch (error) {
+    //     console.error('Error fetching banks:', error);
+    //     await ctx.reply('❌ Error fetching banks. Please try again later.');
+    //     bankSetupState.delete(userId);
+    //   }
+      
+    //   return; // Important: return after handling bank setup
+    // }
+
+    // // 1. Check for bonus quantity input first (highest priority)
+    // if (ctx.session.waitingForBonusQuantity && ctx.message.text) {
+    //   const quantity = parseInt(ctx.message.text, 10);
+    //   const user = await User.findOne({ where: { telegram_id: ctx.from.id } });
+  
+    //   if (isNaN(quantity) || quantity < 1 || quantity > user.bonus_entries) {
+    //     return sendError(ctx, `Please enter a valid number between 1 and ${user.bonus_entries}`);
+    //   }
+
+    //   ctx.session.quantity = quantity;
+    //   ctx.session.bonusEntryFlow = true;
+    //   ctx.session.waitingForBonusQuantity = false;
+  
+    //   // Delete the input message
+    //   try {
+    //     await ctx.deleteMessage();
+    //   } catch (error) {
+    //     console.log('Could not delete message:', error.message);
+    //   }
+  
+    //   // Proceed to assignment method selection
+    //   await showAssignmentMethodSelection(ctx);
+    //   return; // Important: return after handling
+    // }
+
+    // // 2. Check for admin states
+    // if (ctx.session.adminState) {
+    //   // Track all admin messages for cleanup
+    //   trackMessage(ctx, `adminMsg_${Date.now()}`);
+
+    //   switch (ctx.session.adminState) {
+    //     case ADMIN_STATES.AWAITING_USERNAME:
+    //       await handleAdminUsername(ctx);
+    //       break;
+    //     case ADMIN_STATES.AWAITING_PASSWORD:
+    //       await handleAdminPassword(ctx);
+    //       break;
+    //     case ADMIN_STATES.AWAITING_WINNING_NUMBER:
+    //       await handleWinningNumber(ctx);
+    //       break;
+    //     case ADMIN_STATES.AWAITING_WINNING_AMOUNT:
+    //       await handleWinningAmount(ctx);
+    //       break;
+    //     case ADMIN_STATES.AWAITING_POOL_NAME:
+    //       await handlePoolName(ctx);
+    //       break;
+    //     case ADMIN_STATES.AWAITING_POOL_PRICE:
+    //       await handlePoolPrice(ctx);
+    //       break;
+    //     case ADMIN_STATES.AWAITING_POOL_MAX_ENTRIES:
+    //       await handlePoolMaxEntries(ctx);
+    //       break;
+    //   }
+    //   return; // Important: return after handling
+    // }
+
+    // // 3. Check for quantity prompt
+    // if (ctx.session.nextAction === 'prompt_quantity' && ctx.message.text) {
+    //   const quantity = parseInt(ctx.message.text, 10);
+    //   if (isNaN(quantity) || quantity <= 0 || quantity > 100) {
+    //     ctx.reply('❌ Please enter a valid number between 1 and 100.');
+    //     return;
+    //   }
+
+    //   ctx.session.quantity = quantity;
+    //   ctx.session.nextAction = null; // Clear the next action
+      
+    //   // Store the custom quantity message ID for deletion
+    //   ctx.session.customQuantityMessageId = ctx.message.message_id;
+      
+    //   const assignmentMessage = await ctx.reply(
+    //     `Great! You've chosen to buy *${quantity} entries*.\n\nHow would you like them assigned?`,
+    //     {
+    //       parse_mode: 'Markdown',
+    //       reply_markup: {
+    //         inline_keyboard: [
+    //           [{ text: '🎲 Random Pick', callback_data: 'assign_method:random' }],
+    //           [{ text: 'I\'ll Choose My Numbers', callback_data: 'assign_method:choose' }]
+    //         ]
+    //       }
+    //     }
+    //   );
+      
+    //   // Store assignment message ID for deletion
+    //   ctx.session.assignmentMessageId = assignmentMessage.message_id;
+    //   return; // Important: return after handling
+    // }
+
+    // // 4. Default fallback for unexpected messages
+    // if (ctx.message.text) {
+    //   // If there's a previous prompt, delete it
+    //   if (ctx.session?.startPromptMessageId) {
+    //     try {
+    //       await ctx.deleteMessage(ctx.session.startPromptMessageId);
+    //     } catch (e) {
+    //       console.log("Message already deleted or can't delete");
+    //     }
+    //   }
+
+    //   // Send new prompt
+    //   const startPromptMessage = await ctx.reply(
+    //     "Please use /start to enter the game:",
+    //     {
+    //       reply_markup: {
+    //       inline_keyboard: [
+    //         [{ text: "🚀 Enter Game", callback_data: "start_over" }],
+    //       ],
+    //       },
+    //     }
+    //   );
+
+    //   // Save message ID in session
+    //   if (!ctx.session) ctx.session = {};
+    //   ctx.session.startPromptMessageId = startPromptMessage.message_id;
+    // }
+    // });
 
     // Admin login handlers
     async function handleAdminUsername(ctx) {
@@ -502,7 +688,7 @@ module.exports = (bot) => {
 
         let message = `🏆 Winners for ${currentWeek.week_name} (Week ${currentWeek.week_number}):\n\n`;
         message += `**Winning Number:** ${winningNumber}\n`;
-        message += `**Prize Arena:** ₦${winningRecord.amount}\n\n`; // assuming amount lives in Winning
+        message += `**Prize Arena:** ₦${Number(winningRecord.winning_amount).toLocaleString()}\n\n`; // assuming amount lives in Winning
 
         winningEntries.forEach((entry, index) => {
         message += `**Winner ${index + 1}:**\n`;
@@ -524,38 +710,112 @@ module.exports = (bot) => {
     });
 
     // Announce winner to channel
-    bot.action('admin_announce_winner', async (ctx) => {
-        await safeAnswerCbQuery(ctx);
-        
-        if (!ctx.session.isAdmin) {
-            await ctx.reply('❌ Please login as admin first using /admin');
-            return;
-        }
-        
-        try {
-            const processingMsg = await ctx.reply('🔄 Preparing winner announcement...');
-            
-            const winnerAnnouncement = await compileWinnerAnnouncementHTML();
-            await sendToTelegramChannelHTML(ctx, winnerAnnouncement);
-            
-            await ctx.editMessageText('✅ Winner announcement sent to channel!', {
-                chat_id: processingMsg.chat.id,
-                message_id: processingMsg.message_id
-            });
-            
-            setTimeout(async () => {
-                try {
-                    await ctx.deleteMessage(processingMsg.message_id);
-                } catch (e) {
-                    console.log('Could not delete processing message:', e.message);
-                }
-            }, 5000);
-            
-        } catch (error) {
-            console.error('Error announcing winner:', error);
-            await ctx.reply(`❌ Error: ${error.message}`);
-        }
+// Admin: preview announcement and ask to save
+bot.action('admin_announce_winner', async (ctx) => {
+  await safeAnswerCbQuery(ctx);
+
+  if (!ctx.session?.isAdmin) {
+    await ctx.reply('❌ Please login as admin first using /admin');
+    return;
+  }
+
+  const processingMsg = await ctx.reply('🔄 Preparing winner announcement...');
+  try {
+    const data = await compileWinnerAnnouncementHTML({ structured: true });
+    await ctx.reply(data.message, {
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: '✅ Save Winner', callback_data: 'save_winner' },
+            { text: '❌ Cancel', callback_data: 'cancel_winner' }
+          ]
+        ]
+      }
     });
+
+    // update processing message
+    await ctx.telegram.editMessageText(processingMsg.chat.id, processingMsg.message_id, null, '✅ Winner announcement is ready. Please confirm.');
+  } catch (err) {
+    console.error('Error preparing winner announcement:', err);
+    await ctx.reply(`❌ Error: ${err.message}`);
+  } finally {
+    // try remove processing msg after a short delay
+    setTimeout(async () => {
+      try { await ctx.deleteMessage(processingMsg.message_id); } catch (e) {}
+    }, 3500);
+  }
+});
+
+// Admin: Save winner(s) to DB and announce to channel
+bot.action('save_winner', async (ctx) => {
+  await safeAnswerCbQuery(ctx);
+  if (!ctx.session?.isAdmin) {
+    await ctx.reply('❌ Please login as admin first using /admin');
+    return;
+  }
+
+  try {
+    const data = await compileWinnerAnnouncementHTML({ structured: true });
+    const { winningEntries, winMethod, winningNumber, currentWeek, moduloWinningIndex, message } = data;
+
+    // Save unique winners inside a transaction
+    await sequelize.transaction(async (tx) => {
+      for (const entry of winningEntries) {
+        // ✅ Ensure only one winner record per user_id + week_code
+        const exists = await WeeklyWinner.findOne({
+          where: {
+            week_code: currentWeek.code,
+            user_id: entry.User.id
+          },
+          transaction: tx
+        });
+
+        if (!exists) {
+          await WeeklyWinner.create({
+            week_id: currentWeek.id,
+            week_code: currentWeek.code,
+            entry_id: entry.id,
+            entry_number: entry.entry_number,
+            user_id: entry.User.id,
+            winning_method: winMethod,
+            winning_number: winningNumber,
+            position: moduloWinningIndex !== null ? moduloWinningIndex : null,
+            won_at: new Date()
+          }, { transaction: tx });
+        } else {
+          console.log(`⚠️ Skipped duplicate winner for user ${entry.User.id} in week ${currentWeek.code}`);
+        }
+      }
+    });
+
+    // Announce to channel
+    await sendToTelegramChannelHTML(ctx, message);
+
+    // Delete the inline keyboard message
+    try {
+      await ctx.deleteMessage();
+    } catch (e) {
+      console.log("Could not delete inline message:", e.message);
+    }
+
+    // Reply confirmation
+    await ctx.reply('✅ Winner(s) saved uniquely to database and announcement sent to the channel.');
+
+  } catch (err) {
+    console.error('Error saving winner:', err);
+    await ctx.reply(`❌ Failed to save winner: ${err.message}`);
+  }
+});
+
+
+
+
+// Admin: cancel
+bot.action('cancel_winner', async (ctx) => {
+  await safeAnswerCbQuery(ctx);
+  await ctx.reply('❌ Winner announcement canceled by admin.');
+});
 
     // Post winning number to channel
     bot.action('admin_post_winning_number', async (ctx) => {
@@ -748,53 +1008,53 @@ module.exports = (bot) => {
         // Compile the message
         let message = `📋 *Daily Entries Report - ${currentDate}*\n\n`;
         message += `*Week:* ${currentWeek.week_name}\n`;
-        message += `*Total Participants:* ${users.length}\n`;
+        // message += `*Total Participants:* ${users.length}\n`;
         message += `*Total Entries:* ${allEntries.length}\n`;
-        message += `*Winning Amount:* ${winningAmount || 'Not yet set'}\n\n`;
+        message += `*Winning Amount:* ₦ ${Number(winningAmount).toLocaleString() || 'Not yet set'}\n\n`;
         message += "━━━━━━━━━━━━━━━━━━━━\n\n";
 
         let userCount = 1;
 
-        for (const user of users) {
-            if (user.Entries && user.Entries.length > 0) {
-                message += `*${userCount}. ${user.telegram_username}* `;
+        // for (const user of users) {
+        //     if (user.Entries && user.Entries.length > 0) {
+        //         message += `*${userCount}. ${user.telegram_username}* `;
                 
-                // Add contact info if available
-                if (user.phone || user.email) {
-                    message += `(`;
-                    if (user.phone) message += `📞 ${user.phone}`;
-                    if (user.phone && user.email) message += `, `;
-                    if (user.email) message += `📧 ${user.email}`;
-                    message += `)`;
-                }
+        //         // Add contact info if available
+        //         if (user.phone || user.email) {
+        //             message += `(`;
+        //             if (user.phone) message += `📞 ${user.phone}`;
+        //             if (user.phone && user.email) message += `, `;
+        //             if (user.email) message += `📧 ${user.email}`;
+        //             message += `)`;
+        //         }
                 
-                message += `\n`;
+        //         message += `\n`;
 
-                // Group entries by pool
-                const entriesByPool = {};
-                user.Entries.forEach(entry => {
-                    if (!entriesByPool[entry.RafflePool.name]) {
-                        entriesByPool[entry.RafflePool.name] = [];
-                    }
-                    entriesByPool[entry.RafflePool.name].push(entry);
-                });
+        //         // Group entries by pool
+        //         const entriesByPool = {};
+        //         user.Entries.forEach(entry => {
+        //             if (!entriesByPool[entry.RafflePool.name]) {
+        //                 entriesByPool[entry.RafflePool.name] = [];
+        //             }
+        //             entriesByPool[entry.RafflePool.name].push(entry);
+        //         });
 
-                // Add entries for each pool
-                for (const [poolName, entries] of Object.entries(entriesByPool)) {
-                    message += `   🏊 *${poolName}:* `;
+        //         // Add entries for each pool
+        //         for (const [poolName, entries] of Object.entries(entriesByPool)) {
+        //             message += `   🏊 *${poolName}:* `;
                     
-                    const entryNumbers = entries.map(entry => {
-                        const position = entryPositionMap.get(entry.entry_number);
-                        return `#${entry.entry_number} (Pos: ${position})`;
-                    });
+        //             const entryNumbers = entries.map(entry => {
+        //                 const position = entryPositionMap.get(entry.entry_number);
+        //                 return `#${entry.entry_number} (Pos: ${position})`;
+        //             });
                     
-                    message += entryNumbers.join(', ') + '\n';
-                }
+        //             message += entryNumbers.join(', ') + '\n';
+        //         }
                 
-                message += `   📦 *Total:* ${user.Entries.length} entries\n\n`;
-                userCount++;
-            }
-        }
+        //         message += `   📦 *Total:* ${user.Entries.length} entries\n\n`;
+        //         userCount++;
+        //     }
+        // }
 
         message += "━━━━━━━━━━━━━━━━━━━━\n\n";
         message += "*Note:* This is a daily summary of all entries. \n";
@@ -847,189 +1107,162 @@ async function sendToTelegramChannelHTML(ctx, message) {
 }
 
     // HTML version of compileWinnerAnnouncement with inverse strategy
-    async function compileWinnerAnnouncementHTML() {
+// --- top of file: import models / sequelize ---
+// --- compileWinnerAnnouncementHTML ---
+        async function compileWinnerAnnouncementHTML({ structured = false } = {}) {
         try {
-            // Get current week
             const today = new Date();
-            const { Op } = require('sequelize');
 
-            // Get current week (based on dates)
+            // current week
             const currentWeek = await Week.findOne({
-                where: {
-                    starts_at: { [Op.lte]: today },
-                    ends_at: { [Op.gte]: today }
-                }
-            });
-
-            if (!currentWeek) {
-                throw new Error('No current week found');
+            where: {
+                starts_at: { [Op.lte]: today },
+                ends_at: { [Op.gte]: today }
             }
-
-            // Get the winning record for this week
-            const winningRecord = await Winning.findOne({
-                where: { week_code: currentWeek.code }
             });
+            if (!currentWeek) throw new Error('No current week found');
 
-            if (!winningRecord) {
-                throw new Error('No winning number found for this week');
-            }
+            // winning record
+            const winningRecord = await Winning.findOne({ where: { week_code: currentWeek.code } });
+            if (!winningRecord) throw new Error('No winning number found for this week');
 
-            const winningNumber = winningRecord.winning_number;
+            const winningNumber = String(winningRecord.winning_number);
 
-            // Try exact match first
+            // 1) exact match
             let winningEntries = await Entry.findAll({
-                where: {
-                    week_code: currentWeek.code,
-                    entry_number: winningNumber,
-                    status: 'paid'
-                },
-                include: [
-                    { model: User },
-                    { model: RafflePool }
-                ]
+            where: { week_code: currentWeek.code, entry_number: winningNumber, status: 'paid' },
+            include: [{ model: User }, { model: RafflePool }]
             });
 
-            let winMethod = "exact match";
-            let winnerType = "winner";
+            let winMethod = 'exact match';
+            let winnerType = 'winner';
 
-            // If no exact match, try inverse match
-            if (winningEntries.length === 0) {
-                const inverseNumber = winningNumber.split('').reverse().join('');
-                winningEntries = await Entry.findAll({
-                    where: {
-                        week_code: currentWeek.code,
-                        entry_number: inverseNumber,
-                        status: 'paid'
-                    },
-                    include: [
-                        { model: User },
-                        { model: RafflePool }
-                    ]
-                });
-                
-                if (winningEntries.length > 0) {
-                    winMethod = "inverse match";
-                    winnerType = "inverse winner";
-                }
+            // 2) inverse match
+            if (!winningEntries || winningEntries.length === 0) {
+            const inverseNumber = winningNumber.split('').reverse().join('');
+            winningEntries = await Entry.findAll({
+                where: { week_code: currentWeek.code, entry_number: inverseNumber, status: 'paid' },
+                include: [{ model: User }, { model: RafflePool }]
+            });
+
+            if (winningEntries && winningEntries.length > 0) {
+                winMethod = 'inverse match';
+                winnerType = 'inverse winner';
+            }
             }
 
-            // If no exact or inverse match, use modulo fallback
-            if (winningEntries.length === 0) {
-                const allEntries = await Entry.findAll({
-                    where: { 
-                        week_code: currentWeek.code,
-                        status: 'paid'
-                    },
-                    order: [['id', 'ASC']],
-                    include: [
-                        { model: User },
-                        { model: RafflePool }
-                    ]
-                });
+            // total entries count for header / explanation
+            const totalEntriesCount = await Entry.count({
+            where: { week_code: currentWeek.code, status: 'paid' }
+            });
 
-                if (allEntries.length > 0) {
-                    const winningPosition = parseInt(winningNumber) % allEntries.length;
-                    const winnerEntry = allEntries[winningPosition];
-                    winningEntries = [winnerEntry];
-                    winMethod = "modulo positioning";
-                    winnerType = "modulo winner";
-                }
+            let moduloWinningIndex = null;
+
+            // 3) modulo fallback (only if still no winners)
+            if (!winningEntries || winningEntries.length === 0) {
+            const allEntries = await Entry.findAll({
+                where: { week_code: currentWeek.code, status: 'paid' },
+                order: [['id', 'ASC']],
+                include: [{ model: User }, { model: RafflePool }]
+            });
+
+            if (allEntries && allEntries.length > 0) {
+                // parse winningNumber into an integer safely (fallback to 0 if not numeric)
+                const parsedWinningNumber = Number.isFinite(Number(winningNumber)) ? parseInt(winningNumber, 10) : 0;
+                const winningPosition = parsedWinningNumber % allEntries.length; // 0-based index
+                moduloWinningIndex = winningPosition;
+                const winnerEntry = allEntries[winningPosition];
+                winningEntries = [winnerEntry];
+                winMethod = 'modulo positioning';
+                winnerType = 'modulo winner';
+            }
             }
 
-            if (winningEntries.length === 0) {
-                throw new Error('No winners found for this week');
+            if (!winningEntries || winningEntries.length === 0) {
+            throw new Error('No winners found for this week');
             }
 
-            // Get current date
+            // Build human-friendly message
             const now = new Date();
-            const options = { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-            };
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
             const currentDate = now.toLocaleDateString('en-US', options);
-            
-            // Compile announcement message using HTML
+
             let message = `<b>🎉 OFFICIAL WINNER ANNOUNCEMENT</b>\n\n`;
             message += `<b>Date:</b> ${currentDate}\n`;
             message += `<b>Week:</b> ${currentWeek.week_name}\n`;
-            message += `<b>Winning Number:</b> ${winningNumber}\n`;
-            
-            // Add inverse number if applicable
-            if (winMethod === "inverse match") {
-                const inverseNumber = winningNumber.split('').reverse().join('');
-                message += `<b>Inverse Number:</b> ${inverseNumber}\n`;
+            message += `<b>Winning Number (signal):</b> ${winningNumber}\n`;
+            message += `<b>Total Entries This Week:</b> ${totalEntriesCount}\n`;
+            if (winMethod === 'inverse match') {
+            const inverseNumber = winningNumber.split('').reverse().join('');
+            message += `<b>Inverse Number:</b> ${inverseNumber}\n`;
             }
-            
-            message += `<b>Prize Money:</b> ₦${(Number(winningRecord.winning_amount)).toLocaleString()}\n`;
+            message += `<b>Prize Money:</b> ₦${Number(winningRecord.winning_amount).toLocaleString()}\n`;
             message += `<b>Win Method:</b> ${winMethod}\n\n`;
             message += "━━━━━━━━━━━━━━━━━━━━\n\n";
 
-            // Add winner(s) information
+            // winners info
             for (const [index, entry] of winningEntries.entries()) {
-                message += `<b>${winnerType.toUpperCase()} ${index + 1}:</b>\n`;
-                message += `👤 <b>Name:</b> ${entry.User.telegram_username}\n`;
-
-                if (entry.User.phone) {
-                    message += `📞 <b>Phone:</b> ${entry.User.phone}\n`;
-                }
-                if (entry.User.email) {
-                    message += `📧 <b>Email:</b> ${entry.User.email}\n`;
-                }
-
-                message += `🏊 <b>Arena:</b> ${entry.RafflePool.name}\n`;
-                
-                // Show both entry number and inverse if applicable
-                if (winMethod === "inverse match") {
-                    message += `🔢 <b>Entry Number:</b> #${entry.entry_number}\n`;
-                    message += `🔄 <b>Matched Inverse Of:</b> #${winningNumber}\n`;
-                } else {
-                    message += `🔢 <b>Winning Entry:</b> #${entry.entry_number}\n`;
-                }
-
-                if (winMethod === "modulo positioning") {
-                    const allEntries = await Entry.findAll({
-                        where: { 
-                            week_code: currentWeek.code,
-                            status: 'paid'
-                        },
-                        order: [['id', 'ASC']]
-                    });
-
-                    const position = allEntries.findIndex(e => e.id === entry.id) + 1;
-                    message += `📊 <b>Position:</b> ${position}\n`;
-                }
-
-                message += `💰 <b>Prize Won:</b> ₦${winningRecord.winning_amount.toLocaleString()}\n\n`;
+            message += `<b>${winnerType.toUpperCase()} ${index + 1}:</b>\n`;
+            message += `👤 <b>Name:</b> ${entry.User?.telegram_username || 'N/A'}\n`;
+            if (entry.User?.phone) message += `📞 <b>Phone:</b> ${entry.User.phone}\n`;
+            if (entry.User?.email) message += `📧 <b>Email:</b> ${entry.User.email}\n`;
+            message += `🏊 <b>Arena:</b> ${entry.RafflePool?.name || 'N/A'}\n`;
+            if (winMethod === 'inverse match') {
+                message += `🔢 <b>Entry Number:</b> #${entry.entry_number}\n`;
+                message += `🔄 <b>Matched Inverse Of:</b> #${winningNumber}\n`;
+            } else {
+                message += `🔢 <b>Winning Entry:</b> #${entry.entry_number}\n`;
+            }
+            message += `💰 <b>Prize Won:</b> ₦${Number(winningRecord.winning_amount).toLocaleString()}\n\n`;
             }
 
             message += "━━━━━━━━━━━━━━━━━━━━\n\n";
-            
-            // Add explanation of win method
-            if (winMethod === "exact match") {
-                message += "<i>This winner matched the exact winning number!</i>\n\n";
-            } else if (winMethod === "inverse match") {
-                message += `<i>This winner matched the inverse of the winning number (${winningNumber.split('').reverse().join('')})!</i>\n\n`;
+
+            // human-friendly modulo explanation (layman)
+            if (winMethod === 'exact match') {
+            message += "<i>This winner matched the exact winning number!</i>\n\n";
+            } else if (winMethod === 'inverse match') {
+            message += `<i>This winner matched the inverse of the winning number (${winningNumber.split('').reverse().join('')})!</i>\n\n`;
             } else {
-                message += "<i>This winner was selected using modulo positioning when no exact or inverse matches were found.</i>\n\n";
+            const humanSeat = moduloWinningIndex !== null ? (moduloWinningIndex + 1) : null; // show 1-based seat for humans
+            message += `<i>This winner was selected using the <b>Modulo Fallback</b> method because no exact or inverse match was found.</i>\n\n`;
+            message += `<b>How it works (plain):</b>\n`;
+            message += `1️⃣ We take the winning number (${winningNumber}) and divide it by the total entries (${totalEntriesCount}).\n`;
+            message += `2️⃣ The remainder tells us which position wins.\n`;
+            message += `3️⃣ Example: ${winningNumber} ÷ ${totalEntriesCount} → remainder ${moduloWinningIndex}. That corresponds to <b>seat ${humanSeat}</b> (counting from 1).\n\n`;
+            message += `🪑 <b>What is Position?</b>\n`;
+            message += `Think of entries like seats in a row: seat 1, seat 2, seat 3, etc. If modulo gives us ${moduloWinningIndex}, that means the person in <b>seat ${humanSeat}</b> is the winner.\n\n`;
+            message += `💡 <b>Tip:</b> Spread your entries across different times to get more coverage of seats — this improves your chances if modulo is used.\n\n`;
             }
-            
+
             message += "<b>🎊 CONGRATULATIONS! 🎊</b>\n\n";
             message += "To claim your prize, please:\n";
-            message += "1. Contact the admin via private message or click the chat icon at the bottom left corner\n";
+            message += "1. Contact the admin via private message\n";
             message += "2. Provide your bank account details for payment\n";
             message += "3. Payments are processed within 24-48 hours\n\n";
-            message += "<b>Admin Contact:</b> @gametheory_admim\n\n";
+            message += `<b>Admin Contact:</b> @gametheory_admim\n\n`;
             message += "Thank you to everyone who participated!\n";
             message += "Next draw begins on Monday";
+
+            if (structured) {
+            return {
+                message,
+                winningEntries,           // array of Entry instances (with User + RafflePool included)
+                winMethod,
+                winningNumber,
+                currentWeek,
+                moduloWinningIndex,
+                totalEntriesCount,
+                winningRecord
+            };
+            }
 
             return message;
         } catch (error) {
             console.error('Error compiling winner announcement:', error);
             throw new Error('Failed to compile winner announcement: ' + error.message);
         }
-    }
+        }
 
     async function compileWinningNumberAnnouncement() {
         try {

@@ -51,14 +51,14 @@ async function showStartScreen(ctx) {
       }
       
 
-      
+      console.log(currentWeek)
       
    const winningRecord = await Winning.findOne({
             where: { week_code: currentWeek.code }
         });
 
     // Example prize pool (later make dynamic: 80% of all entries)
-    const prizeMoney = winningRecord.winning_amount ?? "₦100,000";
+    const prizeMoney = winningRecord.winning_amount ?? "100,000";
 
 
     // Fixed welcome text with proper HTML formatting
@@ -66,7 +66,7 @@ async function showStartScreen(ctx) {
         `👋 Welcome to <b>Game Theory </b>\n\n` +
         `Where numbers meet strategy.\n\n` +
         `<b style="color:blue;">This Round:</b>  ${weekLabel}\n` +
-        `<b>Price Amount:</b>  ₦${Number(prizeMoney).toLocaleString()}\n\n` +
+        `<b>Price Amount:</b>  ₦ ${Number(prizeMoney).toLocaleString()}\n\n` +
         `<b>Entry Window:</b>  Monday–Saturday\n` +
         `<b>Result Drop:</b>  Sunday 6:00 PM (Africa/Lagos)\n\n` +
         `Choose your arena below to make your move:`;
@@ -75,11 +75,15 @@ async function showStartScreen(ctx) {
         parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [
-                [{ text: 'Alpha Arena (₦100/entry)', callback_data: `select_pool:Alpha` }],
-                [{ text: '🔒 Beta Arena (₦500/10 entries)', callback_data: `select_pool:Beta` }],
                 [{ text: 'How It Works', callback_data: 'how_it_works' }],
+                [{ text: 'Alpha Arena (₦500 per entry)', callback_data: `select_pool:Alpha` }],
+                [{ text: '🔒 Bonus Arena (₦1000 for 5 entries)', callback_data: `select_pool:Beta` }],
                 [{ text: 'My Entries', callback_data: 'view_entries' }],
                 [{ text: 'Referral Dashboard', callback_data: 'referral_dashboard' }],
+                [
+        { text: '🏦 Setup Bank Account', callback_data: 'bank_setup' },
+        { text: '📋 My Bank Details', callback_data: 'bank_details' }
+      ]
             ]
         }
     };
@@ -427,7 +431,8 @@ async function cleanupCommandMessage(ctx) {
         }
     }
 }
-    // Show assignment method selection
+
+// Show assignment method selection
 async function showAssignmentMethodSelection(ctx) {
     const message = `
 <b>🎯 How would you like to place your ${ctx.session.quantity} entries?</b>

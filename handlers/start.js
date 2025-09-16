@@ -48,7 +48,7 @@ module.exports = (bot) => {
 });
 
 
-  bot.action('how_it_works', async (ctx) => {
+bot.action('how_it_works', async (ctx) => {
   await ctx.answerCbQuery();
 
   // Send image from local `/images` folder in your project root
@@ -60,9 +60,13 @@ module.exports = (bot) => {
       '1️⃣ <b>Winning Number</b>: The last 4 digits of the first Bitcoin block hash mined after 6:00 PM.\n\n' +
       '2️⃣ <b>Exact Match Wins</b>: Exact 4 digits = instant win.\n\n' +
       '3️⃣ <b>Inverse Match</b>: If no exact, we check reversed digits.\n\n' +
-      '4️⃣ <b>Game Theory Balance</b>: If no exact or inverse match, we map the number to the pool size using modulo arithmetic. ' +
-      'This guarantees a winner every single round.\n\n' +
-      '5️⃣ <b>Verify</b>: Anyone can check btcscan.org for fairness.\n\n',
+      '4️⃣ <b>Modulo Fallback</b>: If no match, we divide the winning number by total entries and take the remainder as the winner’s position. ' +
+      'Example (from image above): 9293 (winning number) with 100 entries → remainder 93, so the <b>93rd entry</b> wins. Always guarantees a winner.\n\n' +
+      '🪑 <b>What is Position?</b>\n' +
+      'Think of position like seats in a row. The first entry is seat 1, the second entry is seat 2, and so on. ' +
+      'If modulo gives us 93, it simply means the person sitting in seat 93 wins.\n\n' +
+      '💡 <b>Strategy Tip</b>: Spread your entries across different positions. This gives you more coverage and better chances if modulo decides the winner.\n\n' +
+      '✅ <b>Transparency</b>: Anyone can verify the winning number at btcscan.org.\n',
     parse_mode: "HTML",
     reply_markup: {
       inline_keyboard: [
@@ -70,7 +74,9 @@ module.exports = (bot) => {
       ]
     }
   });
-  });
+});
+
+
 
 
   bot.action('how_it_work', async (ctx) => {
@@ -187,7 +193,7 @@ module.exports = (bot) => {
         const winning = await Winning.findOne({
           where: { week_code: weekCode }
         });
-console.log(winning)
+        console.log(winning)
         if (winning) {
           prizeMoney = `₦${winning.winning_amount.toLocaleString()}`;
         }
@@ -211,11 +217,15 @@ console.log(winning)
         parse_mode: 'HTML',
         reply_markup: {
           inline_keyboard: [
-          [{ text: 'Alpha Arena (₦100/entry)', callback_data: `select_pool:Alpha` }],
-                  [{ text: '🔒 Beta Arena (₦500/10 entries)', callback_data: `select_pool:Beta` }],
                   [{ text: 'How It Works', callback_data: 'how_it_works' }],
+                  [{ text: 'Alpha Arena (₦500 per entry)', callback_data: `select_pool:Alpha` }],
+                  [{ text: '🔒 Bonus Arena (₦1000 for 5 entries)', callback_data: `select_pool:Beta` }],
                   [{ text: 'My Entries', callback_data: 'view_entries' }],
-                  [{ text: 'Referral Dashboard', callback_data: 'referral_dashboard' }],
+            [{ text: 'Referral Dashboard', callback_data: 'referral_dashboard' }],
+                  [
+        { text: '🏦 Setup Bank Account', callback_data: 'bank_setup' },
+        { text: '📋 My Bank Details', callback_data: 'bank_details' }
+      ]
           ]
         }
       });
@@ -284,7 +294,11 @@ console.log(winning)
           //   [{ text: '🔒 HighRollers Arena (₦1000/ 20 entries)', callback_data: `select_pool:HighRollers` }],
             [{ text: 'How It Works', callback_data: 'how_it_works' }],
             [{ text: 'My Entries', callback_data: 'view_entries' }],
-            [{ text: 'Referral Dashboard', callback_data: 'referral_dashboard' }],
+              [{ text: 'Referral Dashboard', callback_data: 'referral_dashboard' }],
+            [
+        { text: '🏦 Setup Bank Account', callback_data: 'bank_setup' },
+        { text: '📋 My Bank Details', callback_data: 'bank_details' }
+      ]
           ]
           }
         }

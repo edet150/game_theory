@@ -205,61 +205,61 @@ bot.action(/^set_quantity:(\d+)/, async (ctx) => {
   ctx.session.nextAction = ''
 });
   
-  bot.on('message', async (ctx) => {
+//   bot.on('message', async (ctx) => {
   
-    if (ctx.session.nextAction === 'prompt_quantity' && ctx.message.text) {
-        const quantity = parseInt(ctx.message.text, 10);
-        if (isNaN(quantity) || quantity <= 0 || quantity > 100) {
-            ctx.reply('❌ Please enter a valid number between 1 and 100.');
-            return;
-        }
+//     if (ctx.session.nextAction === 'prompt_quantity' && ctx.message.text) {
+//         const quantity = parseInt(ctx.message.text, 10);
+//         if (isNaN(quantity) || quantity <= 0 || quantity > 100) {
+//             ctx.reply('❌ Please enter a valid number between 1 and 100.');
+//             return;
+//         }
 
 
-        ctx.session.quantity = quantity;
-        ctx.session.nextAction = null; // Clear the next action
+//         ctx.session.quantity = quantity;
+//         ctx.session.nextAction = null; // Clear the next action
         
-        // Store the custom quantity message ID for deletion
-        ctx.session.customQuantityMessageId = ctx.message.message_id;
-const assignmentMessage = await ctx.reply(
-    `Great! You've chosen to buy *${quantity} entries*.\n\nHow would you like them assigned?`,
-    {
-        parse_mode: 'Markdown', // Add this line
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: '🎲 Random Pick', callback_data: 'assign_method:random' }],
-                [{ text: 'I\'ll Choose My Numbers', callback_data: 'assign_method:choose' }]
-            ]
-        }
-    }
-);
-        // Store assignment message ID for deletion
-        ctx.session.assignmentMessageId = assignmentMessage.message_id;
-    } else {
-        // If there's a previous prompt, delete it
-  if (ctx.session?.startPromptMessageId) {
-    try {
-      await ctx.deleteMessage(ctx.session.startPromptMessageId);
-    } catch (e) {
-      console.log("Message already deleted or can't delete");
-    }
-  }
+//         // Store the custom quantity message ID for deletion
+//         ctx.session.customQuantityMessageId = ctx.message.message_id;
+// const assignmentMessage = await ctx.reply(
+//     `Great! You've chosen to buy *${quantity} entries*.\n\nHow would you like them assigned?`,
+//     {
+//         parse_mode: 'Markdown', // Add this line
+//         reply_markup: {
+//             inline_keyboard: [
+//                 [{ text: '🎲 Random Pick', callback_data: 'assign_method:random' }],
+//                 [{ text: 'I\'ll Choose My Numbers', callback_data: 'assign_method:choose' }]
+//             ]
+//         }
+//     }
+// );
+//         // Store assignment message ID for deletion
+//         ctx.session.assignmentMessageId = assignmentMessage.message_id;
+//     } else {
+//         // If there's a previous prompt, delete it
+//   if (ctx.session?.startPromptMessageId) {
+//     try {
+//       await ctx.deleteMessage(ctx.session.startPromptMessageId);
+//     } catch (e) {
+//       console.log("Message already deleted or can't delete");
+//     }
+//   }
 
-  // Send new prompt
-  const startPromptMessage = await ctx.reply(
-  "Please use /start to enter the game:",
-  {
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "🚀 Enter Game", callback_data: "start_over" }],
-      ],
-    },
-  }
-);
+//   // Send new prompt
+//   const startPromptMessage = await ctx.reply(
+//   "Please use /start to enter the game:",
+//   {
+//     reply_markup: {
+//       inline_keyboard: [
+//         [{ text: "🚀 Enter Game", callback_data: "start_over" }],
+//       ],
+//     },
+//   }
+// );
 
 
-  // Save message ID in session
-  if (!ctx.session) ctx.session = {};
-  ctx.session.startPromptMessageId = startPromptMessage.message_id;
-    }
-});
+//   // Save message ID in session
+//   if (!ctx.session) ctx.session = {};
+//   ctx.session.startPromptMessageId = startPromptMessage.message_id;
+//     }
+// });
 };

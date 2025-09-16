@@ -15,6 +15,8 @@ const adminHandler = require('./handlers/admin');
 const welcomeUser = require('./handlers/welcomeUser');
 const referralHandler = require('./handlers/referral');
 const callbackHandler = require('./handlers/callback');
+const accountHandler = require('./handlers/accounts');
+const messageHandler = require('./handlers/message');
 require('./cron/paystack_checker');
 require('./cron/sundayCron'); 
 const { getbotInstance, getRedisClient } = require('./bot/botInstance.js');
@@ -26,20 +28,25 @@ const redis = getRedisClient();
 //WINNING
 
 // Handle commands first - this should be registered BEFORE your message handler
-bot.on('text', async (ctx, next) => {
-  // Check if the message starts with a command
-  if (ctx.message.text.startsWith('/')) {
-    // Let Telegraf handle commands normally
-    return next();
-  }
+// bot.on('text', async (ctx, next) => {
+//   // Check if the message starts with a command
+//   if (ctx.message.text.startsWith('/')) {
+//     // Let Telegraf handle commands normally
+//     return next();
+//   }
   
-  // If it's not a command, continue to your custom message handlers
-  return next();
-});
+//   // If it's not a command, continue to your custom message handlers
+//   return next();
+// });
 
 // Register handlers
+  const bankSetupState = new Map();
+setTimeout(function () {
+  messageHandler(bot, bankSetupState);
+}, 3000)
 startHandler(bot);
-adminHandler(bot);
+accountHandler(bot, bankSetupState);
+adminHandler(bot, bankSetupState);
 welcomeUser(bot);
 callbackHandler(bot);
 
@@ -50,15 +57,17 @@ myEntriesHandler(bot);
 historyHandler(bot);
 
 
+
+
 bot.use(cleanupMiddleware);
 
 
-bot.use((ctx, next) => {
-  console.log('sippiose')
-  console.log(ctx)
-  console.log("Update type:", ctx.updateType, ctx.update);
-  return next();
-});
+// bot.use((ctx, next) => {
+//   console.log('sippiose')
+//   console.log(ctx)
+//   console.log("Update type:", ctx.updateType, ctx.update);
+//   return next();
+// });
 
 bot.action('initiate_payment', async (ctx) => {
   await ctx.answerCbQuery();
