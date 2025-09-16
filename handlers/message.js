@@ -605,7 +605,7 @@ module.exports = (bot, bankSetupState) => {
       console.error(err);
       ctx.reply('⚠️ Failed to create Bonus Arena. Maybe name already exists?');
     }
-  }
+      }
     // 5. Default fallback for unexpected messages
     if (ctx.message.text) {
       console.log('Processing fallback message'); // Debug log

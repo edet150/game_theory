@@ -89,6 +89,8 @@ module.exports = (bot, bankSetupState) => {
             return;
         }
 
+        // remove state step
+        state.step = null;
         // Prompt for login
         ctx.session.adminState = ADMIN_STATES.AWAITING_USERNAME;
         const message = await ctx.reply('🔐 Admin Login\n\nPlease enter your username:');

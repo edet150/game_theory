@@ -415,7 +415,8 @@ bot.action("random_refresh", async (ctx) => {
   // Edit the existing message with the new numbers
 const { text, reply_markup } = buildRandomGrid(newRandomNumbers);
 const parse_mode = "HTML"; // Get this from your function or set it explicitly
-
+  // 6027171789
+ // key stone
 try {
   await ctx.editMessageText(text, { 
     reply_markup, 

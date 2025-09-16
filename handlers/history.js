@@ -47,80 +47,66 @@ bot.action('view_entries', async (ctx) => {
   await ctx.answerCbQuery();
 
   try {
-    // 1. Get current week
-    const today = new Date();
-    const currentWeek = await Week.findOne({
-      where: {
-        starts_at: { [Op.lte]: today },
-        ends_at: { [Op.gte]: today }
-      }
-    });
-console.log(currentWeek.code, ctx.from.id)
-    if (!currentWeek) {
-      return ctx.reply('❌ No active game week found.');
-    }
+    const userId = ctx.from.id;
 
-    // 2. Get user’s entries for the current week
-    const entries = await Entry.findAll({
-      where: {
-        user_id: ctx.from.id,
-        week_code: currentWeek.code,
-        status: 'paid'
-      },
-      include: [{ model: RafflePool, as: 'RafflePool' }]
+    // 1. Get user's entries from DB
+    const userEntries = await Entry.findAll({
+      where: { user_id: userId, status: 'paid' },
+      order: [['id', 'ASC']],
+      include: [{ model: RafflePool }]
     });
 
-    if (!entries || entries.length === 0) {
-      return ctx.reply('📭 You have no active entries this week. Purchase some with /start', keyboard);
+    if (userEntries.length === 0) {
+      return ctx.reply('You have no active entries. Purchase some with /start');
     }
 
-    let message = `📋 <b>Your Entries for Week ${currentWeek.code}:</b>\n\n`;
+    // 2. Determine the week_code (assume from the first entry)
+    const weekCode = userEntries[0].week_code;
 
-    // Group entries by pool
-    const pools = {};
-    for (const entry of entries) {
-      if (!pools[entry.pool_id]) pools[entry.pool_id] = [];
-      pools[entry.pool_id].push(entry);
-    }
+    // 3. Get all entries for this week
+    const allEntries = await Entry.findAll({
+      where: { week_code: weekCode, status: 'paid' },
+      order: [['id', 'ASC']]
+    });
 
-    // 3. Loop each pool and calculate modulo positions
-    for (const [poolId, poolEntries] of Object.entries(pools)) {
-      const poolName = poolEntries[0].RafflePool.name;
+    // 4. Build map of entry_id -> absolute position
+    const positionMap = new Map();
+    allEntries.forEach((entry, idx) => {
+      positionMap.set(entry.id, idx + 1); // start positions at 1
+    });
 
-      // Get all paid entries in this pool for current week
-      const allPoolEntries = await Entry.findAll({
-        where: { pool_id: poolId, week_id: currentWeek.id, status: 'paid' },
-        order: [['entry_number', 'ASC']]
-      });
+    // 5. Build message with 2 entries per line
+    let message = `📋 Your Entries (Week ${weekCode}):\n\n`;
 
-      // Map entry_number → position
-      const entryPositionMap = new Map();
-      allPoolEntries.forEach((entry, idx) => {
-        entryPositionMap.set(entry.entry_number, idx + 1); // position is index+1
-      });
+    userEntries.forEach((entry, index) => {
+      const pos = positionMap.get(entry.id) || '?';
+      const entryText =
+        `🎯 Entry ${index + 1} (POS ${pos})\n` +
+        `🏷️ Arena: ${entry.RafflePool?.name || 'N/A'}\n` +
+        `🔢 Number: ${entry.entry_number}\n` +
+        `⏰ Date: ${new Date(entry.created_at).toLocaleString()}\n`;
 
-      message += `🏟️ <b>${poolName}</b>\n`;
-
-      for (const entry of poolEntries) {
-        const position = entryPositionMap.get(entry.entry_number);
-        message += `🎯 #${entry.entry_number} (Pos: ${position})\n`;
+      // Group entries in pairs
+      if (index % 2 === 0) {
+        message += entryText; // first in pair
+      } else {
+        message += entryText + '\n' + '─'.repeat(30) + '\n\n'; // close the pair
       }
+    });
 
-      message += `📦 Total: ${poolEntries.length} entries\n`;
-      message += '─'.repeat(30) + '\n\n';
+    // If odd number of entries, add separator at end
+    if (userEntries.length % 2 !== 0) {
+      message += '\n' + '─'.repeat(30) + '\n\n';
     }
 
-    try {
-      await ctx.editMessageText(message, { parse_mode: 'HTML', ...keyboard });
-    } catch {
-      await ctx.reply(message, { parse_mode: 'HTML', ...keyboard });
-    }
+    await ctx.reply(message);
 
   } catch (error) {
-    console.error('❌ Error fetching entries:', error);
-    ctx.reply('❌ Could not retrieve your entries. Please try again.', keyboard);
+    console.error('Error fetching entries:', error);
+    await ctx.reply('❌ Could not retrieve your entries. Please try again.');
   }
 });
+
 
 
 };
