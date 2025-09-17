@@ -1144,7 +1144,7 @@ bot.action('admin_create_bonus', async (ctx) => {
     }
 // Updated sendToTelegramChannel function to support HTML
 async function sendToTelegramChannelHTML(ctx, message) {
-    const CHANNEL_USERNAME = 'alpha_entries'; // Your channel username without @
+    const CHANNEL_USERNAME = process.env.CHANNEL_NAME; // Your channel username without @
     
     try {
         // Handle both string and array messages
