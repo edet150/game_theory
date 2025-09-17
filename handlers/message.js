@@ -606,6 +606,30 @@ module.exports = (bot, bankSetupState) => {
       ctx.reply('⚠️ Failed to create Bonus Arena. Maybe name already exists?');
     }
       }
+
+     if (ctx.session.waitingForBonusQuantity && ctx.message.text) {
+            const quantity = parseInt(ctx.message.text, 10);
+            const user = await User.findOne({ where: { telegram_id: ctx.from.id } });
+        
+            if (isNaN(quantity) || quantity < 1 || quantity > user.bonus_entries) {
+                return sendError(ctx, `Please enter a valid number between 1 and ${user.bonus_entries}`);
+            }
+
+            ctx.session.quantity = quantity;
+            ctx.session.bonusEntryFlow = true;
+            ctx.session.waitingForBonusQuantity = false;
+        
+            // Delete the input message
+            try {
+                await ctx.deleteMessage();
+            } catch (error) {
+                console.log('Could not delete message:', error.message);
+            }
+        
+            // Proceed to assignment method selection
+            await showAssignmentMethodSelection(ctx);
+           }
+       
     // 5. Default fallback for unexpected messages
     if (ctx.message.text) {
       console.log('Processing fallback message'); // Debug log
