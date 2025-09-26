@@ -76,12 +76,12 @@ bot.use(cleanupMiddleware);
 bot.use(cleanupMiddleware);
 
 
-bot2.use((ctx, next) => {
-  console.log('sippiose')
-  console.log(ctx)
-  console.log("Update type:", ctx.updateType, ctx.update);
-  return next();
-});
+// bot2.use((ctx, next) => {
+//   console.log('sippiose')
+//   console.log(ctx)
+//   console.log("Update type:", ctx.updateType, ctx.update);
+//   return next();
+// });
 
 bot.action('initiate_payment', async (ctx) => {
   await ctx.answerCbQuery();
@@ -293,18 +293,10 @@ process.once('SIGTERM', () => {
 
     await bot.launch();
     console.log("🚀 Bot 1 is running...");
-    console.log("🚀 Bot 1 is running...");
-    console.log("🚀 Bot 1 is running...");
-    console.log("🚀 Bot 1 is running...");
-    console.log("🚀 Bot 1 is running...");
+
 
     await bot2.launch();
-    console.log("🎉 Giveaway Bot (Bot 2) is running...");
-    console.log("🎉 Giveaway Bot (Bot 2) is running...");
-    console.log("🎉 Giveaway Bot (Bot 2) is running...");
-    console.log("🎉 Giveaway Bot (Bot 2) is running...");
-    console.log("🎉 Giveaway Bot (Bot 2) is running...");
-    console.log("🎉 Giveaway Bot (Bot 2) is running...");
+
     console.log("🎉 Giveaway Bot (Bot 2) is running...");
   } catch (err) {
     console.error("❌ Error starting bots:", err);

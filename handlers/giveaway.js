@@ -18,7 +18,7 @@ async function isUserInChannel(ctx, channelUsername) {
   }
 }
 
-async function fetchBanksFromPaystack() {
+async function fetchBanksFromPaystack_() {
   try {
     const response = await axios.get('https://api.paystack.co/bank', {
       headers: {
@@ -28,6 +28,38 @@ async function fetchBanksFromPaystack() {
     return response.data.data;
   } catch (error) {
     console.error('Error fetching banks:', error);
+    return [];
+  }
+}
+const { getRedisClient } = require("../bot/botInstance");
+async function fetchBanksFromPaystack() {
+  const redisClient = getRedisClient();
+
+  try {
+    // first check redis before hitting Paystack
+    const cacheKey = "paystack:banks";
+    const cachedBanks = await redisClient.get(cacheKey);
+
+    if (cachedBanks) {
+      // console.log('yesssssssssss')
+      return JSON.parse(cachedBanks);
+    }
+// console.log('noooooooooooooooo')
+    // if not cached, call Paystack
+    const response = await axios.get("https://api.paystack.co/bank", {
+      headers: {
+        Authorization: `Bearer ${process.env.PAYSTACK_SEC_TEST}`,
+      },
+    });
+
+    const banks = response.data.data;
+
+    // save to redis with expiry
+    await redisClient.set(cacheKey, JSON.stringify(banks), "EX", 3600);
+
+    return banks;
+  } catch (error) {
+    console.error("Error fetching banks:", error);
     return [];
   }
 }
@@ -153,7 +185,7 @@ module.exports = (bot) => {
       );
       return;
     }
-    
+    console.log(campaign)
     // Check channel membership first
     const isInChannel = await isUserInChannel(ctx, REQUIRED_CHANNEL);
     
@@ -265,8 +297,204 @@ module.exports = (bot) => {
       await ctx.reply("❌ Error retrieving your position. Please try again.");
     }
   });
+  // Bank setup for giveaway
+  bot.action("giveaway_bank_setup", async (ctx) => {
+    await ctx.answerCbQuery();
+    const userId = ctx.from.id;
+    giveawayBankSetupState.set(userId, { step: 'account_number' });
 
-  // ... (rest of the handlers remain similar but updated with campaign logic)
+    await ctx.reply(
+      '🏦 Let\'s set up your bank account for giveaway winnings.\n\n' +
+      'Please enter your 10-digit account number:',
+      { reply_markup: { force_reply: true } }
+    );
+  });
+
+  // Check bank status
+  bot.action("giveaway_check_bank", async (ctx) => {
+    await ctx.answerCbQuery();
+    
+    const hasBank = await hasBankDetails(ctx.from.id);
+    
+    if (hasBank) {
+      await ctx.reply("✅ Your bank account is already set up and verified!");
+      await showGiveawayMainMenu(ctx);
+    } else {
+      await ctx.reply("❌ You haven't set up your bank account yet.");
+    }
+  });
+  // Message handler for bot2 bank setup
+  bot.on('text', async (ctx, next) => {
+  // Skip commands
+  if (ctx.message.text.startsWith('/')) {
+    console.log('Skipping command:', ctx.message.text);
+    return next() // Let Telegraf handle commands normally
+  }
+  
+  console.log('Regular message handler:', ctx.message.text);
+  
+  // This will only handle non-command text messages
+  await ctx.reply(
+    'Welcome! Use /start to begin the giveaway process or use the menu buttons.'
+  );
+});
+// Add this middleware to handle state management properly
+bot.use(async (ctx, next) => {
+  // Only process text messages
+  if (!ctx.message || !ctx.message.text) {
+    return next();
+  }
+
+  // Skip commands
+  if (ctx.message.text.startsWith('/')) {
+    console.log('Skipping command:', ctx.message.text);
+    return next();
+  }
+
+  const userId = ctx.from.id;
+  const state = giveawayBankSetupState.get(userId);
+
+  // If no state, let other handlers process the message
+  if (!state) {
+    return next();
+  }
+
+  // We have a state, so handle the bank setup flow
+  // Handle account number input
+  if (state.step === 'account_number') {
+    const text = ctx.message.text.trim();
+    
+    if (!/^\d{10}$/.test(text)) {
+      await ctx.reply('❌ Please enter a valid 10-digit account number:');
+      return;
+    }
+    
+    state.account_number = text;
+    state.step = 'awaiting_bank_name_prefix';
+    giveawayBankSetupState.set(userId, state);
+    
+    await ctx.reply(
+      '✅ Account number received.\n\n' +
+      'Now enter the *first 3 letters* of your bank name (e.g. "zen" for Zenith Bank):',
+      { parse_mode: 'Markdown' }
+    );
+    return;
+  }
+
+  // Handle bank name prefix
+  if (state.step === 'awaiting_bank_name_prefix') {
+    const prefix = ctx.message.text.trim().toLowerCase();
+
+    if (!/^[a-z]{3,}$/.test(prefix)) {
+      await ctx.reply('❌ Please enter at least 3 letters of your bank name.');
+      return;
+    }
+
+    try {
+      const banks = await fetchBanksFromPaystack();
+      const matches = banks.filter(b => b.name.toLowerCase().startsWith(prefix));
+
+      if (matches.length === 0) {
+        await ctx.reply('❌ No banks found with that name. Try again:');
+        return;
+      }
+
+      state.step = 'bank_selection';
+      state.matchedBanks = matches;
+      giveawayBankSetupState.set(userId, state);
+
+      const bankButtons = matches.map(bank => [
+        { text: bank.name, callback_data: `giveaway_select_bank:${bank.code}` }
+      ]);
+
+      await ctx.reply(
+        `🏦 Found ${matches.length} bank(s). Please select:`,
+        { reply_markup: { inline_keyboard: bankButtons } }
+      );
+    } catch (error) {
+      console.error('Error fetching banks:', error);
+      await ctx.reply('❌ Error fetching banks. Please try again later.');
+      giveawayBankSetupState.delete(userId);
+    }
+    return;
+  }
+
+  // Invalid state, clear it and let other handlers process
+  giveawayBankSetupState.delete(userId);
+  return next();
+});
+
+// // Now register your other message handlers AFTER the state middleware
+// Replace your current message handler with this:
+
+    // Bank selection callback - UPDATED to only use GiveawayEntry table
+    bot.action(/giveaway_select_bank:(.+)/, async (ctx) => {
+      await ctx.answerCbQuery();
+      const bankCode = ctx.match[1];
+      const userId = ctx.from.id;
+      const state = giveawayBankSetupState.get(userId);
+  
+      if (!state || !state.matchedBanks) {
+        await ctx.reply('❌ Session expired. Please start over with /start');
+        giveawayBankSetupState.delete(userId);
+        return;
+      }
+  
+      const selectedBank = state.matchedBanks.find(bank => bank.code === bankCode);
+      if (!selectedBank) {
+        await ctx.reply('❌ Invalid bank selection. Please try again.');
+        return;
+      }
+  
+      try {
+        // Verify account with Paystack
+        const verification = await verifyAccountWithPaystack(state.account_number, bankCode);
+        
+        if (verification.status === true) {
+          // Check if user already has a giveaway entry
+          let entry = await db.GiveawayEntry.findOne({ where: { telegram_id: userId } });
+          
+          if (entry) {
+            // Update existing entry
+            entry.account_number = state.account_number;
+            entry.bank_name = selectedBank.name;
+            entry.account_holder_name = verification.data.account_name;
+            await entry.save();
+          } else {
+            // Create new giveaway entry
+            const entryNumber = await getNextEntryNumber();
+            entry = await db.GiveawayEntry.create({
+              telegram_id: userId,
+              username: ctx.from.username || `${ctx.from.first_name}${ctx.from.last_name ? ' ' + ctx.from.last_name : ''}`,
+              first_name: ctx.from.first_name,
+              last_name: ctx.from.last_name || '',
+              account_number: state.account_number,
+              bank_name: selectedBank.name,
+              account_holder_name: verification.data.account_name,
+              entry_number: entryNumber
+            });
+          }
+  
+          giveawayBankSetupState.delete(userId);
+          
+          await ctx.reply(
+            `✅ Bank account verified successfully!\n\n` +
+            `🏦 <b>Bank:</b> ${selectedBank.name}\n` +
+            `👤 <b>Account Name:</b> ${verification.data.account_name}\n` +
+            `🔢 <b>Account Number:</b> ${state.account_number}\n\n` +
+            `Your account is now ready for the giveaway! 🎉`,
+            { parse_mode: 'HTML' }
+          );
+          
+          await showGiveawayMainMenu(ctx);
+        }
+      } catch (error) {
+        console.error('Error verifying account:', error);
+        await ctx.reply(
+          '❌ Error verifying account. Please check your account number and bank selection, then try again.'
+        );
+      }
+    });
 
   console.log('✅ Enhanced Giveaway handlers registered for bot2');
 };

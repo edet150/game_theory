@@ -35,9 +35,9 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true
     },
     end_date: {
-      type:WeakSetDataTypes.DATE,
-      allowNull: true
-    }
+        type: DataTypes.DATE,
+        allowNull: true
+        }
   }, {
     tableName: 'giveaway_campaigns',
     timestamps: true,

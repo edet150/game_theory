@@ -2,22 +2,191 @@
 const db = require('../models');
 
 module.exports = (bot) => {
-  // Admin command to create new campaign
-  bot.command('create_giveaway', async (ctx) => {
-    // Check if user is admin
+  // Helper function to deactivate all other campaigns when one is activated
+  async function deactivateOtherCampaigns(activeCampaignId) {
+    try {
+      await db.GiveawayCampaign.update(
+        { is_active: false },
+        { 
+          where: { 
+            is_active: true,
+            id: { [db.Sequelize.Op.ne]: activeCampaignId }
+          }
+        }
+      );
+    } catch (error) {
+      console.error('Error deactivating other campaigns:', error);
+    }
+  }
+
+  // Admin command to show dashboard
+  bot.command('admin', async (ctx) => {
     if (ctx.from.id.toString() !== process.env.ADMIN_ID) {
       return ctx.reply("❌ Admin only command");
     }
 
-    // Parse command: /create_giveaway Name|Prize|Fee|MaxEntries
+    try {
+      const campaigns = await db.GiveawayCampaign.findAll({
+        include: [{
+          model: db.GiveawayEntry,
+          as: 'entries',
+          attributes: []
+        }],
+        attributes: [
+          'id', 'name', 'prize_amount', 'entry_fee', 'is_active',
+          'start_date', 'end_date',
+          [db.sequelize.fn('COUNT', db.sequelize.col('entries.id')), 'entry_count']
+        ],
+        group: ['GiveawayCampaign.id'],
+        order: [['is_active', 'DESC'], ['created_at', 'DESC']]
+      });
+
+      let message = "<b>🎁 Giveaway Dashboard</b>\n\n";
+      
+      campaigns.forEach((campaign, index) => {
+        const isActive = campaign.is_active;
+        message += 
+          `${isActive ? '🟢' : '⚪'} <b>${campaign.name}</b>\n` +
+          `📋 <b>ID:</b> ${campaign.id} | 🎫 <b>Entries:</b> ${campaign.get('entry_count')}\n` +
+          `💰 <b>Prize:</b> N${campaign.prize_amount} | 💵 <b>Fee:</b> N${campaign.entry_fee}\n` +
+          `📊 <b>Status:</b> ${isActive ? '✅ ACTIVE' : '❌ INACTIVE'}\n`;
+        
+        if (isActive) {
+          message += `⏰ <b>Active</b>\n`;
+        }
+        
+        message += `\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n\n`;
+      });
+
+      await ctx.reply(message, { 
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: "🆕 Create New", callback_data: "admin_create_giveaway" },
+              { text: "📊 Stats", callback_data: "admin_view_stats" }
+            ],
+            [
+              { text: "🔄 Toggle Campaign", callback_data: "admin_toggle_menu" },
+              { text: "✏️ Edit Campaign", callback_data: "admin_edit_menu" }
+            ],
+            [
+              { text: "🗑️ Delete Campaign", callback_data: "admin_delete_menu" },
+              { text: "🕐 Set Schedule", callback_data: "admin_schedule_menu" }
+            ]
+          ]
+        }
+      });
+    } catch (error) {
+      console.error('Error getting dashboard:', error);
+      await ctx.reply("❌ Error loading dashboard");
+    }
+  });
+
+  // Create giveaway with interactive buttons
+  bot.action("admin_create_giveaway", async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.reply(
+      "To create a new giveaway, use:\n\n" +
+      "<code>/create_giveaway Name|Prize|Fee|MaxEntries</code>\n\n" +
+      "Example:\n" +
+      "<code>/create_giveaway Weekly N2000|2000|0|1000</code>\n\n" +
+      "Or:\n" +
+      "<code>/create_giveaway Monthly Mega|5000|500|5000</code>",
+      { parse_mode: 'HTML' }
+    );
+  });
+
+  // Toggle campaign menu
+  bot.action("admin_toggle_menu", async (ctx) => {
+    await ctx.answerCbQuery();
+    
+    try {
+      const campaigns = await db.GiveawayCampaign.findAll({
+        order: [['is_active', 'DESC'], ['created_at', 'DESC']]
+      });
+
+      const keyboard = campaigns.map(campaign => [
+        { 
+          text: `${campaign.is_active ? '🟢' : '⚪'} ${campaign.name}`, 
+          callback_data: `admin_toggle_campaign:${campaign.id}` 
+        }
+      ]);
+
+      keyboard.push([{ text: "🔙 Back to Dashboard", callback_data: "admin_back_dashboard" }]);
+
+      await ctx.reply(
+        "Select a campaign to toggle:\n\n" +
+        "🟢 = Active\n⚪ = Inactive\n\n" +
+        "Activating one will automatically deactivate others.",
+        {
+          reply_markup: { inline_keyboard: keyboard }
+        }
+      );
+    } catch (error) {
+      console.error('Error loading toggle menu:', error);
+      await ctx.reply("❌ Error loading campaigns");
+    }
+  });
+
+  // Toggle specific campaign
+  bot.action(/admin_toggle_campaign:(\d+)/, async (ctx) => {
+    await ctx.answerCbQuery();
+    const campaignId = parseInt(ctx.match[1]);
+
+    try {
+      const campaign = await db.GiveawayCampaign.findByPk(campaignId);
+      if (!campaign) {
+        return await ctx.reply("❌ Campaign not found");
+      }
+
+      const newStatus = !campaign.is_active;
+      
+      if (newStatus) {
+        // Deactivate all other campaigns before activating this one
+        await deactivateOtherCampaigns(campaignId);
+      }
+      
+      campaign.is_active = newStatus;
+      await campaign.save();
+
+      await ctx.reply(
+        `✅ <b>${campaign.name}</b> is now <b>${newStatus ? 'ACTIVE' : 'INACTIVE'}</b>\n\n` +
+        `${newStatus ? '🔴 Other campaigns have been automatically deactivated.' : ''}`,
+        { parse_mode: 'HTML' }
+      );
+
+      // Update the toggle menu
+      await ctx.editMessageReplyMarkup({
+        inline_keyboard: [
+          [{ text: "🔄 Refresh Menu", callback_data: "admin_toggle_menu" }],
+          [{ text: "🔙 Dashboard", callback_data: "admin_back_dashboard" }]
+        ]
+      });
+    } catch (error) {
+      console.error('Error toggling campaign:', error);
+      await ctx.reply("❌ Error toggling campaign");
+    }
+  });
+
+  // Enhanced create command with auto-toggle
+  bot.command('create_giveaway', async (ctx) => {
+    if (ctx.from.id.toString() !== process.env.ADMIN_ID) {
+      return ctx.reply("❌ Admin only command");
+    }
+
     const args = ctx.message.text.split(' ').slice(1).join(' ').split('|');
     
     if (args.length < 2) {
       return ctx.reply(
         "Usage: /create_giveaway Name|PrizeAmount|EntryFee|MaxEntries\n\n" +
-        "Example: /create_giveaway Weekly Giveaway|2000|0|1000"
+        "Example: /create_giveaway Weekly Giveaway|2000|0|1000\n\n" +
+        "Add '--active' at the end to automatically activate this campaign."
       );
     }
+
+    const shouldActivate = args[args.length - 1] === '--active';
+    if (shouldActivate) args.pop(); // Remove the --active flag
 
     try {
       const campaign = await db.GiveawayCampaign.create({
@@ -25,15 +194,21 @@ module.exports = (bot) => {
         prize_amount: parseFloat(args[1]) || 2000,
         entry_fee: parseFloat(args[2]) || 0,
         max_entries: parseInt(args[3]) || null,
-        is_active: true
+        is_active: shouldActivate
       });
+
+      if (shouldActivate) {
+        await deactivateOtherCampaigns(campaign.id);
+      }
 
       await ctx.reply(
         `✅ New giveaway campaign created!\n\n` +
         `🎁 <b>Name:</b> ${campaign.name}\n` +
         `💰 <b>Prize:</b> N${campaign.prize_amount}\n` +
         `🎫 <b>Entry Fee:</b> N${campaign.entry_fee}\n` +
-        `📊 <b>Max Entries:</b> ${campaign.max_entries || 'Unlimited'}`,
+        `📊 <b>Max Entries:</b> ${campaign.max_entries || 'Unlimited'}\n` +
+        `📊 <b>Status:</b> ${campaign.is_active ? '✅ ACTIVE' : '❌ INACTIVE'}\n\n` +
+        `${shouldActivate ? '🔴 Other campaigns have been automatically deactivated.' : ''}`,
         { parse_mode: 'HTML' }
       );
     } catch (error) {
@@ -42,7 +217,7 @@ module.exports = (bot) => {
     }
   });
 
-  // Admin command to toggle campaign
+  // Enhanced toggle command
   bot.command('toggle_giveaway', async (ctx) => {
     if (ctx.from.id.toString() !== process.env.ADMIN_ID) {
       return ctx.reply("❌ Admin only command");
@@ -50,6 +225,7 @@ module.exports = (bot) => {
 
     const args = ctx.message.text.split(' ').slice(1);
     const campaignId = parseInt(args[0]) || 1;
+    const forceActivate = args[1] === '--activate';
 
     try {
       const campaign = await db.GiveawayCampaign.findByPk(campaignId);
@@ -57,11 +233,23 @@ module.exports = (bot) => {
         return ctx.reply("❌ Campaign not found");
       }
 
-      campaign.is_active = !campaign.is_active;
+      let newStatus;
+      if (forceActivate) {
+        newStatus = true;
+        await deactivateOtherCampaigns(campaignId);
+      } else {
+        newStatus = !campaign.is_active;
+        if (newStatus) {
+          await deactivateOtherCampaigns(campaignId);
+        }
+      }
+
+      campaign.is_active = newStatus;
       await campaign.save();
 
       await ctx.reply(
-        `✅ Campaign <b>${campaign.name}</b> is now <b>${campaign.is_active ? 'ACTIVE' : 'INACTIVE'}</b>`,
+        `✅ <b>${campaign.name}</b> is now <b>${newStatus ? 'ACTIVE' : 'INACTIVE'}</b>\n\n` +
+        `${newStatus ? '🔴 Other campaigns have been automatically deactivated.' : ''}`,
         { parse_mode: 'HTML' }
       );
     } catch (error) {
@@ -70,19 +258,12 @@ module.exports = (bot) => {
     }
   });
 
-  // Admin command to view campaign stats
-  bot.command('giveaway_stats', async (ctx) => {
-    if (ctx.from.id.toString() !== process.env.ADMIN_ID) {
-      return ctx.reply("❌ Admin only command");
-    }
-
-    const args = ctx.message.text.split(' ').slice(1);
-    const campaignId = parseInt(args[0]) || null;
-
+  // View stats with better formatting
+  bot.action("admin_view_stats", async (ctx) => {
+    await ctx.answerCbQuery();
+    
     try {
-      const where = campaignId ? { id: campaignId } : {};
       const campaigns = await db.GiveawayCampaign.findAll({
-        where,
         include: [{
           model: db.GiveawayEntry,
           as: 'entries',
@@ -90,26 +271,66 @@ module.exports = (bot) => {
         }],
         attributes: [
           'id', 'name', 'prize_amount', 'entry_fee', 'is_active',
+          'created_at',
           [db.sequelize.fn('COUNT', db.sequelize.col('entries.id')), 'entry_count']
         ],
-        group: ['GiveawayCampaign.id']
+        group: ['GiveawayCampaign.id'],
+        order: [['created_at', 'DESC']]
       });
 
-      let message = "<b>🎁 Giveaway Campaigns</b>\n\n";
+      const activeCampaign = campaigns.find(c => c.is_active);
       
+      let message = "<b>📊 Giveaway Statistics</b>\n\n";
+      
+      if (activeCampaign) {
+        message += `🟢 <b>Active:</b> ${activeCampaign.name}\n`;
+        message += `🎫 <b>Entries:</b> ${activeCampaign.get('entry_count')}\n\n`;
+      }
+      
+      message += "<b>All Campaigns:</b>\n";
       campaigns.forEach(campaign => {
         message += 
-          `📋 <b>ID:</b> ${campaign.id}\n` +
-          `🎁 <b>Name:</b> ${campaign.name}\n` +
-          `💰 <b>Prize:</b> N${campaign.prize_amount}\n` +
-          `🎫 <b>Entries:</b> ${campaign.get('entry_count')}\n` +
-          `📊 <b>Status:</b> ${campaign.is_active ? '✅ ACTIVE' : '❌ INACTIVE'}\n\n`;
+          `▫️ ${campaign.name} (ID: ${campaign.id})\n` +
+          `   Entries: ${campaign.get('entry_count')} | Status: ${campaign.is_active ? '🟢' : '⚪'}\n\n`;
       });
 
-      await ctx.reply(message, { parse_mode: 'HTML' });
+      await ctx.reply(message, { 
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "🔙 Back to Dashboard", callback_data: "admin_back_dashboard" }]
+          ]
+        }
+      });
     } catch (error) {
       console.error('Error getting stats:', error);
-      await ctx.reply("❌ Error getting campaign stats");
+      await ctx.reply("❌ Error loading statistics");
     }
   });
+
+  // Back to dashboard
+  bot.action("admin_back_dashboard", async (ctx) => {
+    await ctx.answerCbQuery();
+    // Trigger the dashboard command
+    await ctx.deleteMessage();
+    await ctx.telegram.sendMessage(ctx.from.id, '/giveaway_dashboard');
+  });
+
+  // Placeholder for other menu actions
+  bot.action("admin_edit_menu", async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.reply("Edit functionality coming soon! Use /create_giveaway for now.");
+  });
+
+  bot.action("admin_delete_menu", async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.reply("Delete functionality coming soon!");
+  });
+
+  bot.action("admin_schedule_menu", async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.reply("Schedule functionality coming soon!");
+  });
+
+  console.log('✅ Enhanced Giveaway Admin handlers registered');
 };

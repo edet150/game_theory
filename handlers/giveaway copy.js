@@ -17,7 +17,7 @@ async function isUserInChannel(ctx, channelUsername) {
 }
 
 // Helper function to fetch banks from Paystack
-async function fetchBanksFromPaystack() {
+async function fetchBanksFromPaystack_() {
   try {
     const response = await axios.get('https://api.paystack.co/bank', {
       headers: {
@@ -27,6 +27,35 @@ async function fetchBanksFromPaystack() {
     return response.data.data;
   } catch (error) {
     console.error('Error fetching banks:', error);
+    return [];
+  }
+}
+
+async function fetchBanksFromPaystack() {
+  try {
+    // 1. Try Redis cache
+    const cached = await redisClient.get("banks:list");
+    if (cached) {
+      console.log("✅ Banks loaded from Redis cache");
+      return JSON.parse(cached); // return cached version
+    }
+
+    // 2. Fetch from Paystack if not in cache
+    const response = await axios.get("https://api.paystack.co/bank", {
+      headers: {
+        Authorization: `Bearer ${process.env.PAYSTACK_SEC_TEST}`
+      }
+    });
+
+    const banks = response.data.data;
+
+    // 3. Store in Redis (expire after 24h)
+    await redisClient.set("banks:list", JSON.stringify(banks), "EX", 60 * 60 * 24);
+
+    console.log("✅ Banks fetched from Paystack & cached in Redis");
+    return banks;
+  } catch (error) {
+    console.error("❌ Error fetching banks:", error.message);
     return [];
   }
 }
