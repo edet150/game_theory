@@ -323,21 +323,21 @@ module.exports = (bot) => {
       await ctx.reply("❌ You haven't set up your bank account yet.");
     }
   });
-  // Message handler for bot2 bank setup
-  bot.on('text', async (ctx, next) => {
-  // Skip commands
-  if (ctx.message.text.startsWith('/')) {
-    console.log('Skipping command:', ctx.message.text);
-    return next() // Let Telegraf handle commands normally
-  }
+//   // Message handler for bot2 bank setup
+//   bot.on('text', async (ctx, next) => {
+//   // Skip commands
+//   if (ctx.message.text.startsWith('/')) {
+//     console.log('Skipping command:', ctx.message.text);
+//     return next() // Let Telegraf handle commands normally
+//   }
   
-  console.log('Regular message handler:', ctx.message.text);
+//   console.log('Regular message handler:', ctx.message.text);
   
-  // This will only handle non-command text messages
-  await ctx.reply(
-    'Welcome! Use /start to begin the giveaway process or use the menu buttons.'
-  );
-});
+//   // This will only handle non-command text messages
+//   await ctx.reply(
+//     'Welcome! Use /start to begin the giveaway process or use the menu buttons.'
+//   );
+// });
 // Add this middleware to handle state management properly
 bot.use(async (ctx, next) => {
   // Only process text messages
