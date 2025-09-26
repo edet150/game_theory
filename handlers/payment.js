@@ -174,6 +174,11 @@ async function initiatePayment(bot, ctx) {
    * Webhook handler or conceptual handler for successful Paystack payment
    * Call this when Paystack sends a callback for successful payment.
    */
+  function formatUnitPrice(price) {
+      let num = Number(price);
+      if (isNaN(num)) return 'Invalid price';
+      return `₦${num.toFixed(1)}`;
+  }
   async function handleSuccessfulPayment(bot, paystackTransaction) {
     const t = await sequelize.transaction();
 
@@ -279,7 +284,7 @@ async function initiatePayment(bot, ctx) {
 🎯 *ENTRY CONFIRMATION SUMMARY*
 
 🏷️ *Pool:* ${summary_data.pool_name}
-💰 *Price per entry:* ₦${summary_data.price_per_entry}
+💰 *Price per entry:* ${formatUnitPrice(summary_data.unit_price)}
 📊 *Entries purchased:* ${summary_data.quantity}
 🎲 *Selection method:* ${summary_data.method_name}
 🔢 *Your numbers:* ${summary_data.numbers.join(', ')}

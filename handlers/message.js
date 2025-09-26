@@ -648,7 +648,7 @@ module.exports = (bot, bankSetupState) => {
         {
           reply_markup: {
           inline_keyboard: [
-            [{ text: "🚀 Enter Game", callback_data: "start_over" }],
+            [{ text: "🚀 Restart Game", callback_data: "start_over" }],
           ],
           },
         }

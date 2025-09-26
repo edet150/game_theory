@@ -17,28 +17,36 @@ const referralHandler = require('./handlers/referral');
 const callbackHandler = require('./handlers/callback');
 const accountHandler = require('./handlers/accounts');
 const messageHandler = require('./handlers/message');
+const giveawayHandler = require('./handlers/giveaway');
 require('./cron/paystack_checker');
 require('./cron/sundayCron'); 
 const { getbotInstance, getRedisClient } = require('./bot/botInstance.js');
+// const { getbotInstance2, getRedisClient2 } = require('./bot/botInstance2.js');
 const { getLast4Digits, showStartScreen } = require('./startFunction');
 const { checkPaystackTransactions, clearRedis } = require('./cron/paystack_checker');
+const { Telegraf } = require('telegraf');
 
+// // Bot 1
+// const bot1 = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
+// bot1.start((ctx) => ctx.reply('Hello from Bot 1'));
+// bot1.launch();
+
+// Bot 2
+const bot2 = new Telegraf(process.env.TELEGRAM_BOT_TOKEN2);
+// bot2.start((ctx) => ctx.reply('Hello from Bot 2 (Giveaway Bot)'));
+bot2.launch();
 const bot = getbotInstance();
 const redis = getRedisClient();
-//WINNING
 
-// Handle commands first - this should be registered BEFORE your message handler
-// bot.on('text', async (ctx, next) => {
-//   // Check if the message starts with a command
-//   if (ctx.message.text.startsWith('/')) {
-//     // Let Telegraf handle commands normally
-//     return next();
-//   }
-  
-//   // If it's not a command, continue to your custom message handlers
-//   return next();
-// });
+// const bot2 = getbotInstance2();
+// const redis2 = getRedisClient2();
+// console.log(bot2)
+//WIN  // Start command for bot2
 
+
+setTimeout(function () {
+   giveawayHandler(bot2);
+}, 3000)
 // Register handlers
   const bankSetupState = new Map();
 setTimeout(function () {
@@ -56,18 +64,24 @@ numbersHandler(bot);
 myEntriesHandler(bot);
 historyHandler(bot);
 
+// Register handlers for bot2 (Giveaway Bot)
+
+
+bot.use(cleanupMiddleware);
+
+
 
 
 
 bot.use(cleanupMiddleware);
 
 
-// bot.use((ctx, next) => {
-//   console.log('sippiose')
-//   console.log(ctx)
-//   console.log("Update type:", ctx.updateType, ctx.update);
-//   return next();
-// });
+bot2.use((ctx, next) => {
+  console.log('sippiose')
+  console.log(ctx)
+  console.log("Update type:", ctx.updateType, ctx.update);
+  return next();
+});
 
 bot.action('initiate_payment', async (ctx) => {
   await ctx.answerCbQuery();
@@ -121,9 +135,59 @@ bot.catch((err, ctx) => {
         }
     }
 });
+bot2.catch((err, ctx) => {
+    console.error(`Encountered a Telegram Error for ${ctx.from.id}:`, err);
+    console.log(err);
+
+    if (err.response && err.response.error_code === 400 && err.response.description.includes('query is too old')) {
+        console.log('Detected an old query error. Prompting user to restart.');
+
+        // Clear the user's session state
+        ctx.session = null;
+
+        // Inform the user with a button to restart
+        ctx.reply(
+            `⚠️ It looks like our conversation timed out. Please start again.`,
+            {
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: "🔄 Start Over", callback_data: "start_over" }]
+                    ]
+                }
+            }
+        ).catch(e => console.error('Failed to send restart message:', e));
+    } else {
+        // Use the start_over action instead of direct function call
+        // This ensures proper session cleanup
+        try {
+            // Clear session to prevent state conflicts
+            ctx.session = {};
+            
+            ctx.reply(
+                '❌ An unexpected error occurred. Starting over...',
+                {
+                    reply_markup: {
+                        inline_keyboard: [
+                            [{ text: "🔄 Start Over", callback_data: "start_over" }]
+                        ]
+                    }
+                }
+            );
+        } catch (error) {
+            // Fallback if even this fails
+            console.error('Error in error handler:', error);
+            ctx.reply('❌ An error occurred. Please use /start to begin again.');
+        }
+    }
+});
 
 // Handlers
-bot.start();
+// bot.start();
+
+// bot2.start((ctx) => {
+//   console.log("✅ Giveaway bot2 start triggered");
+//   ctx.reply("Hello from giveaway bot2 🎁");
+// });
 
 // ---- Express app ----
 const app = express();
@@ -209,16 +273,18 @@ app.listen(PORT, () => {
 process.once('SIGINT', () => {
   redis.quit();
   bot.stop('SIGINT');
+  bot2.stop('SIGINT');
 });
 process.once('SIGTERM', () => {
   redis.quit();
   bot.stop('SIGTERM');
+  bot2.stop('SIGTERM');
 });
 
 // Launch bot
+// Launch bots
 (async () => {
   try {
-     
     await db.sequelize.sync();
     console.log("✅ Database synchronized");
 
@@ -226,9 +292,22 @@ process.once('SIGTERM', () => {
     console.log("✅ Redis connected");
 
     await bot.launch();
-    console.log("🚀 Bot is running...");
+    console.log("🚀 Bot 1 is running...");
+    console.log("🚀 Bot 1 is running...");
+    console.log("🚀 Bot 1 is running...");
+    console.log("🚀 Bot 1 is running...");
+    console.log("🚀 Bot 1 is running...");
+
+    await bot2.launch();
+    console.log("🎉 Giveaway Bot (Bot 2) is running...");
+    console.log("🎉 Giveaway Bot (Bot 2) is running...");
+    console.log("🎉 Giveaway Bot (Bot 2) is running...");
+    console.log("🎉 Giveaway Bot (Bot 2) is running...");
+    console.log("🎉 Giveaway Bot (Bot 2) is running...");
+    console.log("🎉 Giveaway Bot (Bot 2) is running...");
+    console.log("🎉 Giveaway Bot (Bot 2) is running...");
   } catch (err) {
-    console.error("❌ Error starting bot:", err);
+    console.error("❌ Error starting bots:", err);
     process.exit(1);
   }
 })();

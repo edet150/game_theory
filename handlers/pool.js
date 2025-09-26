@@ -28,10 +28,6 @@ async function cleanupSessionMessages(ctx, messageKeys) {
 module.exports = (bot) => {
 bot.action(/^select_pool:(\w+)/, async (ctx) => {
   const isLocked = await redis.get('entries_locked');
-  if (isLocked) {
-    await ctx.answerCbQuery();
-    return await ctx.reply('🔒 Entries are currently locked. Please try again later.');
-  }
 
   await ctx.answerCbQuery();
   const poolName = ctx.match[1];
@@ -45,52 +41,58 @@ bot.action(/^select_pool:(\w+)/, async (ctx) => {
   }
 
   try {
-    // Special rules for Beta Arena
-if (poolName === "Bonus" || poolName === "Beta" || poolName === "HighRollers") {
-  const pool = await RafflePool.findOne({ where: { name: `${poolName}` } });
-  if (!pool) {
-    return ctx.reply(`❌ ${poolName} Arena not found.`);
-  }
-
-  // Check if locked by admin
-  if (pool.is_locked) {
-    return ctx.reply(`🔒 ${pool.name} is currently locked by Admin.`);
-  }
-
-  // Pre-set quantity to pool config
-  ctx.session.poolName = pool.name;
-  ctx.session.quantity = pool.quantity;
-
-  // Skip quantity selection, go straight to assignment
-  let noteText = "";
-  if (pool.name === "Bonus") {
-    noteText = `⏳ *Note:* This Bonus offer only lasts for *30 minutes* from when you join.\n\n`;
-  }
-
-  const assignmentMessage = await ctx.reply(
-    `🎉 You've selected the *${pool.name} Arena*!\n\n` +
-    `💰 *Price:* ₦${pool.price_per_entry} for ${pool.quantity} entries\n` +
-    // `🎟️ Entries Locked: ${pool.quantity} (fixed)\n` +
-      noteText +
-    `How would you like your entries assigned?`,
-    {
-      parse_mode: 'Markdown',
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: '🎲 Random Pick', callback_data: 'assign_method:random' }],
-          [{ text: 'I\'ll Choose My Numbers', callback_data: 'assign_method:choose' }]
-        ]
+        // Special rules for Beta Arena
+    if (poolName === "Bonus" || poolName === "Beta" || poolName === "HighRollers") {
+      if (poolName === "Bonus") {
+        if (isLocked) {
+          await ctx.answerCbQuery();
+          return await ctx.reply(`🔒 Bonus entries are currently locked. and will be opened on special days, join the channel and lookout for this announcement. @${process.env.CHANNEL_NAME}`);
+        }
       }
+      const pool = await RafflePool.findOne({ where: { name: `${poolName}` } });
+      if (!pool) {
+        return ctx.reply(`❌ ${poolName} Arena not found.`);
+      }
+
+      // Check if locked by admin
+      if (pool.is_locked) {
+        return ctx.reply(`🔒 ${pool.name} is currently locked by Admin.`);
+      }
+
+      // Pre-set quantity to pool config
+      ctx.session.poolName = pool.name;
+      ctx.session.quantity = pool.quantity;
+
+      // Skip quantity selection, go straight to assignment
+      let noteText = "";
+      if (pool.name === "Bonus") {
+        noteText = `⏳ *Note:* This Bonus offer only lasts for *30 minutes* from when you join.\n\n`;
+      }
+
+      const assignmentMessage = await ctx.reply(
+        `🎉 You've selected the *${pool.name} Arena*!\n\n` +
+        `💰 *Price:* ₦${pool.price_per_entry} for ${pool.quantity} entries\n` +
+        // `🎟️ Entries Locked: ${pool.quantity} (fixed)\n` +
+          noteText +
+        `How would you like your entries assigned?`,
+        {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: '🎲 Random Pick', callback_data: 'assign_method:random' }],
+              [{ text: 'I\'ll Choose My Numbers', callback_data: 'assign_method:choose' }]
+            ]
+          }
+        }
+      );
+
+      ctx.session.assignmentMessageId = assignmentMessage.message_id;
+
+      // Store a timestamp for bonus expiry
+      ctx.session.bonusStartTime = Date.now();
+
+      return;
     }
-  );
-
-  ctx.session.assignmentMessageId = assignmentMessage.message_id;
-
-  // Store a timestamp for bonus expiry
-  ctx.session.bonusStartTime = Date.now();
-
-  return;
-}
 
     if (poolName === "Beta_") {
       const betaMessage = await ctx.reply(

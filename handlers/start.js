@@ -470,9 +470,9 @@ They just verified and joined our community 🚀`,
 
   async function handleReferralAndStart(ctx) {
   const isLocked = await redis.get('entries_locked');
-  if (isLocked) {
-    return await ctx.reply('🔒 Entries are currently locked.  Please try again later.');
-  }
+  // if (isLocked) {
+  //   return await ctx.reply('🔒 Entries are currently locked.  Please try again later.');
+  // }
 
   const user = await handleUserReferral(ctx);
 
