@@ -18,6 +18,7 @@ const callbackHandler = require('./handlers/callback');
 const accountHandler = require('./handlers/accounts');
 const messageHandler = require('./handlers/message');
 const giveawayHandler = require('./handlers/giveaway');
+const giveawayAdminHandler = require('./handlers/giveawayAdmin');
 require('./cron/paystack_checker');
 require('./cron/sundayCron'); 
 const { getbotInstance, getRedisClient } = require('./bot/botInstance.js');
@@ -38,14 +39,13 @@ bot2.launch();
 const bot = getbotInstance();
 const redis = getRedisClient();
 
-// const bot2 = getbotInstance2();
-// const redis2 = getRedisClient2();
-// console.log(bot2)
+
 //WIN  // Start command for bot2
 
 
 setTimeout(function () {
-   giveawayHandler(bot2);
+  giveawayHandler(bot2);
+  giveawayAdminHandler(bot2);
 }, 3000)
 // Register handlers
   const bankSetupState = new Map();

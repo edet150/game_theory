@@ -1,0 +1,115 @@
+// handlers/giveawayAdmin.js
+const db = require('../models');
+
+module.exports = (bot) => {
+  // Admin command to create new campaign
+  bot.command('create_giveaway', async (ctx) => {
+    // Check if user is admin
+    if (ctx.from.id.toString() !== process.env.ADMIN_ID) {
+      return ctx.reply("❌ Admin only command");
+    }
+
+    // Parse command: /create_giveaway Name|Prize|Fee|MaxEntries
+    const args = ctx.message.text.split(' ').slice(1).join(' ').split('|');
+    
+    if (args.length < 2) {
+      return ctx.reply(
+        "Usage: /create_giveaway Name|PrizeAmount|EntryFee|MaxEntries\n\n" +
+        "Example: /create_giveaway Weekly Giveaway|2000|0|1000"
+      );
+    }
+
+    try {
+      const campaign = await db.GiveawayCampaign.create({
+        name: args[0].trim(),
+        prize_amount: parseFloat(args[1]) || 2000,
+        entry_fee: parseFloat(args[2]) || 0,
+        max_entries: parseInt(args[3]) || null,
+        is_active: true
+      });
+
+      await ctx.reply(
+        `✅ New giveaway campaign created!\n\n` +
+        `🎁 <b>Name:</b> ${campaign.name}\n` +
+        `💰 <b>Prize:</b> N${campaign.prize_amount}\n` +
+        `🎫 <b>Entry Fee:</b> N${campaign.entry_fee}\n` +
+        `📊 <b>Max Entries:</b> ${campaign.max_entries || 'Unlimited'}`,
+        { parse_mode: 'HTML' }
+      );
+    } catch (error) {
+      console.error('Error creating campaign:', error);
+      await ctx.reply("❌ Error creating campaign");
+    }
+  });
+
+  // Admin command to toggle campaign
+  bot.command('toggle_giveaway', async (ctx) => {
+    if (ctx.from.id.toString() !== process.env.ADMIN_ID) {
+      return ctx.reply("❌ Admin only command");
+    }
+
+    const args = ctx.message.text.split(' ').slice(1);
+    const campaignId = parseInt(args[0]) || 1;
+
+    try {
+      const campaign = await db.GiveawayCampaign.findByPk(campaignId);
+      if (!campaign) {
+        return ctx.reply("❌ Campaign not found");
+      }
+
+      campaign.is_active = !campaign.is_active;
+      await campaign.save();
+
+      await ctx.reply(
+        `✅ Campaign <b>${campaign.name}</b> is now <b>${campaign.is_active ? 'ACTIVE' : 'INACTIVE'}</b>`,
+        { parse_mode: 'HTML' }
+      );
+    } catch (error) {
+      console.error('Error toggling campaign:', error);
+      await ctx.reply("❌ Error toggling campaign");
+    }
+  });
+
+  // Admin command to view campaign stats
+  bot.command('giveaway_stats', async (ctx) => {
+    if (ctx.from.id.toString() !== process.env.ADMIN_ID) {
+      return ctx.reply("❌ Admin only command");
+    }
+
+    const args = ctx.message.text.split(' ').slice(1);
+    const campaignId = parseInt(args[0]) || null;
+
+    try {
+      const where = campaignId ? { id: campaignId } : {};
+      const campaigns = await db.GiveawayCampaign.findAll({
+        where,
+        include: [{
+          model: db.GiveawayEntry,
+          as: 'entries',
+          attributes: []
+        }],
+        attributes: [
+          'id', 'name', 'prize_amount', 'entry_fee', 'is_active',
+          [db.sequelize.fn('COUNT', db.sequelize.col('entries.id')), 'entry_count']
+        ],
+        group: ['GiveawayCampaign.id']
+      });
+
+      let message = "<b>🎁 Giveaway Campaigns</b>\n\n";
+      
+      campaigns.forEach(campaign => {
+        message += 
+          `📋 <b>ID:</b> ${campaign.id}\n` +
+          `🎁 <b>Name:</b> ${campaign.name}\n` +
+          `💰 <b>Prize:</b> N${campaign.prize_amount}\n` +
+          `🎫 <b>Entries:</b> ${campaign.get('entry_count')}\n` +
+          `📊 <b>Status:</b> ${campaign.is_active ? '✅ ACTIVE' : '❌ INACTIVE'}\n\n`;
+      });
+
+      await ctx.reply(message, { parse_mode: 'HTML' });
+    } catch (error) {
+      console.error('Error getting stats:', error);
+      await ctx.reply("❌ Error getting campaign stats");
+    }
+  });
+};
