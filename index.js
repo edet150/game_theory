@@ -27,15 +27,12 @@ const { getLast4Digits, showStartScreen } = require('./startFunction');
 const { checkPaystackTransactions, clearRedis } = require('./cron/paystack_checker');
 const { Telegraf } = require('telegraf');
 
-// // Bot 1
-// const bot1 = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
-// bot1.start((ctx) => ctx.reply('Hello from Bot 1'));
-// bot1.launch();
 
 // Bot 2
-const bot2 = new Telegraf(process.env.TELEGRAM_BOT_TOKEN2);
-// bot2.start((ctx) => ctx.reply('Hello from Bot 2 (Giveaway Bot)'));
+const { createBot } = require('./bot/botfactory.js');
+const { bot: bot2 } = createBot(process.env.TELEGRAM_BOT_TOKEN2);
 bot2.launch();
+
 const bot = getbotInstance();
 const redis = getRedisClient();
 

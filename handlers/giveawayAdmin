@@ -2,175 +2,51 @@
 const db = require('../models');
 
 module.exports = (bot) => {
-  // Helper function to deactivate all other campaigns when one is activated
-  async function deactivateOtherCampaigns(activeCampaignId) {
+  // Helper function to ensure only one campaign is active
+  async function ensureSingleActiveCampaign(activeCampaignId = null) {
     try {
-      await db.GiveawayCampaign.update(
-        { is_active: false },
-        { 
-          where: { 
-            is_active: true,
-            id: { [db.Sequelize.Op.ne]: activeCampaignId }
+      if (activeCampaignId) {
+        // Deactivate all other campaigns except the specified one
+        await db.GiveawayCampaign.update(
+          { status: 'inactive' },
+          { 
+            where: { 
+              status: 'active',
+              id: { [db.Sequelize.Op.ne]: activeCampaignId }
+            }
+          }
+        );
+      } else {
+        // If no active campaign specified, ensure max one active campaign
+        const activeCampaigns = await db.GiveawayCampaign.findAll({
+          where: { status: 'active' }
+        });
+        
+        if (activeCampaigns.length > 1) {
+          // Keep the first one active, deactivate others
+          const campaignsToDeactivate = activeCampaigns.slice(1);
+          for (const campaign of campaignsToDeactivate) {
+            campaign.status = 'inactive';
+            await campaign.save();
           }
         }
-      );
+      }
     } catch (error) {
-      console.error('Error deactivating other campaigns:', error);
+      console.error('Error ensuring single active campaign:', error);
     }
   }
 
-  // Admin command to show dashboard
+  // Main admin dashboard command
   bot.command('admin', async (ctx) => {
     if (ctx.from.id.toString() !== process.env.ADMIN_ID) {
       return ctx.reply("❌ Admin only command");
     }
 
-    try {
-      const campaigns = await db.GiveawayCampaign.findAll({
-        include: [{
-          model: db.GiveawayEntry,
-          as: 'entries',
-          attributes: []
-        }],
-        attributes: [
-          'id', 'name', 'prize_amount', 'entry_fee', 'is_active',
-          'start_date', 'end_date',
-          [db.sequelize.fn('COUNT', db.sequelize.col('entries.id')), 'entry_count']
-        ],
-        group: ['GiveawayCampaign.id'],
-        order: [['is_active', 'DESC'], ['created_at', 'DESC']]
-      });
-
-      let message = "<b>🎁 Giveaway Dashboard</b>\n\n";
-      
-      campaigns.forEach((campaign, index) => {
-        const isActive = campaign.is_active;
-        message += 
-          `${isActive ? '🟢' : '⚪'} <b>${campaign.name}</b>\n` +
-          `📋 <b>ID:</b> ${campaign.id} | 🎫 <b>Entries:</b> ${campaign.get('entry_count')}\n` +
-          `💰 <b>Prize:</b> N${campaign.prize_amount} | 💵 <b>Fee:</b> N${campaign.entry_fee}\n` +
-          `📊 <b>Status:</b> ${isActive ? '✅ ACTIVE' : '❌ INACTIVE'}\n`;
-        
-        if (isActive) {
-          message += `⏰ <b>Active</b>\n`;
-        }
-        
-        message += `\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n\n`;
-      });
-
-      await ctx.reply(message, { 
-        parse_mode: 'HTML',
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: "🆕 Create New", callback_data: "admin_create_giveaway" },
-              { text: "📊 Stats", callback_data: "admin_view_stats" }
-            ],
-            [
-              { text: "🔄 Toggle Campaign", callback_data: "admin_toggle_menu" },
-              { text: "✏️ Edit Campaign", callback_data: "admin_edit_menu" }
-            ],
-            [
-              { text: "🗑️ Delete Campaign", callback_data: "admin_delete_menu" },
-              { text: "🕐 Set Schedule", callback_data: "admin_schedule_menu" }
-            ]
-          ]
-        }
-      });
-    } catch (error) {
-      console.error('Error getting dashboard:', error);
-      await ctx.reply("❌ Error loading dashboard");
-    }
+    await showAdminDashboard(ctx);
   });
-
-  // Create giveaway with interactive buttons
-  bot.action("admin_create_giveaway", async (ctx) => {
-    await ctx.answerCbQuery();
-    await ctx.reply(
-      "To create a new giveaway, use:\n\n" +
-      "<code>/create_giveaway Name|Prize|Fee|MaxEntries</code>\n\n" +
-      "Example:\n" +
-      "<code>/create_giveaway Weekly N2000|2000|0|1000</code>\n\n" +
-      "Or:\n" +
-      "<code>/create_giveaway Monthly Mega|5000|500|5000</code>",
-      { parse_mode: 'HTML' }
-    );
-  });
-
-  // Toggle campaign menu
-  bot.action("admin_toggle_menu", async (ctx) => {
-    await ctx.answerCbQuery();
-    
-    try {
-      const campaigns = await db.GiveawayCampaign.findAll({
-        order: [['is_active', 'DESC'], ['created_at', 'DESC']]
-      });
-
-      const keyboard = campaigns.map(campaign => [
-        { 
-          text: `${campaign.is_active ? '🟢' : '⚪'} ${campaign.name}`, 
-          callback_data: `admin_toggle_campaign:${campaign.id}` 
-        }
-      ]);
-
-      keyboard.push([{ text: "🔙 Back to Dashboard", callback_data: "admin_back_dashboard" }]);
-
-      await ctx.reply(
-        "Select a campaign to toggle:\n\n" +
-        "🟢 = Active\n⚪ = Inactive\n\n" +
-        "Activating one will automatically deactivate others.",
-        {
-          reply_markup: { inline_keyboard: keyboard }
-        }
-      );
-    } catch (error) {
-      console.error('Error loading toggle menu:', error);
-      await ctx.reply("❌ Error loading campaigns");
-    }
-  });
-
-  // Toggle specific campaign
-  bot.action(/admin_toggle_campaign:(\d+)/, async (ctx) => {
-    await ctx.answerCbQuery();
-    const campaignId = parseInt(ctx.match[1]);
-
-    try {
-      const campaign = await db.GiveawayCampaign.findByPk(campaignId);
-      if (!campaign) {
-        return await ctx.reply("❌ Campaign not found");
-      }
-
-      const newStatus = !campaign.is_active;
-      
-      if (newStatus) {
-        // Deactivate all other campaigns before activating this one
-        await deactivateOtherCampaigns(campaignId);
-      }
-      
-      campaign.is_active = newStatus;
-      await campaign.save();
-
-      await ctx.reply(
-        `✅ <b>${campaign.name}</b> is now <b>${newStatus ? 'ACTIVE' : 'INACTIVE'}</b>\n\n` +
-        `${newStatus ? '🔴 Other campaigns have been automatically deactivated.' : ''}`,
-        { parse_mode: 'HTML' }
-      );
-
-      // Update the toggle menu
-      await ctx.editMessageReplyMarkup({
-        inline_keyboard: [
-          [{ text: "🔄 Refresh Menu", callback_data: "admin_toggle_menu" }],
-          [{ text: "🔙 Dashboard", callback_data: "admin_back_dashboard" }]
-        ]
-      });
-    } catch (error) {
-      console.error('Error toggling campaign:', error);
-      await ctx.reply("❌ Error toggling campaign");
-    }
-  });
-
-  // Enhanced create command with auto-toggle
+  // Enhanced create command (for command line use)
   bot.command('create_giveaway', async (ctx) => {
+    console.log('working')
     if (ctx.from.id.toString() !== process.env.ADMIN_ID) {
       return ctx.reply("❌ Admin only command");
     }
@@ -179,14 +55,10 @@ module.exports = (bot) => {
     
     if (args.length < 2) {
       return ctx.reply(
-        "Usage: /create_giveaway Name|PrizeAmount|EntryFee|MaxEntries\n\n" +
-        "Example: /create_giveaway Weekly Giveaway|2000|0|1000\n\n" +
-        "Add '--active' at the end to automatically activate this campaign."
+        "Usage: /create_giveaway Name|Prize|Fee|MaxEntries|ReferralReq|StartDate|EndDate\n\n" +
+        "Example: /create_giveaway Weekly N2000|2000|0|1000|0|2024-01-01|2024-01-31"
       );
     }
-
-    const shouldActivate = args[args.length - 1] === '--active';
-    if (shouldActivate) args.pop(); // Remove the --active flag
 
     try {
       const campaign = await db.GiveawayCampaign.create({
@@ -194,21 +66,15 @@ module.exports = (bot) => {
         prize_amount: parseFloat(args[1]) || 2000,
         entry_fee: parseFloat(args[2]) || 0,
         max_entries: parseInt(args[3]) || null,
-        is_active: shouldActivate
+        referral_requirement: parseInt(args[4]) || 0,
+        start_date: args[5] ? new Date(args[5]) : null,
+        end_date: args[6] ? new Date(args[6]) : null,
+        status: 'inactive'
       });
 
-      if (shouldActivate) {
-        await deactivateOtherCampaigns(campaign.id);
-      }
-
       await ctx.reply(
-        `✅ New giveaway campaign created!\n\n` +
-        `🎁 <b>Name:</b> ${campaign.name}\n` +
-        `💰 <b>Prize:</b> N${campaign.prize_amount}\n` +
-        `🎫 <b>Entry Fee:</b> N${campaign.entry_fee}\n` +
-        `📊 <b>Max Entries:</b> ${campaign.max_entries || 'Unlimited'}\n` +
-        `📊 <b>Status:</b> ${campaign.is_active ? '✅ ACTIVE' : '❌ INACTIVE'}\n\n` +
-        `${shouldActivate ? '🔴 Other campaigns have been automatically deactivated.' : ''}`,
+        `✅ New campaign created!\n\n` +
+        `Use /admin to manage your campaigns in the dashboard.`,
         { parse_mode: 'HTML' }
       );
     } catch (error) {
@@ -216,50 +82,157 @@ module.exports = (bot) => {
       await ctx.reply("❌ Error creating campaign");
     }
   });
+  // Declare winners command
+bot.command('declare_winners', async (ctx) => {
+  if (ctx.from.id.toString() !== process.env.ADMIN_ID) {
+    return ctx.reply("❌ Admin only command");
+  }
 
-  // Enhanced toggle command
-  bot.command('toggle_giveaway', async (ctx) => {
-    if (ctx.from.id.toString() !== process.env.ADMIN_ID) {
-      return ctx.reply("❌ Admin only command");
+  const args = ctx.message.text.split(' ').slice(1);
+  
+  if (args.length < 2) {
+    return ctx.reply(
+      "Usage: /declare_winners campaignId winningNumbers\n\n" +
+      "Example: /declare_winners 1 5,15,25\n\n" +
+      "Winning numbers should be comma-separated. The bot will use modulo to determine winners from sequential entry numbers."
+    );
+  }
+
+  const campaignId = parseInt(args[0]);
+  const winningNumbers = args[1].split(',').map(num => parseInt(num.trim()));
+
+  try {
+    const campaign = await db.GiveawayCampaign.findByPk(campaignId, {
+      include: [{
+        model: db.GiveawayEntry,
+        as: 'entries',
+        order: [['entry_number', 'ASC']]
+      }]
+    });
+
+    if (!campaign) {
+      return ctx.reply("❌ Campaign not found");
     }
 
-    const args = ctx.message.text.split(' ').slice(1);
-    const campaignId = parseInt(args[0]) || 1;
-    const forceActivate = args[1] === '--activate';
+    if (campaign.entries.length === 0) {
+      return ctx.reply("❌ No entries found for this campaign");
+    }
 
+    const totalEntries = campaign.entries.length;
+    const winners = [];
+    
+    // Find winners using modulo operation
+    winningNumbers.forEach(winningNum => {
+      const winnerIndex = (winningNum % totalEntries) - 1; // Convert to 0-based index
+      if (winnerIndex >= 0 && winnerIndex < totalEntries) {
+        winners.push(campaign.entries[winnerIndex]);
+      }
+    });
+
+    if (winners.length === 0) {
+      return ctx.reply("❌ No winners found with the provided numbers");
+    }
+
+    // Format winner announcement
+    let message = `🏆 <b>WINNERS DECLARED!</b>\n\n`;
+    message += `Campaign: <b>${campaign.name}</b>\n`;
+    message += `Total Entries: <b>${totalEntries}</b>\n`;
+    message += `Winning Numbers: <b>${winningNumbers.join(', ')}</b>\n\n`;
+    message += `<b>🎉 CONGRATULATIONS TO:</b>\n\n`;
+
+    winners.forEach((winner, index) => {
+      message += `${index + 1}. @${winner.username || 'Unknown'} (Entry #${winner.entry_number})\n`;
+    });
+
+    message += `\n💰 Prize: <b>N${campaign.prize_amount}</b>`;
+
+    await ctx.reply(message, { parse_mode: 'HTML' });
+
+    // Update campaign status to completed
+    campaign.status = 'completed';
+    campaign.winner_telegram_id = winners[0].telegram_id; // Store first winner
+    await campaign.save();
+
+  } catch (error) {
+    console.error('Error declaring winners:', error);
+    await ctx.reply("❌ Error declaring winners: " + error.message);
+  }
+});
+
+  // Show admin dashboard
+  async function showAdminDashboard(ctx, editMessage = false) {
     try {
-      const campaign = await db.GiveawayCampaign.findByPk(campaignId);
-      if (!campaign) {
-        return ctx.reply("❌ Campaign not found");
-      }
+      const campaigns = await db.GiveawayCampaign.findAll({
+        include: [{
+          model: db.GiveawayEntry,
+          as: 'entries',
+          attributes: []
+        }],
+        attributes: [
+          'id', 'name', 'prize_amount', 'entry_fee', 'status',
+          'referral_requirement', 'start_date', 'end_date',
+          [db.sequelize.fn('COUNT', db.sequelize.col('entries.id')), 'entry_count']
+        ],
+        group: ['GiveawayCampaign.id'],
+        order: [
+          ['status', 'DESC'], // active first
+          ['created_at', 'DESC']
+        ]
+      });
 
-      let newStatus;
-      if (forceActivate) {
-        newStatus = true;
-        await deactivateOtherCampaigns(campaignId);
+      const activeCampaign = campaigns.find(c => c.status === 'active');
+      const totalEntries = campaigns.reduce((sum, c) => sum + parseInt(c.get('entry_count')), 0);
+
+      let message = `<b>🛠️ Giveaway Admin Dashboard</b>\n\n`;
+      
+      if (activeCampaign) {
+        message += `🟢 <b>Active Campaign:</b> ${activeCampaign.name}\n`;
+        message += `💰 <b>Prize:</b> N${activeCampaign.prize_amount} | 🎫 <b>Entries:</b> ${activeCampaign.get('entry_count')}\n\n`;
       } else {
-        newStatus = !campaign.is_active;
-        if (newStatus) {
-          await deactivateOtherCampaigns(campaignId);
-        }
+        message += `🔴 <b>No Active Campaign</b>\n\n`;
       }
 
-      campaign.is_active = newStatus;
-      await campaign.save();
+      message += `<b>📊 Overview</b>\n`;
+      message += `• Total Campaigns: ${campaigns.length}\n`;
+      message += `• Total Entries: ${totalEntries}\n`;
+      message += `• Active: ${campaigns.filter(c => c.status === 'active').length}\n`;
+      message += `• Inactive: ${campaigns.filter(c => c.status === 'inactive').length}\n`;
+      message += `• Closed: ${campaigns.filter(c => c.status === 'closed').length}\n\n`;
 
-      await ctx.reply(
-        `✅ <b>${campaign.name}</b> is now <b>${newStatus ? 'ACTIVE' : 'INACTIVE'}</b>\n\n` +
-        `${newStatus ? '🔴 Other campaigns have been automatically deactivated.' : ''}`,
-        { parse_mode: 'HTML' }
-      );
+      const keyboard = [
+        [
+          { text: "📋 Campaigns List", callback_data: "admin_campaigns_list" },
+          { text: "🆕 Create New", callback_data: "admin_create_campaign" }
+        ],
+        [
+          { text: "📊 Statistics", callback_data: "admin_statistics" },
+          { text: "🏆 Declare Winners", callback_data: "admin_declare_winners" }
+        ],
+        [
+          { text: "🔄 Refresh", callback_data: "admin_refresh" },
+          { text: "❓ Help", callback_data: "admin_help" }
+        ]
+      ];
+
+      if (editMessage) {
+        await ctx.editMessageText(message, {
+          parse_mode: 'HTML',
+          reply_markup: { inline_keyboard: keyboard }
+        });
+      } else {
+        await ctx.reply(message, {
+          parse_mode: 'HTML',
+          reply_markup: { inline_keyboard: keyboard }
+        });
+      }
     } catch (error) {
-      console.error('Error toggling campaign:', error);
-      await ctx.reply("❌ Error toggling campaign");
+      console.error('Error loading admin dashboard:', error);
+      await ctx.reply("❌ Error loading dashboard");
     }
-  });
+  }
 
-  // View stats with better formatting
-  bot.action("admin_view_stats", async (ctx) => {
+  // Campaigns list with management options
+  bot.action("admin_campaigns_list", async (ctx) => {
     await ctx.answerCbQuery();
     
     try {
@@ -270,31 +243,567 @@ module.exports = (bot) => {
           attributes: []
         }],
         attributes: [
-          'id', 'name', 'prize_amount', 'entry_fee', 'is_active',
-          'created_at',
+          'id', 'name', 'prize_amount', 'entry_fee', 'status',
+          'referral_requirement', 'start_date', 'end_date',
           [db.sequelize.fn('COUNT', db.sequelize.col('entries.id')), 'entry_count']
         ],
         group: ['GiveawayCampaign.id'],
         order: [['created_at', 'DESC']]
       });
 
-      const activeCampaign = campaigns.find(c => c.is_active);
+      let message = `<b>📋 All Campaigns</b>\n\n`;
       
-      let message = "<b>📊 Giveaway Statistics</b>\n\n";
-      
-      if (activeCampaign) {
-        message += `🟢 <b>Active:</b> ${activeCampaign.name}\n`;
-        message += `🎫 <b>Entries:</b> ${activeCampaign.get('entry_count')}\n\n`;
-      }
-      
-      message += "<b>All Campaigns:</b>\n";
-      campaigns.forEach(campaign => {
+      campaigns.forEach((campaign, index) => {
+        const statusIcon = 
+          campaign.status === 'active' ? '🟢' :
+          campaign.status === 'inactive' ? '⚪' :
+          campaign.status === 'closed' ? '🔒' : '🏁';
+        
         message += 
-          `▫️ ${campaign.name} (ID: ${campaign.id})\n` +
-          `   Entries: ${campaign.get('entry_count')} | Status: ${campaign.is_active ? '🟢' : '⚪'}\n\n`;
+          `${statusIcon} <b>${campaign.name}</b> (ID: ${campaign.id})\n` +
+          `💰 N${campaign.prize_amount} | 🎫 ${campaign.get('entry_count')} entries\n` +
+          `👥 Ref req: ${campaign.referral_requirement} | Status: ${campaign.status}\n`;
+        
+        if (campaign.end_date) {
+          message += `📅 Ends: ${new Date(campaign.end_date).toLocaleDateString()}\n`;
+        }
+        
+        message += `\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n\n`;
       });
 
-      await ctx.reply(message, { 
+      const keyboard = campaigns.map(campaign => [
+        { 
+          text: `${campaign.status === 'active' ? '🟢' : '⚪'} ${campaign.name}`, 
+          callback_data: `admin_manage_campaign:${campaign.id}` 
+        }
+      ]);
+
+      keyboard.push([{ text: "🔙 Back to Dashboard", callback_data: "admin_back_dashboard" }]);
+
+      await ctx.editMessageText(message, {
+        parse_mode: 'HTML',
+        reply_markup: { inline_keyboard: keyboard }
+      });
+    } catch (error) {
+      console.error('Error loading campaigns list:', error);
+      await ctx.reply("❌ Error loading campaigns");
+    }
+  });
+
+  // Individual campaign management
+  bot.action(/admin_manage_campaign:(\d+)/, async (ctx) => {
+    await ctx.answerCbQuery();
+    const campaignId = parseInt(ctx.match[1]);
+
+    try {
+      const campaign = await db.GiveawayCampaign.findByPk(campaignId, {
+        include: [{
+          model: db.GiveawayEntry,
+          as: 'entries',
+          attributes: ['id', 'telegram_id', 'username', 'entry_number', 'created_at']
+        }]
+      });
+
+      if (!campaign) {
+        return await ctx.reply("❌ Campaign not found");
+      }
+
+      const statusIcon = 
+        campaign.status === 'active' ? '🟢' :
+        campaign.status === 'inactive' ? '⚪' :
+        campaign.status === 'closed' ? '🔒' : '🏁';
+
+      let message = 
+        `${statusIcon} <b>${campaign.name}</b>\n\n` +
+        `💰 <b>Prize:</b> N${campaign.prize_amount}\n` +
+        `🎫 <b>Entry Fee:</b> N${campaign.entry_fee}\n` +
+        `📊 <b>Max Entries:</b> ${campaign.max_entries || 'Unlimited'}\n` +
+        `👥 <b>Referral Req:</b> ${campaign.referral_requirement}\n` +
+        `📅 <b>Start:</b> ${campaign.start_date ? new Date(campaign.start_date).toLocaleDateString() : 'Not set'}\n` +
+        `📅 <b>End:</b> ${campaign.end_date ? new Date(campaign.end_date).toLocaleDateString() : 'Not set'}\n` +
+        `📈 <b>Entries:</b> ${campaign.entries.length}\n` +
+        `🔄 <b>Status:</b> ${campaign.status.toUpperCase()}\n\n`;
+
+      // Show recent entries
+      if (campaign.entries.length > 0) {
+        message += `<b>Recent Entries:</b>\n`;
+        campaign.entries.slice(0, 5).forEach(entry => {
+          message += `• ${entry.username || 'Unknown'} - #${entry.entry_number}\n`;
+        });
+        if (campaign.entries.length > 5) {
+          message += `• ... and ${campaign.entries.length - 5} more\n`;
+        }
+      }
+
+      const keyboard = [];
+
+      // Status management buttons
+      if (campaign.status === 'active') {
+        keyboard.push([{ text: "🔴 Deactivate", callback_data: `admin_deactivate:${campaign.id}` }]);
+      } else if (campaign.status === 'inactive') {
+        keyboard.push([{ text: "🟢 Activate", callback_data: `admin_activate:${campaign.id}` }]);
+      }
+
+      if (campaign.status !== 'closed') {
+        keyboard.push([{ text: "🔒 Close Campaign", callback_data: `admin_close:${campaign.id}` }]);
+      } else {
+        keyboard.push([{ text: "🔓 Reopen Campaign", callback_data: `admin_reopen:${campaign.id}` }]);
+      }
+
+      keyboard.push(
+        [{ text: "✏️ Edit Details", callback_data: `admin_edit:${campaign.id}` }],
+        [{ text: "📊 View All Entries", callback_data: `admin_entries:${campaign.id}` }],
+        [{ text: "🔙 Back to List", callback_data: "admin_campaigns_list" }],
+        [{ text: "🏠 Dashboard", callback_data: "admin_back_dashboard" }]
+      );
+
+      await ctx.editMessageText(message, {
+        parse_mode: 'HTML',
+        reply_markup: { inline_keyboard: keyboard }
+      });
+    } catch (error) {
+      console.error('Error managing campaign:', error);
+      await ctx.reply("❌ Error loading campaign details");
+    }
+  });
+
+  // Activate campaign
+  bot.action(/admin_activate:(\d+)/, async (ctx) => {
+    await ctx.answerCbQuery();
+    const campaignId = parseInt(ctx.match[1]);
+
+    try {
+      // Ensure only one campaign is active
+      await ensureSingleActiveCampaign(campaignId);
+      
+      const campaign = await db.GiveawayCampaign.findByPk(campaignId);
+      campaign.status = 'active';
+      await campaign.save();
+
+      await ctx.editMessageText(
+        `✅ <b>${campaign.name}</b> has been activated!\n\n` +
+        `🟢 <b>Status:</b> ACTIVE\n` +
+        `🔴 Other campaigns have been automatically deactivated.`,
+        { parse_mode: 'HTML' }
+      );
+
+      // Update the management interface
+      setTimeout(async () => {
+        await ctx.editMessageReplyMarkup({
+          inline_keyboard: [
+            [{ text: "🔴 Deactivate", callback_data: `admin_deactivate:${campaign.id}` }],
+            [{ text: "🔒 Close Campaign", callback_data: `admin_close:${campaign.id}` }],
+            [{ text: "✏️ Edit Details", callback_data: `admin_edit:${campaign.id}` }],
+            [{ text: "🔙 Back to List", callback_data: "admin_campaigns_list" }]
+          ]
+        });
+      }, 2000);
+    } catch (error) {
+      console.error('Error activating campaign:', error);
+      await ctx.reply("❌ Error activating campaign");
+    }
+  });
+
+  // Deactivate campaign
+  bot.action(/admin_deactivate:(\d+)/, async (ctx) => {
+    await ctx.answerCbQuery();
+    const campaignId = parseInt(ctx.match[1]);
+
+    try {
+      const campaign = await db.GiveawayCampaign.findByPk(campaignId);
+      campaign.status = 'inactive';
+      await campaign.save();
+
+      await ctx.editMessageText(
+        `⚪ <b>${campaign.name}</b> has been deactivated.\n\n` +
+        `⚪ <b>Status:</b> INACTIVE`,
+        { parse_mode: 'HTML' }
+      );
+
+      // Update the management interface
+      setTimeout(async () => {
+        await ctx.editMessageReplyMarkup({
+          inline_keyboard: [
+            [{ text: "🟢 Activate", callback_data: `admin_activate:${campaign.id}` }],
+            [{ text: "🔒 Close Campaign", callback_data: `admin_close:${campaign.id}` }],
+            [{ text: "✏️ Edit Details", callback_data: `admin_edit:${campaign.id}` }],
+            [{ text: "🔙 Back to List", callback_data: "admin_campaigns_list" }]
+          ]
+        });
+      }, 2000);
+    } catch (error) {
+      console.error('Error deactivating campaign:', error);
+      await ctx.reply("❌ Error deactivating campaign");
+    }
+  });
+
+  // Close campaign
+  bot.action(/admin_close:(\d+)/, async (ctx) => {
+    await ctx.answerCbQuery();
+    const campaignId = parseInt(ctx.match[1]);
+
+    try {
+      const campaign = await db.GiveawayCampaign.findByPk(campaignId);
+      campaign.status = 'closed';
+      await campaign.save();
+
+      await ctx.editMessageText(
+        `🔒 <b>${campaign.name}</b> has been closed.\n\n` +
+        `🔒 <b>Status:</b> CLOSED\n` +
+        `📊 <b>Final Entries:</b> ${campaign.entries ? campaign.entries.length : 0}\n\n` +
+        `This campaign will no longer be visible to users.`,
+        { parse_mode: 'HTML' }
+      );
+
+      // Update the management interface
+      setTimeout(async () => {
+        await ctx.editMessageReplyMarkup({
+          inline_keyboard: [
+            [{ text: "🔓 Reopen Campaign", callback_data: `admin_reopen:${campaign.id}` }],
+            [{ text: "✏️ Edit Details", callback_data: `admin_edit:${campaign.id}` }],
+            [{ text: "🔙 Back to List", callback_data: "admin_campaigns_list" }]
+          ]
+        });
+      }, 2000);
+    } catch (error) {
+      console.error('Error closing campaign:', error);
+      await ctx.reply("❌ Error closing campaign");
+    }
+  });
+
+  // Reopen campaign
+  bot.action(/admin_reopen:(\d+)/, async (ctx) => {
+    await ctx.answerCbQuery();
+    const campaignId = parseInt(ctx.match[1]);
+
+    try {
+      const campaign = await db.GiveawayCampaign.findByPk(campaignId);
+      campaign.status = 'inactive';
+      await campaign.save();
+
+      await ctx.editMessageText(
+        `🔓 <b>${campaign.name}</b> has been reopened.\n\n` +
+        `⚪ <b>Status:</b> INACTIVE\n` +
+        `This campaign is now visible to users but inactive.`,
+        { parse_mode: 'HTML' }
+      );
+
+      // Update the management interface
+      setTimeout(async () => {
+        await ctx.editMessageReplyMarkup({
+          inline_keyboard: [
+            [{ text: "🟢 Activate", callback_data: `admin_activate:${campaign.id}` }],
+            [{ text: "🔒 Close Campaign", callback_data: `admin_close:${campaign.id}` }],
+            [{ text: "✏️ Edit Details", callback_data: `admin_edit:${campaign.id}` }],
+            [{ text: "🔙 Back to List", callback_data: "admin_campaigns_list" }]
+          ]
+        });
+      }, 2000);
+    } catch (error) {
+      console.error('Error reopening campaign:', error);
+      await ctx.reply("❌ Error reopening campaign");
+    }
+  });
+
+    // Edit campaign details - specific to your model fields
+bot.action(/admin_edit:(\d+)/, async (ctx) => {
+  await ctx.answerCbQuery();
+  const campaignId = parseInt(ctx.match[1]);
+
+  try {
+    const campaign = await db.GiveawayCampaign.findByPk(campaignId);
+    
+    if (!campaign) {
+      return await ctx.reply("❌ Campaign not found");
+    }
+
+    let message = 
+      `✏️ <b>Edit Campaign: ${campaign.name}</b>\n\n` +
+      `<b>Current Details:</b>\n` +
+      `📛 Name: ${campaign.name}\n` +
+      `💰 Prize Amount: N${campaign.prize_amount}\n` +
+      `🎫 Entry Fee: N${campaign.entry_fee}\n` +
+      `📊 Max Entries: ${campaign.max_entries || 'Unlimited'}\n` +
+      `👥 Referral Requirement: ${campaign.referral_requirement}\n` +
+      `📅 Start Date: ${campaign.start_date ? new Date(campaign.start_date).toLocaleDateString() : 'Not set'}\n` +
+      `📅 End Date: ${campaign.end_date ? new Date(campaign.end_date).toLocaleDateString() : 'Not set'}\n` +
+      `📝 Description: ${campaign.description || 'Not set'}\n\n` +
+      
+      `<b>Click below to edit each field:</b>`;
+
+    const keyboard = [
+      [
+        { text: "📛 Edit Name", callback_data: `admin_edit_field:${campaignId}:name` },
+        { text: "💰 Edit Prize", callback_data: `admin_edit_field:${campaignId}:prize_amount` }
+      ],
+      [
+        { text: "🎫 Edit Entry Fee", callback_data: `admin_edit_field:${campaignId}:entry_fee` },
+        { text: "📊 Edit Max Entries", callback_data: `admin_edit_field:${campaignId}:max_entries` }
+      ],
+      [
+        { text: "👥 Edit Referrals", callback_data: `admin_edit_field:${campaignId}:referral_requirement` },
+        { text: "📝 Edit Description", callback_data: `admin_edit_field:${campaignId}:description` }
+      ],
+      [
+        { text: "📅 Edit Start Date", callback_data: `admin_edit_field:${campaignId}:start_date` },
+        { text: "📅 Edit End Date", callback_data: `admin_edit_field:${campaignId}:end_date` }
+      ],
+      [
+        { text: "🔙 Back to Campaign", callback_data: `admin_manage_campaign:${campaignId}` },
+        { text: "🏠 Dashboard", callback_data: "admin_back_dashboard" }
+      ]
+    ];
+
+    await ctx.editMessageText(message, {
+      parse_mode: 'HTML',
+      reply_markup: { inline_keyboard: keyboard }
+    });
+  } catch (error) {
+    console.error('Error loading edit interface:', error);
+    await ctx.reply("❌ Error loading edit interface");
+  }
+});
+
+// Handle field selection - asks user for new value
+// Handle field selection - asks user for new value
+// Handle field selection - updated for command approach
+bot.action(/admin_edit_field:(\d+):(\w+)/, async (ctx) => {
+  await ctx.answerCbQuery();
+  const campaignId = parseInt(ctx.match[1]);
+  const field = ctx.match[2];
+
+  try {
+    const campaign = await db.GiveawayCampaign.findByPk(campaignId);
+    if (!campaign) {
+      return await ctx.reply("❌ Campaign not found");
+    }
+
+    const fieldLabels = {
+      name: "Campaign Name",
+      prize_amount: "Prize Amount (Naira)",
+      entry_fee: "Entry Fee (Naira)", 
+      max_entries: "Max Entries (number or 'unlimited')",
+      referral_requirement: "Referral Requirement (number)",
+      description: "Description",
+      start_date: "Start Date (YYYY-MM-DD)",
+      end_date: "End Date (YYYY-MM-DD)"
+    };
+
+    const currentValue = campaign[field];
+    let currentValueText = currentValue || 'Not set';
+    
+    if (field === 'start_date' || field === 'end_date') {
+      currentValueText = currentValue ? new Date(currentValue).toLocaleDateString() : 'Not set';
+    }
+
+    // Store the editing state
+    ctx.session = ctx.session || {};
+    ctx.session.editingCampaign = {
+      campaignId: campaignId,
+      field: field
+    };
+
+    await ctx.reply(
+      `✏️ Editing <b>${fieldLabels[field]}</b>\n\n` +
+      `Current value: <b>${currentValueText}</b>\n\n` +
+      `Please use the command:\n` +
+      `<code>/edit_campaign_value new_value</code>\n\n` +
+      `Examples:\n` +
+      `<code>/edit_campaign_value 5000</code> (for prize amount)\n` +
+      `<code>/edit_campaign_value New Campaign Name</code>\n` +
+      `<code>/edit_campaign_value 2024-12-31</code> (for dates)\n\n` +
+      `Type <code>/cancel</code> to cancel.`,
+      { parse_mode: 'HTML' }
+    );
+
+  } catch (error) {
+    console.error('Error starting edit:', error);
+    await ctx.reply("❌ Error starting edit");
+  }
+});
+
+// Handle the user's reply with new value
+// Edit campaign command - use this instead of the message listener
+bot.command('edit_campaign_value', async (ctx) => {
+  if (ctx.from.id.toString() !== process.env.ADMIN_ID) {
+    return ctx.reply("❌ Admin only command");
+  }
+
+  if (!ctx.session || !ctx.session.editingCampaign) {
+    return ctx.reply(
+      "❌ No active edit session. Use the admin dashboard to start editing a campaign.\n\n" +
+      "Go to /admin → Campaigns → Select campaign → Edit Details"
+    );
+  }
+
+  const { campaignId, field } = ctx.session.editingCampaign;
+  const newValue = ctx.message.text.split(' ').slice(1).join(' ');
+
+  if (!newValue) {
+    return ctx.reply("❌ Please provide a value. Usage: /edit_campaign_value new_value");
+  }
+
+  // Check for cancel command
+  if (newValue.toLowerCase() === '/cancel') {
+    delete ctx.session.editingCampaign;
+    return ctx.reply("❌ Edit cancelled.");
+  }
+
+  try {
+    const campaign = await db.GiveawayCampaign.findByPk(campaignId);
+    if (!campaign) {
+      await ctx.reply("❌ Campaign not found");
+      delete ctx.session.editingCampaign;
+      return;
+    }
+
+    let parsedValue = newValue;
+    let validationError = null;
+
+    // Validate and parse based on field type (same validation logic)
+    switch (field) {
+      case 'name':
+        if (newValue.length < 2 || newValue.length > 100) {
+          validationError = "Name must be between 2 and 100 characters";
+        }
+        break;
+
+      case 'prize_amount':
+      case 'entry_fee':
+        parsedValue = parseFloat(newValue);
+        if (isNaN(parsedValue) || parsedValue < 0) {
+          validationError = "Please enter a valid positive number";
+        }
+        break;
+
+      case 'max_entries':
+        if (newValue.toLowerCase() === 'unlimited' || newValue === '0') {
+          parsedValue = null;
+        } else {
+          parsedValue = parseInt(newValue);
+          if (isNaN(parsedValue) || parsedValue < 1) {
+            validationError = "Please enter a valid number greater than 0 or 'unlimited'";
+          }
+        }
+        break;
+
+      case 'referral_requirement':
+        parsedValue = parseInt(newValue);
+        if (isNaN(parsedValue) || parsedValue < 0) {
+          validationError = "Please enter a valid number (0 or greater)";
+        }
+        break;
+
+      case 'start_date':
+      case 'end_date':
+        if (newValue.toLowerCase() === 'clear') {
+          parsedValue = null;
+        } else {
+          const date = new Date(newValue);
+          if (isNaN(date.getTime())) {
+            validationError = "Please enter a valid date (YYYY-MM-DD) or 'clear' to remove";
+          } else {
+            parsedValue = date;
+          }
+        }
+        break;
+
+      case 'description':
+        if (newValue.length > 500) {
+          validationError = "Description must be less than 500 characters";
+        }
+        break;
+    }
+
+    if (validationError) {
+      return ctx.reply(`❌ ${validationError}\n\nUsage: /edit_campaign_value new_value\nOr /cancel to cancel.`);
+    }
+
+    // Update the campaign
+    campaign[field] = parsedValue;
+    await campaign.save();
+
+    await ctx.reply(
+      `✅ <b>${field.replace('_', ' ').toUpperCase()} updated successfully!</b>\n\n` +
+      `New value: <b>${newValue}</b>\n\n` +
+      `Campaign: <b>${campaign.name}</b>`,
+      { parse_mode: 'HTML' }
+    );
+
+    // Clear the editing session
+    delete ctx.session.editingCampaign;
+
+  } catch (error) {
+    console.error('Error updating campaign:', error);
+    await ctx.reply("❌ Error updating campaign");
+    delete ctx.session.editingCampaign;
+  }
+});
+    
+  // Create campaign interface
+  bot.action("admin_create_campaign", async (ctx) => {
+    await ctx.answerCbQuery();
+    
+    await ctx.editMessageText(
+      `<b>🆕 Create New Campaign</b>\n\n` +
+      `To create a new campaign, use the command:\n\n` +
+      `<code>/create_giveaway Name|Prize|Fee|MaxEntries|ReferralReq|StartDate|EndDate</code>\n\n` +
+      `<b>Examples:</b>\n` +
+      `<code>/create_giveaway Weekly N2000|2000|0|1000|0|2024-01-01|2024-01-31</code>\n` +
+      `<code>/create_giveaway VIP N5000|5000|0|500|5|2024-02-01|2024-02-28</code>\n\n` +
+      `<b>Parameters:</b>\n` +
+      `• Name: Campaign name\n` +
+      `• Prize: Prize amount in Naira\n` +
+      `• Fee: Entry fee (0 for free)\n` +
+      `• MaxEntries: Maximum entries (optional)\n` +
+      `• ReferralReq: Required referrals (0 for none)\n` +
+      `• StartDate: Start date (YYYY-MM-DD)\n` +
+      `• EndDate: End date (YYYY-MM-DD)`,
+      {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "🔄 Back to Dashboard", callback_data: "admin_back_dashboard" }]
+          ]
+        }
+      }
+    );
+  });
+
+  // Statistics
+  bot.action("admin_statistics", async (ctx) => {
+    await ctx.answerCbQuery();
+    
+    try {
+      const campaigns = await db.GiveawayCampaign.findAll({
+        include: [{
+          model: db.GiveawayEntry,
+          as: 'entries',
+          attributes: []
+        }],
+        attributes: [
+          'id', 'name', 'prize_amount', 'status',
+          [db.sequelize.fn('COUNT', db.sequelize.col('entries.id')), 'entry_count']
+        ],
+        group: ['GiveawayCampaign.id']
+      });
+
+      const totalEntries = campaigns.reduce((sum, c) => sum + parseInt(c.get('entry_count')), 0);
+      const totalPrizeValue = campaigns.reduce((sum, c) => sum + parseFloat(c.prize_amount), 0);
+
+      let message = `<b>📊 Campaign Statistics</b>\n\n`;
+      message += `<b>Overall Stats:</b>\n`;
+      message += `• Total Campaigns: ${campaigns.length}\n`;
+      message += `• Total Entries: ${totalEntries}\n`;
+      message += `• Total Prize Value: N${totalPrizeValue}\n\n`;
+
+      message += `<b>Campaign Breakdown:</b>\n`;
+      campaigns.forEach(campaign => {
+        message += 
+          `• ${campaign.name}: ${campaign.get('entry_count')} entries (N${campaign.prize_amount})\n`;
+      });
+
+      await ctx.editMessageText(message, {
         parse_mode: 'HTML',
         reply_markup: {
           inline_keyboard: [
@@ -303,34 +812,161 @@ module.exports = (bot) => {
         }
       });
     } catch (error) {
-      console.error('Error getting stats:', error);
+      console.error('Error loading statistics:', error);
       await ctx.reply("❌ Error loading statistics");
     }
   });
 
-  // Back to dashboard
+  // Navigation handlers
   bot.action("admin_back_dashboard", async (ctx) => {
     await ctx.answerCbQuery();
-    // Trigger the dashboard command
-    await ctx.deleteMessage();
-    await ctx.telegram.sendMessage(ctx.from.id, '/giveaway_dashboard');
+    await showAdminDashboard(ctx, true);
   });
 
-  // Placeholder for other menu actions
-  bot.action("admin_edit_menu", async (ctx) => {
+  bot.action("admin_refresh", async (ctx) => {
+    await ctx.answerCbQuery("Refreshing...");
+    await showAdminDashboard(ctx, true);
+  });
+
+  // Placeholder handlers
+  bot.action("admin_settings", async (ctx) => {
     await ctx.answerCbQuery();
-    await ctx.reply("Edit functionality coming soon! Use /create_giveaway for now.");
+    await ctx.editMessageText("Settings functionality coming soon!", {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "🔙 Back", callback_data: "admin_back_dashboard" }]
+        ]
+      }
+    });
   });
 
-  bot.action("admin_delete_menu", async (ctx) => {
+  bot.action("admin_help", async (ctx) => {
     await ctx.answerCbQuery();
-    await ctx.reply("Delete functionality coming soon!");
+    await ctx.editMessageText(
+      `<b>❓ Admin Help</b>\n\n` +
+      `<b>Available Commands:</b>\n` +
+      `/admin - Open admin dashboard\n` +
+      `/create_giveaway - Create new campaign\n\n` +
+      `<b>Campaign Status:</b>\n` +
+      `🟢 Active - Visible and accepting entries\n` +
+      `⚪ Inactive - Visible but not accepting entries\n` +
+      `🔒 Closed - Hidden from users\n\n` +
+      `<b>Tips:</b>\n` +
+      `• Only one campaign can be active at a time\n` +
+      `• Closed campaigns are hidden from users\n` +
+      `• Use referral requirements for exclusive giveaways`,
+      {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "🔙 Back", callback_data: "admin_back_dashboard" }]
+          ]
+        }
+      }
+    );
   });
+  // Declare winners interface
+bot.action("admin_declare_winners", async (ctx) => {
+  await ctx.answerCbQuery();
+  
+  try {
+    const campaigns = await db.GiveawayCampaign.findAll({
+      where: { status: ['active', 'inactive'] },
+      include: [{
+        model: db.GiveawayEntry,
+        as: 'entries',
+        attributes: []
+      }],
+      attributes: [
+        'id', 'name', 'prize_amount', 'status',
+        [db.sequelize.fn('COUNT', db.sequelize.col('entries.id')), 'entry_count']
+      ],
+      group: ['GiveawayCampaign.id'],
+      having: db.sequelize.where(db.sequelize.col('entry_count'), '>', 0)
+    });
 
-  bot.action("admin_schedule_menu", async (ctx) => {
-    await ctx.answerCbQuery();
-    await ctx.reply("Schedule functionality coming soon!");
-  });
+    if (campaigns.length === 0) {
+      return await ctx.editMessageText(
+        "❌ No campaigns with entries found.\n\n" +
+        "You need campaigns with entries to declare winners.",
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "🔙 Back", callback_data: "admin_back_dashboard" }]
+            ]
+          }
+        }
+      );
+    }
 
-  console.log('✅ Enhanced Giveaway Admin handlers registered');
+    let message = "🏆 <b>Declare Winners</b>\n\nSelect a campaign:\n\n";
+    
+    campaigns.forEach(campaign => {
+      message += `📊 <b>${campaign.name}</b>\n`;
+      message += `💰 Prize: N${campaign.prize_amount} | 🎫 Entries: ${campaign.get('entry_count')}\n\n`;
+    });
+
+    const keyboard = campaigns.map(campaign => [
+      { 
+        text: `${campaign.name} (${campaign.get('entry_count')} entries)`, 
+        callback_data: `admin_select_winner_campaign:${campaign.id}` 
+      }
+    ]);
+
+    keyboard.push([{ text: "🔙 Back", callback_data: "admin_back_dashboard" }]);
+
+    await ctx.editMessageText(message, {
+      parse_mode: 'HTML',
+      reply_markup: { inline_keyboard: keyboard }
+    });
+  } catch (error) {
+    console.error('Error loading winner declaration:', error);
+    await ctx.reply("❌ Error loading campaigns");
+  }
+});
+
+// Select campaign for winner declaration
+bot.action(/admin_select_winner_campaign:(\d+)/, async (ctx) => {
+  await ctx.answerCbQuery();
+  const campaignId = parseInt(ctx.match[1]);
+
+  try {
+    const campaign = await db.GiveawayCampaign.findByPk(campaignId, {
+      include: [{
+        model: db.GiveawayEntry,
+        as: 'entries',
+        attributes: ['id']
+      }]
+    });
+
+    if (!campaign) {
+      return await ctx.reply("❌ Campaign not found");
+    }
+
+    const totalEntries = campaign.entries.length;
+    
+    await ctx.reply(
+      `🏆 Declaring winners for: <b>${campaign.name}</b>\n\n` +
+      `📊 Total Entries: <b>${totalEntries}</b>\n\n` +
+      `Enter winning numbers separated by commas:\n\n` +
+      `<code>/declare_winners ${campaignId} 123,456,789</code>\n\n` +
+      `Example: <code>/declare_winners ${campaignId} 5,15,25</code>\n\n` +
+      `The bot will calculate winners using modulo operation on entry numbers.`,
+      { 
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "🔙 Back", callback_data: "admin_declare_winners" }]
+          ]
+        }
+      }
+    );
+  } catch (error) {
+    console.error('Error selecting winner campaign:', error);
+    await ctx.reply("❌ Error loading campaign");
+  }
+});
+
+
+  console.log('✅ Admin Dashboard handlers registered');
 };

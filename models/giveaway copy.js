@@ -12,6 +12,7 @@ module.exports = (sequelize) => {
     telegram_id: {
       type: DataTypes.BIGINT,
       allowNull: false,
+      unique: true, // enforce uniqueness at the model level too
     },
     username: {
       type: DataTypes.STRING,
@@ -61,6 +62,10 @@ module.exports = (sequelize) => {
     underscored: true, // keep column names snake_case
     timestamps: true,  // auto-manage created_at & updated_at
     indexes: [
+      {
+        unique: true,
+        fields: ['telegram_id'],
+      },
       {
         fields: ['entry_number'],
       },
