@@ -483,10 +483,10 @@ async function showGiveawayPosition(ctx, campaign) {
     const displayAccount = formatAccountNumber(userDetails.account_number);
     
     await ctx.reply(
-      `<b>🎁 Your Giveaway Position</b>\n\n` +
+      `<b>🎁 Your Giveaway Seat</b>\n\n` +
       `🏆 <b>Campaign:</b> ${campaign.name}\n` +
       `💰 <b>Prize:</b> N${campaign.prize_amount}\n` +
-      `📋 <b>Your Position:</b> #${userDetails.entry_number}\n` +
+      `⇉ <b>Your Seat No:</b> #${userDetails.entry_number}\n` +
       `👤 <b>Name:</b> ${displayName}\n` +
       `🏦 <b>Account:</b> ${displayAccount}\n` +
       `📊 <b>Bank:</b> ${userDetails.bank_name}\n` +
