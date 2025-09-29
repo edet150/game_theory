@@ -288,11 +288,11 @@ async function showReferralStats(ctx) {
 
   const referralLink = `https://t.me/${ctx.botInfo.username}?start=ref-${stats.referral_code}`;
   
-  let message = `<b>📤 Your Referral Stats</b>\n\n`;
-  message += `👥 <b>Total Referrals:</b> ${stats.total_referrals}\n`;
-  message += `🟢 <b>Active Referrals:</b> ${stats.active_referrals}\n`;
-  message += `🔗 <b>Your Referral Code:</b> <code>${stats.referral_code}</code>\n\n`;
-  message += `<b>Your Referral Link:</b>\n<code>${referralLink}</code>\n\n`;
+  let message = `<b>Your Referral Stats</b>\n\n`;
+  message += ` ○ <b>Total Referrals:</b> ${stats.total_referrals}\n`;
+  message += ` ○ <b>Active Referrals:</b> ${stats.active_referrals} 🟢\n`;
+  message += ` ○ <b>Your Referral Code:</b> <code>${stats.referral_code}</code>\n\n`;
+  message += `<b>Your Referral Link (tap and hold to copy):</b>\n<code>${referralLink}</code>\n\n`;
   
   if (stats.referrals.length > 0) {
     message += `<b>Recent Referrals:</b>\n`;
@@ -411,9 +411,9 @@ async function showCampaignSelectionMenu(ctx) {
 async function showGiveawaySteps(ctx, campaign) {
   const steps = [
     "1. ✅ Join our giveaway channel",
-    "2. 🎯 Select your preferred giveaway", 
-    "3. 🏦 Setup your bank account",
-    "4. 🎫 Get your giveaway seat"
+    "2. ◎ Select your preferred giveaway", 
+    "3. ◎ Setup your bank account",
+    "4. ◎ Get your giveaway seat"
   ].join("\n");
 
   await ctx.reply(
@@ -434,14 +434,15 @@ async function showGiveawaySteps(ctx, campaign) {
 }
 
 // Show bank account confirmation
+const bankConfirmationMessages = new Map();
 async function showBankAccountConfirmation(ctx, bankDetails, campaignId) {
-  await ctx.reply(
+  const message = await ctx.reply(
     `<b>🏦 Confirm Your Bank Account</b>\n\n` +
     `Please verify that these details are correct:\n\n` +
     `🏦 <b>Bank:</b> ${bankDetails.bank_name}\n` +
     `👤 <b>Account Name:</b> ${bankDetails.account_holder_name}\n` +
     `🔢 <b>Account Number:</b> ${bankDetails.account_number}\n\n` +
-    `Is this your correct bank account? `,
+    `Is this your correct bank account?`,
     {
       parse_mode: "HTML",
       reply_markup: {
@@ -455,7 +456,13 @@ async function showBankAccountConfirmation(ctx, bankDetails, campaignId) {
       }
     }
   );
+  
+  // Store the message ID for this user
+  bankConfirmationMessages.set(ctx.from.id, message.message_id);
+  
+  return message;
 }
+
 
 // Show giveaway position (final screenshot message)
 async function showGiveawayPosition(ctx, campaign) {
@@ -490,7 +497,7 @@ async function showGiveawayPosition(ctx, campaign) {
       `2. Comment it under our <a href="${TWITTER_LINK}">pinned tweet</a>\n` +
       `3. Retweet our pinned tweet\n` +
       `4. Winners will be selected at random from the comment section\n\n` +
-      `Good luck! 🍀`,
+      `Good luck! ✔`,
       {
         parse_mode: "HTML",
         disable_web_page_preview: true,
@@ -707,10 +714,20 @@ bot.action(/confirm_bank:(\d+)/, async (ctx) => {
     await ctx.answerCbQuery('❌ Session expired. Please start over.', { show_alert: true });
     return;
   }
-
+console.log('condifm')
   const transaction = await db.sequelize.transaction();
   
   try {
+        // Delete the bank confirmation message
+    const confirmationMessageId = bankConfirmationMessages.get(userId);
+    if (confirmationMessageId) {
+      try {
+        await ctx.deleteMessage(confirmationMessageId);
+      } catch (deleteError) {
+        console.log('Could not delete confirmation message:', deleteError.message);
+      }
+      bankConfirmationMessages.delete(userId);
+    }
     // -------------------------
     // 1. Define week boundaries
     // -------------------------
@@ -723,7 +740,7 @@ bot.action(/confirm_bank:(\d+)/, async (ctx) => {
     endOfWeek.setDate(startOfWeek.getDate() + 6);
     endOfWeek.setHours(23, 59, 59, 999);
 
-    // -------------------------
+   // -------------------------
     // 2. Check if already joined this week WITH LOCK
     // -------------------------
     const existingThisWeek = await db.GiveawayEntry.findOne({
@@ -736,10 +753,39 @@ bot.action(/confirm_bank:(\d+)/, async (ctx) => {
       lock: transaction.LOCK.UPDATE
     });
 
+    console.log(existingThisWeek)
+
     if (existingThisWeek) {
-      await transaction.rollback();
-      await ctx.answerCbQuery("❌ You already joined this week's giveaway!", { show_alert: true });
-      return;
+      // Check if the bank account details are different
+      const isSameAccount = 
+        existingThisWeek.account_number === state.verifiedBankDetails.account_number &&
+        existingThisWeek.bank_name === state.verifiedBankDetails.bank_name &&
+        existingThisWeek.account_holder_name === state.verifiedBankDetails.account_holder_name;
+
+      if (isSameAccount) {
+        // Same account details - don't allow update
+        await transaction.rollback();
+        await ctx.answerCbQuery("❌ You already joined this week's giveaway!");
+        return;
+      } else {
+        // Different account details - update the existing entry
+        console.log('Updating bank details for existing entry');
+        
+        existingThisWeek.account_number = state.verifiedBankDetails.account_number;
+        existingThisWeek.bank_name = state.verifiedBankDetails.bank_name;
+        existingThisWeek.account_holder_name = state.verifiedBankDetails.account_holder_name;
+        
+        await existingThisWeek.save({ transaction });
+        await transaction.commit();
+        
+        giveawayBankSetupState.delete(userId);
+        
+        await ctx.answerCbQuery("✅ Bank account updated successfully!", { show_alert: true });
+
+        const campaign = await db.GiveawayCampaign.findByPk(campaignId);
+        await showGiveawayPosition(ctx, campaign);
+        return;
+      }
     }
 
     // -------------------------
@@ -773,7 +819,7 @@ bot.action(/confirm_bank:(\d+)/, async (ctx) => {
     }, { transaction });
 
     await transaction.commit();
-    giveawayBankSetupState.delete(userId);
+    // giveawayBankSetupState.delete(userId);
     
     await ctx.answerCbQuery("✅ Bank account confirmed!", { show_alert: true });
 
