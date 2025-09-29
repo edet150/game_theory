@@ -5,7 +5,7 @@ const { Op } = require("sequelize");
 
 // Constants
 const REQUIRED_CHANNEL = process.env.GIVEAWAY_CHANNEL || '@modulo_giveaway';
-const TWITTER_LINK = process.env.TWITTER_PINNED_TWEET || 'https://twitter.com/yourpage/status/123456789';
+const TWITTER_LINK = process.env.TWITTER_PINNED_TWEET || 'https://x.com/Modulo_hq/status/1972356451437040053';
 
 // Helper functions
 async function isUserInChannel(ctx, channelUsername) {
@@ -75,18 +75,44 @@ async function verifyAccountWithPaystack(accountNumber, bankCode) {
   }
 }
 // Get next entry number for campaign
+// async function getNextEntryNumber(campaignId, startOfWeek, endOfWeek) {
+//   try {
+//     const lastEntry = await db.GiveawayEntry.findOne({
+//       where: {
+//         campaign_id: campaignId,
+//         created_at: { [Op.between]: [startOfWeek, endOfWeek] }
+//       },
+//       order: [["entry_number", "DESC"]],
+//     });
+
+//     return lastEntry ? lastEntry.entry_number + 1 : 1;
+//   } catch (error) {
+//     console.error("Error getting next entry number:", error);
+//     return 1;
+//   }
+// }
 async function getNextEntryNumber(campaignId, startOfWeek, endOfWeek) {
+  const transaction = await db.sequelize.transaction();
+  
   try {
+    // Lock the entries for this campaign and week to prevent race conditions
     const lastEntry = await db.GiveawayEntry.findOne({
       where: {
         campaign_id: campaignId,
-        created_at: { [Op.between]: [startOfWeek, endOfWeek] }
+        created_at: { [db.Sequelize.Op.between]: [startOfWeek, endOfWeek] }
       },
       order: [["entry_number", "DESC"]],
+      lock: transaction.LOCK.UPDATE,
+      transaction
     });
 
-    return lastEntry ? lastEntry.entry_number + 1 : 1;
+    const nextEntryNumber = lastEntry ? lastEntry.entry_number + 1 : 1;
+    
+    await transaction.commit();
+    return nextEntryNumber;
+    
   } catch (error) {
+    await transaction.rollback();
     console.error("Error getting next entry number:", error);
     return 1;
   }
@@ -682,48 +708,59 @@ bot.action(/confirm_bank:(\d+)/, async (ctx) => {
     return;
   }
 
+  const transaction = await db.sequelize.transaction();
+  
   try {
-    
     // -------------------------
     // 1. Define week boundaries
     // -------------------------
     const now = new Date();
-
-    // start of current week (Monday)
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1)); 
     startOfWeek.setHours(0, 0, 0, 0);
 
-    // end of current week (Sunday)
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 6);
     endOfWeek.setHours(23, 59, 59, 999);
 
     // -------------------------
-    // 2. Check if already joined this week
+    // 2. Check if already joined this week WITH LOCK
     // -------------------------
     const existingThisWeek = await db.GiveawayEntry.findOne({
       where: {
         telegram_id: userId,
         campaign_id: campaignId,
-        created_at: { [Op.between]: [startOfWeek, endOfWeek] }
-      }
+        created_at: { [db.Sequelize.Op.between]: [startOfWeek, endOfWeek] }
+      },
+      transaction,
+      lock: transaction.LOCK.UPDATE
     });
 
     if (existingThisWeek) {
+      await transaction.rollback();
       await ctx.answerCbQuery("❌ You already joined this week's giveaway!", { show_alert: true });
       return;
     }
 
     // -------------------------
-    // 3. Get next entry number for this week
+    // 3. Get next entry number for this week WITH LOCK
     // -------------------------
-    const entryNumber = await getNextEntryNumber(campaignId, startOfWeek, endOfWeek);
+    const lastEntry = await db.GiveawayEntry.findOne({
+      where: {
+        campaign_id: campaignId,
+        created_at: { [db.Sequelize.Op.between]: [startOfWeek, endOfWeek] }
+      },
+      order: [["entry_number", "DESC"]],
+      transaction,
+      lock: transaction.LOCK.UPDATE
+    });
+
+    const entryNumber = lastEntry ? lastEntry.entry_number + 1 : 1;
 
     // -------------------------
     // 4. Save new entry
     // -------------------------
-    let entry = await db.GiveawayEntry.create({
+    await db.GiveawayEntry.create({
       telegram_id: userId,
       username: ctx.from.username || `${ctx.from.first_name}${ctx.from.last_name ? ' ' + ctx.from.last_name : ''}`,
       first_name: ctx.from.first_name,
@@ -733,8 +770,9 @@ bot.action(/confirm_bank:(\d+)/, async (ctx) => {
       account_holder_name: state.verifiedBankDetails.account_holder_name,
       entry_number: entryNumber,
       campaign_id: campaignId
-    });
+    }, { transaction });
 
+    await transaction.commit();
     giveawayBankSetupState.delete(userId);
     
     await ctx.answerCbQuery("✅ Bank account confirmed!", { show_alert: true });
@@ -743,8 +781,14 @@ bot.action(/confirm_bank:(\d+)/, async (ctx) => {
     await showGiveawayPosition(ctx, campaign);
 
   } catch (error) {
+    await transaction.rollback();
     console.error('Error saving bank details:', error);
-    await ctx.answerCbQuery('❌ Error saving details. Please try again.', { show_alert: true });
+    
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      await ctx.answerCbQuery('❌ Entry number conflict. Please try again.', { show_alert: true });
+    } else {
+      await ctx.answerCbQuery('❌ Error saving details. Please try again.', { show_alert: true });
+    }
   }
 });
 
