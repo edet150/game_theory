@@ -62,6 +62,21 @@ async function showPoolSelection(ctx) {
 }
 module.exports = (bot) => {
     // Referral dashboard
+    bot.command('referral_dashboard', async (ctx) => {
+        await await ctx.answerCbQuery();
+        
+        try {
+            const user = await User.findOne({ where: { telegram_id: ctx.from.id } });
+            if (!user) {
+                return sendError(ctx, 'User not found. Please start again with /start');
+            }
+
+            await showReferralDashboard(ctx, user);
+        } catch (error) {
+            console.error('Error showing referral dashboard:', error);
+            sendError(ctx, 'Failed to load referral dashboard');
+        }
+    });
     bot.action('referral_dashboard', async (ctx) => {
         await await ctx.answerCbQuery();
         
