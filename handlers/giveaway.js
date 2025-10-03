@@ -534,14 +534,14 @@ async function handleUserReferral(ctx) {
 
   if (startParams && startParams.startsWith('ref_')) {
     const referralCode = startParams.replace('ref_', '');
-    referrer = await User.findOne({ where: { referral_code: referralCode } });
+    referrer = await db.User.findOne({ where: { referral_code: referralCode } });
   }
 
   const telegramId = ctx.from.id;
   const currentUsername = ctx.from.username || `user_${telegramId}`;
   const firstName = ctx.from.first_name || 'user';
 
-  const [user, created] = await User.findOrCreate({
+  const [user, created] = await db.User.findOrCreate({
     where: { telegram_id: telegramId },
     defaults: {
       telegram_username: currentUsername,
@@ -584,6 +584,13 @@ async function handleUserReferral(ctx) {
   referrer,
 };
 
+}
+// 🔧 Generate a referral code from first name + random digits
+function generateReferralCode(firstName) {
+  const sanitized = firstName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase(); // Remove non-alphanumerics
+  const trimmed = sanitized.slice(0, 8); // Limit to 8 characters
+  const randomDigits = Math.floor(10000 + Math.random() * 90000); // 5-digit number
+  return `${trimmed}${randomDigits}`;
 }
 
 module.exports = (bot) => {
