@@ -62,7 +62,7 @@ async function showPoolSelection(ctx) {
 }
 module.exports = (bot) => {
     // Referral dashboard
-    bot.command('my_referal', async (ctx) => {
+    bot.command('my_referral', async (ctx) => {
         // await await ctx.answerCbQuery();
         
         try {
