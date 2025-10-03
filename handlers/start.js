@@ -207,17 +207,17 @@ bot.action('how_it_works', async (ctx) => {
         parse_mode: 'HTML',
         reply_markup: {
           inline_keyboard: [
-                  [{ text: 'How It Works', callback_data: 'how_it_works' }],
+                  // [{ text: 'How It Works', callback_data: 'how_it_works' }],
                 [{ text: 'Alpha Arena (₦200 per entry)', callback_data: `select_pool:Alpha` }],
                                [{ text: 'Beta Arena (₦500 per 5 entries)', callback_data: `select_pool:Beta` }],
                 [{ text: 'HighRollers Arena (₦1000 per 15 entries)', callback_data: `select_pool:HighRollers` }],
-                [{ text: '🔒 Bonus Arena (₦1000 for 25 entries)', callback_data: `select_pool:Bonus` }],
-                  [{ text: 'My Entries', callback_data: 'view_entries' }],
-                  [{ text: 'Referral Dashboard', callback_data: 'referral_dashboard' }],
-                  [
-                { text: '🏦 Setup Bank Account', callback_data: 'bank_setup' },
-                { text: '📋 My Bank Details', callback_data: 'bank_details' }
-              ],
+                // [{ text: '🔒 Bonus Arena (₦1000 for 25 entries)', callback_data: `select_pool:Bonus` }],
+                  // [{ text: 'My Entries', callback_data: 'view_entries' }],
+                  // [{ text: 'Referral Dashboard', callback_data: 'referral_dashboard' }],
+              //     [
+              //   { text: '🏦 Setup Bank Account', callback_data: 'bank_setup' },
+              //   { text: '📋 My Bank Details', callback_data: 'bank_details' }
+              // ],
           ]
         }
       });
@@ -385,7 +385,7 @@ bot.action("verify_channel", async (ctx) => {
   }
 
   // ✅ Verified → continue
-  await sendSuccess(ctx, `✅ Verified! Welcome aboard 🎉`);
+  await sendSuccess(ctx, `Verified! Welcome aboard 🎉`);
   await handleReferralAndStart(ctx);
   // const fullName = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(" ");
   // 🎉 Send a welcome message to the channel
@@ -393,25 +393,25 @@ bot.action("verify_channel", async (ctx) => {
 try {
   const fullName = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(" ");
 
-  await ctx.telegram.sendMessage(
-    REQUIRED_CHANNEL, // channel username or numeric ID
-`🎉 Please welcome <a href="tg://user?id=${ctx.from.id}">${fullName}</a>!  
+//   await ctx.telegram.sendMessage(
+//     REQUIRED_CHANNEL, // channel username or numeric ID
+// `🎉 Please welcome <a href="tg://user?id=${ctx.from.id}">${fullName}</a>!  
       
-They just verified and joined our community 🚀`,
-    {
-      parse_mode: "HTML",
-      reply_markup: {
-        inline_keyboard: [
-          [
-            {
-              text: "🎭 Return to Game Theory Bot",
-              url: `https://t.me/${process.env.BOT_NAME}`
-            }
-          ]
-        ]
-      }
-    }
-  );
+// They just verified and joined our community 🚀`,
+//     {
+//       parse_mode: "HTML",
+//       reply_markup: {
+//         inline_keyboard: [
+//           [
+//             {
+//               text: "🎭 Return to Game Theory Bot",
+//               url: `https://t.me/${process.env.BOT_NAME}`
+//             }
+//           ]
+//         ]
+//       }
+//     }
+//   );
 } catch (err) {
   console.error("⚠️ Could not send welcome message to channel:", err.message);
 }

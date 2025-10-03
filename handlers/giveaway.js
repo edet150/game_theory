@@ -583,7 +583,7 @@ const ends = formatDateToWords_(campaign.end_date);
       `💰 <b>Prize:</b> N${campaign.prize_amount}\n` +
       `🎟️ <b>Seat No:</b> #${userDetails.entry_number}\n\n` +
       `⏰ Ends: ${ends}\n\n` +
-      `🍀 More seats available – join now!`;
+      `🍀 More seats available – <a href="https://t.me/${process.env.BOT_NAME}">join now</a>!`;
 
     // console.log("final text:", text);
 
@@ -777,7 +777,7 @@ module.exports = (bot) => {
 
   // Verify channel for campaign
   bot.action(/verify_for_campaign:(\d+)/, async (ctx) => {
-    await ctx.answerCbQuery();
+      await ctx.answerCbQuery("Checking… ⏳");
     const campaignId = parseInt(ctx.match[1]);
     
     const isInChannel = await isUserInChannel(ctx, REQUIRED_CHANNEL);

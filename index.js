@@ -38,8 +38,20 @@ const redis = getRedisClient();
 
 
 //WIN  // Start command for bot2
-
-
+// bot.on("message", (ctx) => {
+//   console.log("Chat ID:", ctx.chat.id);
+//   console.log("Chat:", ctx.chat);
+//   speak(ctx)
+// });
+// async function speak(ctx) {
+//   const text =
+//     `🎉New Giveaway Entry!` +
+//     `🍀 More seats available – <a href="https://t.me/${ctx.botInfo.username}">join now</a>!`;
+//   await ctx.telegram.sendMessage('@modulo_giveaway', text, {
+//     parse_mode: "HTML"
+//   });
+// }
+  
 setTimeout(function () {
   giveawayHandler(bot2);
   giveawayAdminHandler(bot2);
@@ -70,7 +82,7 @@ bot.use(cleanupMiddleware);
 
 
 
-bot.use(cleanupMiddleware);
+// bot.use(cleanupMiddleware);
 
 
 // bot2.use((ctx, next) => {
