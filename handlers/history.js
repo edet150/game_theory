@@ -168,7 +168,7 @@ bot.action('view_entries', async (ctx) => {
   }
 });
 bot.command('view_entries', async (ctx) => {
-  await ctx.answerCbQuery();
+  // await ctx.answerCbQuery();
 
   try {
     // 1. Find user by telegram_id

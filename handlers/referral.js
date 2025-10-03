@@ -62,8 +62,8 @@ async function showPoolSelection(ctx) {
 }
 module.exports = (bot) => {
     // Referral dashboard
-    bot.command('referral_dashboard', async (ctx) => {
-        await await ctx.answerCbQuery();
+    bot.command('my_referal', async (ctx) => {
+        // await await ctx.answerCbQuery();
         
         try {
             const user = await User.findOne({ where: { telegram_id: ctx.from.id } });

@@ -563,7 +563,7 @@ module.exports = (bot) => {
     try {
       const campaign = await db.GiveawayCampaign.findByPk(campaignId);
       if (!campaign) {
-        await ctx.answerCbQuery("❌ This giveaway is no longer available.", { show_alert: true });
+        await ctx.answerCbQuery("❌ This giveaway is no longer available.");
         return;
       }
 
@@ -601,7 +601,7 @@ module.exports = (bot) => {
       
     } catch (error) {
       console.error('Error handling campaign selection:', error);
-      await ctx.answerCbQuery("❌ Error accessing giveaway.", { show_alert: true });
+      await ctx.answerCbQuery("❌ Error accessing giveaway.");
     }
   });
 
@@ -612,7 +612,7 @@ module.exports = (bot) => {
     
     const isInChannel = await isUserInChannel(ctx, REQUIRED_CHANNEL);
     if (!isInChannel) {
-      await ctx.answerCbQuery("❌ Please join the channel first.", { show_alert: true });
+      await ctx.answerCbQuery("❌ Please join the channel first.");
       await sendMessageWithCleanup(ctx,
         `Please join our channel to continue:\n\nhttps://t.me/${REQUIRED_CHANNEL.replace('@','')}`,
         {
@@ -630,7 +630,7 @@ module.exports = (bot) => {
     // User is in channel, ensure they're in database
     await ensureUserExists(ctx);
     
-    await ctx.answerCbQuery("✅ Channel verified!", { show_alert: true });
+    await ctx.answerCbQuery("✅ Channel verified!");
     
     // Check campaign requirements
     const campaign = await db.GiveawayCampaign.findByPk(campaignId);
@@ -711,7 +711,7 @@ bot.action(/confirm_bank:(\d+)/, async (ctx) => {
   const state = giveawayBankSetupState.get(userId);
 
   if (!state || !state.verifiedBankDetails) {
-    await ctx.answerCbQuery('❌ Session expired. Please start over.', { show_alert: true });
+    await ctx.answerCbQuery('❌ Session expired. Please start over.');
     return;
   }
 console.log('condifm')
@@ -780,7 +780,7 @@ console.log('condifm')
         
         giveawayBankSetupState.delete(userId);
         
-        await ctx.answerCbQuery("✅ Bank account updated successfully!", { show_alert: true });
+        await ctx.answerCbQuery("✅ Bank account updated successfully!");
 
         const campaign = await db.GiveawayCampaign.findByPk(campaignId);
         await showGiveawayPosition(ctx, campaign);
@@ -821,7 +821,7 @@ console.log('condifm')
     await transaction.commit();
     // giveawayBankSetupState.delete(userId);
     
-    await ctx.answerCbQuery("✅ Bank account confirmed!", { show_alert: true });
+    await ctx.answerCbQuery("✅ Bank account confirmed!");
 
     const campaign = await db.GiveawayCampaign.findByPk(campaignId);
     await showGiveawayPosition(ctx, campaign);
@@ -831,9 +831,9 @@ console.log('condifm')
     console.error('Error saving bank details:', error);
     
     if (error.name === 'SequelizeUniqueConstraintError') {
-      await ctx.answerCbQuery('❌ Entry number conflict. Please try again.', { show_alert: true });
+      await ctx.answerCbQuery('❌ Entry number conflict. Please try again.');
     } else {
-      await ctx.answerCbQuery('❌ Error saving details. Please try again.', { show_alert: true });
+      await ctx.answerCbQuery('❌ Error saving details. Please try again.');
     }
   }
 });
@@ -846,7 +846,7 @@ console.log('condifm')
 
   // Copy referral link
   bot.action("copy_referral_link", async (ctx) => {
-    await ctx.answerCbQuery("📋 Referral link copied to clipboard!", { show_alert: true });
+    await ctx.answerCbQuery("📋 Referral link copied to clipboard!");
     // Note: You can't actually copy to clipboard in Telegram, but this gives user feedback
   });
 
@@ -866,14 +866,14 @@ console.log('condifm')
     const state = giveawayBankSetupState.get(userId);
 
     if (!state || !state.matchedBanks) {
-      await ctx.answerCbQuery('❌ Session expired. Please start over.', { show_alert: true });
+      await ctx.answerCbQuery('❌ Session expired. Please start over.');
       giveawayBankSetupState.delete(userId);
       return;
     }
   console.log('bank selected')
     const selectedBank = state.matchedBanks.find(bank => bank.code === bankCode);
     if (!selectedBank) {
-      await ctx.answerCbQuery('❌ Invalid bank selection.', { show_alert: true });
+      await ctx.answerCbQuery('❌ Invalid bank selection.');
       return;
     }
   console.log('bank selected')
@@ -894,7 +894,7 @@ console.log('condifm')
       }
     } catch (error) {
       console.error('Error verifying account:');
-      await ctx.answerCbQuery('❌ Error verifying account. Please check details and try again.', { show_alert: true });
+      await ctx.answerCbQuery('❌ Error verifying account. Please check details and try again.');
     }
   });
 
@@ -910,14 +910,14 @@ bot.action(/giveaway_select_bank:(.+):(\d+)/, async (ctx) => {
   const state = giveawayBankSetupState.get(userId);
 
   if (!state || !state.matchedBanks) {
-    await ctx.answerCbQuery('❌ Session expired. Please start over.', { show_alert: true });
+    await ctx.answerCbQuery('❌ Session expired. Please start over.');
     giveawayBankSetupState.delete(userId);
     return;
   }
 
   const selectedBank = state.matchedBanks.find(bank => bank.code === bankCode);
   if (!selectedBank) {
-    await ctx.answerCbQuery('❌ Invalid bank selection.', { show_alert: true });
+    await ctx.answerCbQuery('❌ Invalid bank selection.');
     return;
   }
 
@@ -941,7 +941,7 @@ bot.action(/giveaway_select_bank:(.+):(\d+)/, async (ctx) => {
     
     // Handle specific error types
     if (error.message.includes('BANK_ACCOUNT_MISMATCH')) {
-      await ctx.answerCbQuery('❌ Account number and bank do not match.', { show_alert: true });
+      await ctx.answerCbQuery('❌ Account number and bank do not match.');
       
       // Reset to account number step so user can try again
       giveawayBankSetupState.set(userId, { 
@@ -954,7 +954,7 @@ bot.action(/giveaway_select_bank:(.+):(\d+)/, async (ctx) => {
         { reply_markup: { force_reply: true } }
       );
     } else if (error.message.includes('PAYSTACK_ERROR')) {
-      await ctx.answerCbQuery(`❌ ${error.message.replace('PAYSTACK_ERROR: ', '')}`, { show_alert: true });
+      await ctx.answerCbQuery(`❌ ${error.message.replace('PAYSTACK_ERROR: ', '')}`);
       
       // Reset to account number step for any Paystack error
       giveawayBankSetupState.set(userId, { 
@@ -967,7 +967,7 @@ bot.action(/giveaway_select_bank:(.+):(\d+)/, async (ctx) => {
         { reply_markup: { force_reply: true } }
       );
     } else {
-      await ctx.answerCbQuery('❌ Error verifying account. Please try again.', { show_alert: true });
+      await ctx.answerCbQuery('❌ Error verifying account. Please try again.');
       
       // Reset to account number step for generic errors too
       giveawayBankSetupState.set(userId, { 
