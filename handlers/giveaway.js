@@ -286,7 +286,7 @@ async function showReferralStats(ctx) {
     return;
   }
 
-  const referralLink = `https://t.me/${ctx.botInfo.username}?start=ref-${stats.referral_code}`;
+  const referralLink = `https://t.me/${ctx.botInfo.username}?start=ref_${stats.referral_code}`;
   
   let message = `<b>Your Referral Stats</b>\n\n`;
   message += ` ○ <b>Total Referrals:</b> ${stats.total_referrals}\n`;
@@ -512,37 +512,112 @@ async function showGiveawayPosition(ctx, campaign) {
     );
 
     // 🔔 Immediately announce to channel after seat message
-    await announceNewEntryToChannel(ctx, campaign, userDetails);
+    await maybeAnnounceNewEntry(ctx, campaign, userDetails);
 
   } catch (error) {
     console.error('Error showing position:', error);
     await ctx.reply("❌ Error retrieving your position. Please try again.");
   }
 }
+async function maybeAnnounceNewEntry(ctx, campaign, userDetails) {
+  try {
+    const telegramId = ctx.from.id;
+
+    // Fetch the entry directly from DB
+    const entry = await db.GiveawayEntry.findOne({
+      where: {
+        telegram_id: telegramId,
+        campaign_id: campaign.id,
+        announced: false
+      }
+    });
+
+    if (!entry) {
+      console.log(`ℹ️ No unannounced/unpaid entry found for user ${telegramId}`);
+      return;
+    }
+
+    // Announce once
+    await announceNewEntryToChannel(ctx, campaign, userDetails);
+
+    // Mark announced
+    await db.GiveawayEntry.update(
+      { announced: true },
+      { where: { id: entry.id } }
+    );
+
+    console.log(`🎉 Entry marked announced for user ${telegramId}, campaign_id=${campaign.id}`);
+
+  } catch (error) {
+    console.error("❌ Error in maybeAnnounceNewEntry:", error);
+  }
+}
+
+
+
 
 async function announceNewEntryToChannel(ctx, campaign, userDetails) {
-  const channelId = process.env.REQUIRED_CHANNEL; // e.g. "@mychannel" or -1001234567890
-  if (!channelId) return;
+  try {
+    const channelId = REQUIRED_CHANNEL; // e.g. "@mychannel" or -1001234567890
 
-  const displayName = formatName(userDetails.account_holder_name);
-  const mention = ctx.from.username
-    ? `@${ctx.from.username}`
-    : `<a href="tg://user?id=${ctx.from.id}">${displayName}</a>`;
+    if (!channelId) {
+      console.error("❌ REQUIRED_CHANNEL is not set in environment variables");
+      return;
+    }
+    const displayName = formatName(userDetails.account_holder_name);
+    const mention = ctx.from.username
+      ? `@${ctx.from.username}`
+      : `<a href="tg://user?id=${ctx.from.id}">${displayName}</a>`;
 
-  const ends = (typeof campaign.getFormattedEndDate === 'function')
-    ? campaign.getFormattedEndDate()
-    : formatDateToWords(campaign.end_date);
 
-  const text =
-    `🎉 <b>New Giveaway Entry!</b>\n\n` +
-    `👤 ${mention} just claimed a seat.\n` +
-    `🏆 <b>Campaign:</b> ${campaign.name}\n` +
-    `💰 <b>Prize:</b> N${campaign.prize_amount}\n` +
-    `🎟️ <b>Seat No:</b> #${userDetails.entry_number}\n\n` +
-    `⏰ Ends: ${ends}\n\n` +
-    `🍀 More seats available – join now!`;
+    // const ends = (typeof campaign.getFormattedEndDate === 'function')
+    //   ? campaign.getFormattedEndDate()
+    //   : formatDateToWords(campaign.end_date);
 
-  await ctx.telegram.sendMessage(channelId, text, { parse_mode: "HTML" });
+const ends = formatDateToWords_(campaign.end_date);
+
+    const text =
+      `🎉 <b>New Giveaway Entry!</b>\n\n` +
+      `👤 ${mention} just claimed a seat.\n` +
+      `🏆 <b>Campaign:</b> ${campaign.name}\n` +
+      `💰 <b>Prize:</b> N${campaign.prize_amount}\n` +
+      `🎟️ <b>Seat No:</b> #${userDetails.entry_number}\n\n` +
+      `⏰ Ends: ${ends}\n\n` +
+      `🍀 More seats available – join now!`;
+
+    // console.log("final text:", text);
+
+    const result = await ctx.telegram.sendMessage(channelId, text, { parse_mode: "HTML" });
+    // console.log("sendMessage result:", result);
+
+  } catch (error) {
+    console.error("❌ Error in announceNewEntryToChannel:", error);
+  }
+}
+
+function formatDateToWords_(date) {
+  const now = new Date();
+  const target = new Date(date);
+
+  let diff = (target - now) / 1000; // seconds
+  if (diff <= 0) return "ended";
+
+  const units = [
+    { name: "week", secs: 60 * 60 * 24 * 7 },
+    { name: "day", secs: 60 * 60 * 24 },
+    { name: "hour", secs: 60 * 60 },
+    { name: "minute", secs: 60 },
+    { name: "second", secs: 1 },
+  ];
+
+  for (let u of units) {
+    if (diff >= u.secs) {
+      const value = Math.floor(diff / u.secs);
+      return `in ${value} ${u.name}${value > 1 ? "s" : ""}`;
+    }
+  }
+
+  return "soon";
 }
 
 
@@ -550,10 +625,11 @@ async function announceNewEntryToChannel(ctx, campaign, userDetails) {
 async function handleUserReferral(ctx) {
   const startParams = ctx.startPayload;
   let referrer = null;
-
+console.log(startParams)
   if (startParams && startParams.startsWith('ref_')) {
     const referralCode = startParams.replace('ref_', '');
     referrer = await db.User.findOne({ where: { referral_code: referralCode } });
+    console.log("referrer is", referrer)
   }
 
   const telegramId = ctx.from.id;
@@ -637,9 +713,10 @@ module.exports = (bot) => {
   // Start command
   bot.start(async (ctx) => {
     console.log('Giveaway bot start command received');
+        await handleUserReferral(ctx);
     await sendMessageWithCleanup(ctx, "Welcome to Modulo Giveaway!", {});
     await showCampaignSelectionMenu(ctx);
-    await handleUserReferral(ctx);
+
   });
 
   bot.action("start_over", async (ctx) => {
