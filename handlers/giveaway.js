@@ -528,7 +528,63 @@ await bot.telegram.sendMessage(
 }
 
 // Show referral stats
+async function handleUserReferral(ctx) {
+  const startParams = ctx.startPayload;
+  let referrer = null;
 
+  if (startParams && startParams.startsWith('ref_')) {
+    const referralCode = startParams.replace('ref_', '');
+    referrer = await User.findOne({ where: { referral_code: referralCode } });
+  }
+
+  const telegramId = ctx.from.id;
+  const currentUsername = ctx.from.username || `user_${telegramId}`;
+  const firstName = ctx.from.first_name || 'user';
+
+  const [user, created] = await User.findOrCreate({
+    where: { telegram_id: telegramId },
+    defaults: {
+      telegram_username: currentUsername,
+      referred_by: referrer ? referrer.id : null,
+      referral_code: generateReferralCode(firstName),
+    },
+  });
+
+  // 🔄 Update username if it has changed
+  if (!created && user.telegram_username !== currentUsername) {
+    user.telegram_username = currentUsername;
+    await user.save();
+  }
+
+  // 🔑 Ensure referral_code exists
+  if (!user.referral_code) {
+    user.referral_code = generateReferralCode(firstName);
+    await user.save();
+  }
+
+  // 🤝 Handle referral logic
+  if (referrer && created) {
+    referrer.total_referrals += 1;
+    await referrer.save();
+    await sendSuccess(ctx, `🎉 Welcome! You were referred by ${referrer.telegram_username}`);
+  }
+
+  // ⚙️ Assign referrer for existing user (only once)
+  if (!created && referrer && !user.referred_by) {
+    user.referred_by = referrer.id;
+    await user.save();
+
+    referrer.total_referrals += 1;
+    await referrer.save();
+  }
+
+  return {
+  user,
+  created,
+  referrer,
+};
+
+}
 
 module.exports = (bot) => {
   const giveawayBankSetupState = new Map();
@@ -557,6 +613,7 @@ module.exports = (bot) => {
     console.log('Giveaway bot start command received');
     await sendMessageWithCleanup(ctx, "Welcome to Modulo Giveaway!", {});
     await showCampaignSelectionMenu(ctx);
+    await handleUserReferral(ctx);
   });
 
   bot.action("start_over", async (ctx) => {
