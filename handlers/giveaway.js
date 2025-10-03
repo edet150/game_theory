@@ -468,12 +468,12 @@ async function showBankAccountConfirmation(ctx, bankDetails, campaignId) {
 async function showGiveawayPosition(ctx, campaign) {
   const userId = ctx.from.id;
   const userDetails = await getUserBankDetails(userId, campaign.id);
-  
+
   if (!userDetails) {
     await ctx.reply("Please set up your bank account first.");
     return;
   }
-  
+
   try {
     const totalEntries = await db.GiveawayEntry.count({
       where: { campaign_id: campaign.id }
@@ -481,51 +481,70 @@ async function showGiveawayPosition(ctx, campaign) {
 
     const displayName = formatName(userDetails.account_holder_name);
     const displayAccount = formatAccountNumber(userDetails.account_number);
-    
-      await ctx.reply(
-        `<b>🎁 Your Giveaway Seat</b>\n\n` +
-        `🏆 <b>Campaign:</b> ${campaign.name}\n` +
-        `💰 <b>Prize:</b> N${campaign.prize_amount}\n` +
-        `⇉ <b>Your Seat No:</b> #${userDetails.entry_number}\n` +
-        `👤 <b>Name:</b> ${displayName}\n` +
-        `🏦 <b>Account:</b> ${displayAccount}\n` +
-        `📊 <b>Bank:</b> ${userDetails.bank_name}\n` +
-        `⏰ <b>Ends:</b> ${campaign.getFormattedEndDate ? campaign.getFormattedEndDate() : formatDateToWords(campaign.end_date)}\n\n` +
-        `<b>🎲 Extra Chance:</b>\n` +
-        `Join our Raffle Draw to win <b>N50,000</b> weekly!\n` +
-        `🗓️ First draw: 12 October, 6PM.\n\n` +
-        `Good luck! 🍀`,
-        {
-          parse_mode: "HTML",
-          disable_web_page_preview: true,
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: "🎟️ Join Raffle Draw", url: "https://t.me/game_theory_9ja_bot" }],
-              // [{ text: "🔄 Refresh Position", callback_data: `select_campaign:${campaign.id}` }],
-              // [{ text: "🏦 Update Details", callback_data: `giveaway_bank_setup:${campaign.id}` }],
-              [{ text: "📤 My Referrals", callback_data: "show_referral_stats" }]
-            ]
-          }
-        }
-      );
-await bot.telegram.sendMessage(
-  REQUIRED_CHANNEL,
-  `🎉 <b>New Giveaway Entry!</b>\n\n` +
-  `👤 <b>${displayName}</b> just claimed a seat.\n` +
-  `🏆 <b>Campaign:</b> ${campaign.name}\n` +
-  `💰 <b>Prize:</b> N${campaign.prize_amount}\n` +
-  `🎟️ <b>Seat No:</b> #${userDetails.entry_number}\n\n` +
-  `⏰ Ends: ${campaign.getFormattedEndDate ? campaign.getFormattedEndDate() : formatDateToWords(campaign.end_date)}\n\n` +
-  `🍀 More seats available – join now!`,
-  { parse_mode: "HTML" }
-);
+    const ends = (typeof campaign.getFormattedEndDate === 'function')
+      ? campaign.getFormattedEndDate()
+      : formatDateToWords(campaign.end_date);
 
-    
+    await ctx.reply(
+      `<b>🎁 Your Giveaway Seat</b>\n\n` +
+      `🏆 <b>Campaign:</b> ${campaign.name}\n` +
+      `💰 <b>Prize:</b> N${campaign.prize_amount}\n` +
+      `⇉ <b>Your Seat No:</b> #${userDetails.entry_number}\n` +
+      `👤 <b>Name:</b> ${displayName}\n` +
+      `🏦 <b>Account:</b> ${displayAccount}\n` +
+      `📊 <b>Bank:</b> ${userDetails.bank_name}\n` +
+      `📥 <b>Total Participants:</b> ${totalEntries}\n` +
+      `⏰ <b>Ends:</b> ${ends}\n\n` +
+      `<b>🎲 Extra Chance:</b>\n` +
+      `Join our Raffle Draw to win <b>N50,000</b> weekly!\n` +
+      `🗓️ First draw: 12 October, 6PM.\n\n` +
+      `Good luck! 🍀`,
+      {
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "🎟️ Join Raffle Draw", url: "https://t.me/game_theory_9ja_bot" }],
+            [{ text: "📤 My Referrals", callback_data: "show_referral_stats" }]
+          ]
+        }
+      }
+    );
+
+    // 🔔 Immediately announce to channel after seat message
+    await announceNewEntryToChannel(ctx, campaign, userDetails);
+
   } catch (error) {
     console.error('Error showing position:', error);
     await ctx.reply("❌ Error retrieving your position. Please try again.");
   }
 }
+
+async function announceNewEntryToChannel(ctx, campaign, userDetails) {
+  const channelId = process.env.REQUIRED_CHANNEL; // e.g. "@mychannel" or -1001234567890
+  if (!channelId) return;
+
+  const displayName = formatName(userDetails.account_holder_name);
+  const mention = ctx.from.username
+    ? `@${ctx.from.username}`
+    : `<a href="tg://user?id=${ctx.from.id}">${displayName}</a>`;
+
+  const ends = (typeof campaign.getFormattedEndDate === 'function')
+    ? campaign.getFormattedEndDate()
+    : formatDateToWords(campaign.end_date);
+
+  const text =
+    `🎉 <b>New Giveaway Entry!</b>\n\n` +
+    `👤 ${mention} just claimed a seat.\n` +
+    `🏆 <b>Campaign:</b> ${campaign.name}\n` +
+    `💰 <b>Prize:</b> N${campaign.prize_amount}\n` +
+    `🎟️ <b>Seat No:</b> #${userDetails.entry_number}\n\n` +
+    `⏰ Ends: ${ends}\n\n` +
+    `🍀 More seats available – join now!`;
+
+  await ctx.telegram.sendMessage(channelId, text, { parse_mode: "HTML" });
+}
+
 
 // Show referral stats
 async function handleUserReferral(ctx) {
