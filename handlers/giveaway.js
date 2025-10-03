@@ -482,34 +482,44 @@ async function showGiveawayPosition(ctx, campaign) {
     const displayName = formatName(userDetails.account_holder_name);
     const displayAccount = formatAccountNumber(userDetails.account_number);
     
-    await ctx.reply(
-      `<b>🎁 Your Giveaway Seat</b>\n\n` +
-      `🏆 <b>Campaign:</b> ${campaign.name}\n` +
-      `💰 <b>Prize:</b> N${campaign.prize_amount}\n` +
-      `⇉ <b>Your Seat No:</b> #${userDetails.entry_number}\n` +
-      `👤 <b>Name:</b> ${displayName}\n` +
-      `🏦 <b>Account:</b> ${displayAccount}\n` +
-      `📊 <b>Bank:</b> ${userDetails.bank_name}\n` +
-      // `👥 <b>Total Participants:</b> ${totalEntries}\n` +
-      `⏰ <b>Ends:</b> ${campaign.getFormattedEndDate ? campaign.getFormattedEndDate() : formatDateToWords(campaign.end_date)}\n\n` +
-      `<b>📸 To Complete Your Entry:</b>\n` +
-      `1. Take a screenshot of this message\n` +
-      `2. Comment it under our <a href="${TWITTER_LINK}">pinned tweet</a>\n` +
-      `3. Retweet our pinned tweet\n` +
-      `4. Winners will be selected at random from the comment section\n\n` +
-      `Good luck! ✔`,
-      {
-        parse_mode: "HTML",
-        disable_web_page_preview: true,
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: "🔄 Refresh Position", callback_data: `select_campaign:${campaign.id}` }],
-            [{ text: "🏦 Update Details", callback_data: `giveaway_bank_setup:${campaign.id}` }],
-            [{ text: "📤 My Referrals", callback_data: "show_referral_stats" }]
-          ]
+      await ctx.reply(
+        `<b>🎁 Your Giveaway Seat</b>\n\n` +
+        `🏆 <b>Campaign:</b> ${campaign.name}\n` +
+        `💰 <b>Prize:</b> N${campaign.prize_amount}\n` +
+        `⇉ <b>Your Seat No:</b> #${userDetails.entry_number}\n` +
+        `👤 <b>Name:</b> ${displayName}\n` +
+        `🏦 <b>Account:</b> ${displayAccount}\n` +
+        `📊 <b>Bank:</b> ${userDetails.bank_name}\n` +
+        `⏰ <b>Ends:</b> ${campaign.getFormattedEndDate ? campaign.getFormattedEndDate() : formatDateToWords(campaign.end_date)}\n\n` +
+        `<b>🎲 Extra Chance:</b>\n` +
+        `Join our Raffle Draw to win <b>N50,000</b> weekly!\n` +
+        `🗓️ First draw: 12 October, 6PM.\n\n` +
+        `Good luck! 🍀`,
+        {
+          parse_mode: "HTML",
+          disable_web_page_preview: true,
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "🎟️ Join Raffle Draw", url: "https://t.me/game_theory_9ja_bot" }],
+              // [{ text: "🔄 Refresh Position", callback_data: `select_campaign:${campaign.id}` }],
+              // [{ text: "🏦 Update Details", callback_data: `giveaway_bank_setup:${campaign.id}` }],
+              [{ text: "📤 My Referrals", callback_data: "show_referral_stats" }]
+            ]
+          }
         }
-      }
-    );
+      );
+await bot.telegram.sendMessage(
+  REQUIRED_CHANNEL,
+  `🎉 <b>New Giveaway Entry!</b>\n\n` +
+  `👤 <b>${displayName}</b> just claimed a seat.\n` +
+  `🏆 <b>Campaign:</b> ${campaign.name}\n` +
+  `💰 <b>Prize:</b> N${campaign.prize_amount}\n` +
+  `🎟️ <b>Seat No:</b> #${userDetails.entry_number}\n\n` +
+  `⏰ Ends: ${campaign.getFormattedEndDate ? campaign.getFormattedEndDate() : formatDateToWords(campaign.end_date)}\n\n` +
+  `🍀 More seats available – join now!`,
+  { parse_mode: "HTML" }
+);
+
     
   } catch (error) {
     console.error('Error showing position:', error);
