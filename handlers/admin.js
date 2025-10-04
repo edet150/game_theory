@@ -1415,7 +1415,7 @@ bot.action('admin_create_bonus', async (ctx) => {
             message += "   - If no exact or inverse match is found\n";
             message += "   - We use: winning_number % total_entries = position\n";
             message += "   - The entry at that position wins\n";
-            message += "   - Example: Winning #15 with 100 entries → position 15 wins\n\n";
+            message += "   - Example: Winning number 1515 with 100 entries (1515 % 100) → position 15 wins\n\n";
             message += "━━━━━━━━━━━━━━━━━━━━\n\n";
             message += `*Prize Money:* ₦${(Number(winningRecord.winning_amount)).toLocaleString()}\n\n`;
             message += "The winner will be announced shortly!\n";
