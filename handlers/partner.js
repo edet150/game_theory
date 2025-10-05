@@ -26,7 +26,7 @@ async function handlePartnerStart(ctx) {
 
   // ❌ Block if no valid admin referral
   if (!referrer || referrer.telegram_id !== ADMIN_ID) {
-    await ctx.reply("🚫 Invalid or unauthorized referral link. Only admin-issued links are valid for partners.");
+    await ctx.reply("🚫 Invalid or unauthorized referral link. Only admin-issued links are valid for partners. Please contact Admin");
     return;
   }
 

@@ -274,6 +274,9 @@ module.exports = (bot, bankSetupState) => {
                     [
                     { text: '🔒 Toggle Bonus Arena', callback_data: 'admin_toggle_bonus' },
                     { text: '➕ Create New Bonus', callback_data: 'admin_create_bonus' }
+                     ],
+                    [
+                    { text: '🤝 Manage Partners', callback_data: 'admin_manage_partners' }
                     ],
                     [
                         { text: '🚪 Logout', callback_data: 'admin_logout' }

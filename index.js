@@ -19,6 +19,7 @@ const accountHandler = require('./handlers/accounts');
 const messageHandler = require('./handlers/message');
 const giveawayHandler = require('./handlers/giveaway');
 const partnerHandler = require('./handlers/partner');
+const managePartner = require('./handlers/managePartners');
 const giveawayAdminHandler = require('./handlers/giveawayAdmin');
 require('./cron/paystack_checker');
 require('./cron/sundayCron'); 
@@ -69,6 +70,7 @@ setTimeout(function () {
 startHandler(bot);
 accountHandler(bot, bankSetupState);
 adminHandler(bot, bankSetupState);
+managePartner(bot);
 welcomeUser(bot);
 callbackHandler(bot);
 
