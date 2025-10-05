@@ -7,6 +7,106 @@ const messageManager = require('../utils/messageManager');
 const { sendError, sendSuccess } = require('../utils/responseUtils');
 // In handleSuccessfulPayment function
 const redisService = require('../services/redisService');
+async function updatePartnerCommission(userId, entryAmount, transaction = null) {
+    try {
+        console.log('🔍 [updatePartnerCommission] STARTING - userId:', userId, 'entryAmount:', entryAmount);
+
+        // 1️⃣ Fetch the user who made the transaction
+        const referredUser = await User.findOne({
+            where: { id: userId },
+            transaction
+        });
+
+        if (!referredUser) {
+            console.log('⚠️ [updatePartnerCommission] User not found:', userId);
+            return;
+        }
+
+        console.log('👤 [updatePartnerCommission] User found:', referredUser.id, 'Referred by:', referredUser.referred_by);
+
+        // 2️⃣ Check if this user was referred by a partner
+        if (!referredUser.referred_by) {
+            console.log('ℹ️ [updatePartnerCommission] User was not referred by anyone.');
+            return;
+        }
+
+        // 3️⃣ Fetch the partner (referrer)
+        const partner = await User.findOne({
+            where: { id: referredUser.referred_by, partner: true },
+            transaction
+        });
+
+        if (!partner) {
+            console.log('⚠️ [updatePartnerCommission] Referrer not found or not a partner:', referredUser.referred_by);
+            return;
+        }
+
+        console.log('✅ [updatePartnerCommission] Partner found:', partner.id);
+
+        // 4️⃣ Calculate commission
+        const commissionRate = 0.15;
+        const commission = entryAmount * commissionRate;
+
+        console.log('💰 [updatePartnerCommission] Calculating commission:', {
+            entryAmount,
+            commissionRate,
+            commission
+        });
+
+        // 5️⃣ Update partner’s commission
+        await User.increment('partner_commission', {
+            by: commission,
+            where: { id: partner.id },
+            transaction
+        });
+
+        // 6️⃣ Set partner start date if not set
+        if (!partner.partner_start_date) {
+            await User.update(
+                { partner_start_date: new Date() },
+                { where: { id: partner.id }, transaction }
+            );
+        }
+
+        // // 7️⃣ Update total referrals count
+        // await User.increment('total_referrals', {
+        //     by: 1,
+        //     where: { id: partner.id },
+        //     transaction
+        // });
+
+        // console.log(`✅ [updatePartnerCommission] SUCCESS - Commission ₦${commission} added to partner ${partner.id}`);
+
+        // 8️⃣ Try sending Telegram notification
+        if (partner.telegram_id) {
+            try {
+                await bot.telegram.sendMessage(
+                    partner.telegram_id,
+                    `🎉 Commission earned!\n\n` +
+                    `Your referral just purchased entries worth ₦${entryAmount}\n` +
+                    `💰 Commission: ₦${commission}\n` +
+                    `📊 Check your partner dashboard for details!`,
+                    {
+                        reply_markup: {
+                            inline_keyboard: [
+                                [{ text: "👥 Partner Dashboard", callback_data: "partner_dashboard" }]
+                            ]
+                        }
+                    }
+                );
+                console.log('📱 [updatePartnerCommission] Notification sent successfully to Telegram ID:', partner.telegram_id);
+            } catch (notificationError) {
+                console.log('❌ [updatePartnerCommission] Could not send Telegram notification:', notificationError.message);
+            }
+        } else {
+            console.log('ℹ️ [updatePartnerCommission] Partner has no telegram_id, skipping notification.');
+        }
+
+    } catch (error) {
+        console.error('❌ [updatePartnerCommission] ERROR:', error.message);
+        console.error(error.stack);
+    }
+}
 
 
 // Show confirmation summary before payment
@@ -178,15 +278,73 @@ async function initiatePayment(bot, ctx) {
       let num = Number(price);
       if (isNaN(num)) return 'Invalid price';
       return `₦${num.toFixed(1)}`;
-  }
-  async function handleSuccessfulPayment(bot, paystackTransaction) {
+}
+  // Helper function to get user's entry positions within specific pool
+async function getUserEntryPositions(userId, poolId, weekCode, selectedNumbers, transaction = null) {
+    try {
+        const { Op } = require('sequelize');
+
+        if (!userId || !poolId || !weekCode) {
+            console.error('Missing required parameters:', { userId, poolId, weekCode });
+            return [];
+        }
+
+        const cleanSelectedNumbers = (selectedNumbers || [])
+            .map(num => parseInt(num))
+            .filter(num => !isNaN(num) && num > 0);
+
+        if (cleanSelectedNumbers.length === 0) {
+            console.error('No valid numbers in selectedNumbers:', selectedNumbers);
+            return [];
+        }
+
+        console.log(`📊 Getting positions for user ${userId}, pool ${poolId}, week ${weekCode}, numbers:`, cleanSelectedNumbers);
+
+        // 🔹 Get all pool entries for the week
+        const allPoolEntries = await Entry.findAll({
+            where: {
+                pool_id: poolId,
+                week_code: weekCode,
+                status: 'paid'
+            },
+            attributes: ['entry_number', 'user_id'],
+            order: [['entry_number', 'ASC']],
+            transaction
+        });
+
+        console.log(`Found ${allPoolEntries.length} total entries in pool ${poolId} for week ${weekCode}`);
+
+        // 🔹 Build an ordered array of all entry numbers
+        const allEntryNumbers = allPoolEntries.map(e => e.entry_number);
+
+        // 🔹 Determine positions of the user’s selected numbers
+        const results = cleanSelectedNumbers.map(num => {
+            const position = allEntryNumbers.indexOf(num) + 1; // 1-based index
+            const found = position > 0;
+
+            return {
+                entry_number: num,
+                position: found ? position : null,
+                exists_in_pool: found
+            };
+        });
+
+        console.log('🏁 Final positions result:', results);
+        return results;
+
+    } catch (error) {
+        console.error('❌ Error getting user pool entry positions:', error);
+        return [];
+    }
+}
+
+
+async function handleSuccessfulPayment(bot, paystackTransaction) {
     const t = await sequelize.transaction();
 
     try {
         const { id, reference, amount, metadata, status } = paystackTransaction;
-        console.log("Paystack metadata:", metadata);
 
-        // Extract from metadata
         const { 
             telegram_id, 
             user_id, 
@@ -201,67 +359,77 @@ async function initiatePayment(bot, ctx) {
             summary_data
         } = metadata;
 
-        // Get user and pool
-        const user = await User.findByPk(user_id);
-        const pool = await RafflePool.findByPk(pool_id);
-        const lotteryWeek = await Week.findByPk(lottery_week_id);
+        const user = await User.findByPk(user_id, { transaction: t });
+        const pool = await RafflePool.findByPk(pool_id, { transaction: t });
+        const lotteryWeek = await Week.findByPk(lottery_week_id, { transaction: t });
 
         if (!user || !pool || !lotteryWeek) {
             throw new Error(`User, Pool, or Lottery Week not found`);
         }
 
-        // Check if payment already processed
+        // Avoid duplicate processing
         const existingPayment = await Payment.findOne({
             where: { paystack_transaction_id: id },
             transaction: t
         });
-
         if (existingPayment) {
             console.log(`Payment with transaction ID ${id} already processed. Skipping.`);
             await t.commit();
             return;
         }
 
-        // Create payment record with lottery week
-        const paymentRecord = await Payment.create(
-            {
-                user_id: user.id,
-                pool_id: pool.id,
-                lottery_week_id: lotteryWeek.id,
-                paystack_transaction_id: id,
-                paystack_reference: reference,
-                amount: amount / 100,
-                status,
-                quantity: quantity
-            },
-            { transaction: t }
+        // Create payment record
+        const paymentRecord = await Payment.create({
+            user_id: user.id,
+            pool_id: pool.id,
+            lottery_week_id: lotteryWeek.id,
+            paystack_transaction_id: id,
+            paystack_reference: reference,
+            amount: amount / 100,
+            status,
+            quantity
+        }, { transaction: t });
+
+        // Create entries
+        const result = await finalizeEntries(
+            user.id,
+            pool.id,
+            selectedNumbers,
+            lottery_week_code,
+            lottery_week_name,
+            id,
+            false,
+            t // ✅ pass transaction
         );
-      
-        // Use finalizeEntries to create the entries
-     const result = await finalizeEntries(
-        user.id,
-        pool.id,
-        selectedNumbers,
-        lottery_week_code,
-        lottery_week_name,
-        id,
-        false,  // isBonus
-        t       // ✅ pass transaction
-      );
 
-        if (!result.success) {
-            throw new Error(`Failed to create entries: ${result.message}`);
-      }
-        // ✅ CALL AWARD REFERRAL BONUS HERE - RIGHT AFTER PAYMENT CREATION
+        if (!result.success) throw new Error(`Failed to create entries: ${result.message}`);
+
+        // Referral + Partner
         await awardReferralBonusIfFirstPurchase(user.id, quantity, paymentRecord.id, bot, t);
+        await updatePartnerCommission(user.id, amount / 100, t);
 
-      // await deleteMessagesByIds(ctx, ['paymentMessageId']);  
+        // ✅ Now safely get user entry positions WITHIN the same transaction
+        console.log('🔍 [handleSuccessfulPayment] Calling getUserEntryPositions with:', {
+            userId: user.id,
+            poolId: pool.id,
+            weekCode: lottery_week_code,
+            selectedNumbers: selectedNumbers
+        });
 
-          // await bot.telegram.deleteMessage(ctx.chat.id, ctx.session.paymentMessageId);
-       
+        const userEntryPositions = await getUserEntryPositions(
+            user.id,
+            pool.id,
+            lottery_week_code,
+            selectedNumbers,
+            t // ✅ use the same transaction
+        );
 
-      
-        // After successful payment processing:
+        console.log('📊 [handleSuccessfulPayment] Positions result:', userEntryPositions);
+
+        // Commit transaction AFTER all operations complete
+        await t.commit();
+
+        // ✅ Safe to continue with post-processing (Redis + Telegram messages)
         const entryData = {
             numbers: selectedNumbers,
             poolId: pool.id,
@@ -271,15 +439,18 @@ async function initiatePayment(bot, ctx) {
             lottery_week_id: lotteryWeek.id,
             lottery_week_number: lotteryWeek.week_number,
             payment_reference: reference,
-            payment_amount: amount / 100
+            payment_amount: amount / 100,
         };
 
-        // Store in Redis
         await redisService.addFinalizedEntry(telegram_id, entryData);
-        await t.commit();
+
         console.log(`✅ Processed transaction ${id}, entries created.`);
 
-        // Create comprehensive summary message from metadata
+        // ---- Message Construction (unchanged) ----
+        const positionsText = userEntryPositions.length
+            ? userEntryPositions.map(e => `#${e.entry_number} (Pos: ${e.position})`).join(', ')
+            : 'Pending update';
+
         const summaryMessage = `
 🎯 *ENTRY CONFIRMATION SUMMARY*
 
@@ -288,48 +459,37 @@ async function initiatePayment(bot, ctx) {
 📊 *Entries purchased:* ${summary_data.quantity}
 🎲 *Selection method:* ${summary_data.method_name}
 🔢 *Your numbers:* ${summary_data.numbers.join(', ')}
+📍 *Entry positions:* ${positionsText}
 
 ⏰ *Entry time:* ${new Date(summary_data.entry_time).toLocaleString()}
 🏆 *Lottery Week:* ${lottery_week_number}
 ✅ *Status:* Confirmed and paid
 
-💡 *Remember: This draw will take place on 28th September, 2025 at 6:00 PM*
+💡 *Remember: The Raffle Draw takes place on 12th October, 2025 at 6:00 PM*
         `;
 
-        // Send success message with summary to user
-      await bot.telegram.sendMessage(
-          
+        await bot.telegram.sendMessage(telegram_id, summaryMessage, { parse_mode: 'markdown' });
+        await bot.telegram.sendMessage(
             telegram_id,
-            summaryMessage,
-            { parse_mode: 'markdown' }
+            `✅ Successful! Your ${quantity} entries in the <b>${pool.name}</b> Pool for week <b>${lottery_week_number}</b> have been confirmed. 🎉
+            
+📍 <b>Your Entry Positions:</b> ${positionsText}
+
+📢 Stay updated! Join our channel to see winning numbers, winners, and important announcements.
+⚠️ <b>Important:</b> Set up your bank details so we can pay you instantly if you win!
+🎯 <b>Tip:</b> Spread your entries to improve your odds! 🚀`,
+            {
+                parse_mode: "HTML",
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: "ℹ️ What is Positions ?", callback_data: "how_it_works" }],
+                        [{ text: "➕ Buy More Entries", callback_data: "start_over" }],
+                        [{ text: "🏦 Setup Bank Account", callback_data: "bank_setup" }],
+                        [{ text: "📢 Join Channel", url: `https://t.me/${process.env.CHANNEL_NAME}` }]
+                    ]
+                }
+            }
         );
-
-        // Additional confirmation message
-// Confirmation message after entries are bought
-    await bot.telegram.sendMessage(
-      telegram_id,
-      `✅ Successful! Your ${quantity} entries in the <b>${pool.name}</b> Pool for week <b>${lottery_week_number}</b> have been confirmed. Good luck! 🎉\n\n` +
-
-      `📢 Stay updated! Join our channel to see winning numbers, winners, and important announcements.\n\n` +
-
-      `⚠️ <b>Important:</b> Make sure you set up your bank details so we can pay you instantly if you win!\n\n` +
-
-      `🎯 <b>Strategy Tip:</b> Winners are sometimes picked by <b>entry position</b> (when no exact number match is found).\n` +
-      `This means the more you <b>spread your entries across different positions</b>, the better your chance of landing on the winning spot! 🚀`,
-      {
-        parse_mode: "HTML",
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: "ℹ️ What is Positions ?", callback_data: "how_it_works" }],
-            [{ text: "➕ Buy More Entries", callback_data: "start_over" }],
-            [{ text: "🏦 Setup Bank Account", callback_data: "bank_setup" }],
-            [{ text: "📢 Join Channel", url: `https://t.me/${process.env.CHANNEL_NAME}` }]
-          ]
-        }
-      }
-    );
-
-
 
     } catch (error) {
         await t.rollback();
@@ -348,12 +508,18 @@ async function initiatePayment(bot, ctx) {
 
 
 // ----------------- Utility -----------------
-// ----------------- Utility -----------------
 
-async function getAvailableNumbers(poolId, selectedNumbers = [], limit = 15) {
+async function getAvailableNumbers(poolId, selectedNumbers = [], limit = 25) {
   const pool = await RafflePool.findByPk(poolId, { attributes: ['max_entries'] });
   if (!pool) return [];
+
   const maxEntries = pool.max_entries;
+  const GRID_START = 2000;
+  const GRID_END = 9999;
+  const TOTAL_GRID = GRID_END - GRID_START + 1;
+
+  // Ensure we don't exceed the grid cap
+  const safeEntries = Math.min(maxEntries, TOTAL_GRID);
 
   const taken = await Entry.findAll({
     where: { pool_id: poolId, status: "paid" },
@@ -361,16 +527,18 @@ async function getAvailableNumbers(poolId, selectedNumbers = [], limit = 15) {
   });
 
   const takenSet = new Set(taken.map((t) => t.entry_number));
-  
-  // Exclude numbers already selected by the user
   const selectedSet = new Set(selectedNumbers);
 
-  const poolNumbers = Array.from({ length: maxEntries }, (_, i) => i + 2000);
+  const poolNumbers = Array.from({ length: safeEntries }, (_, i) => GRID_START + i);
 
   const available = poolNumbers.filter((n) => !takenSet.has(n) && !selectedSet.has(n));
+
   available.sort(() => Math.random() - 0.5);
-  return available.slice(0, limit);
+
+  return available.slice(0, limit); // returns 25 by default
 }
+
+
 
 function buildNumberGrid(numbers, selected = []) {
   const keyboard = [];
@@ -668,9 +836,11 @@ function buildGrid(available, selected, quantity, method, finalized = false) {
 }
 
 async function generateRandomNumbers(poolId, quantity) {
+  console.log('ggjj')
   const pool = await RafflePool.findByPk(poolId, { attributes: ['max_entries'] });
   if (!pool) return [];
   const maxEntries = pool.max_entries;
+  console.log('maxEntries', maxEntries)
 
   const taken = await Entry.findAll({
     where: { pool_id: poolId, status: "paid" },

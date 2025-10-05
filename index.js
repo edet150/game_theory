@@ -18,6 +18,7 @@ const callbackHandler = require('./handlers/callback');
 const accountHandler = require('./handlers/accounts');
 const messageHandler = require('./handlers/message');
 const giveawayHandler = require('./handlers/giveaway');
+const partnerHandler = require('./handlers/partner');
 const giveawayAdminHandler = require('./handlers/giveawayAdmin');
 require('./cron/paystack_checker');
 require('./cron/sundayCron'); 
@@ -32,6 +33,9 @@ const { Telegraf } = require('telegraf');
 const { createBot } = require('./bot/botfactory.js');
 const { bot: bot2 } = createBot(process.env.TELEGRAM_BOT_TOKEN2);
 bot2.launch();
+
+const { bot: partnerBot } = createBot(process.env.TELEGRAM_PARTNER_Bot);
+partnerBot.launch();
 
 const bot = getbotInstance();
 const redis = getRedisClient();
@@ -55,6 +59,7 @@ const redis = getRedisClient();
 setTimeout(function () {
   giveawayHandler(bot2);
   giveawayAdminHandler(bot2);
+  partnerHandler(partnerBot);
 }, 3000)
 // Register handlers
   const bankSetupState = new Map();

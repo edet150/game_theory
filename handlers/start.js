@@ -117,7 +117,46 @@ bot.action('how_it_works', async (ctx) => {
           } catch (error) {
             console.log('Could not schedule confirmation message deletion:', error.message);
           }
+    }
+    
+      try {
+    const isInChannel = await isUserInChannel(ctx, REQUIRED_CHANNEL);
+
+    if (!isInChannel) {
+      // If not in channel, show join + verify buttons
+      return await ctx.reply(
+`🎉 <b>Welcome!</b> To enjoy the full experience, please join our official channel.
+
+<b>Inside the channel, you’ll get:</b>  
+  - 🏆 <b>Winner announcements</b> (see who’s winning in real time!)
+   
+  - 🎁 <b>Exclusive offers</b> and bonus opportunities
+   
+  - 🔔 <b>Updates</b> on new draws and promotions
+   
+  - 👥 <b>Transparency</b>: see entries made by other players and total winning amounts  
+
+  👉 <b>Join now</b> and then click <b>✅ Verify</b> to unlock access!`,
+       {
+          parse_mode: "HTML",
+          disable_web_page_preview: true,
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "📢 Join Channel", url: `https://t.me/${REQUIRED_CHANNEL.replace('@','')}` }],
+              [{ text: " Verify", callback_data: "verify_channel" }]
+            ]
+          }
         }
+      );
+    }
+
+    // ✅ Already in channel → proceed directly
+    await handleReferralAndStart(ctx);
+
+  } catch (error) {
+    console.error('❌ Error in start command:', error);
+    await sendError(ctx, 'Something went wrong. Please try again.');
+  }
 
     try {
       // Delete the bot's prompt message if it exists

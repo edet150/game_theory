@@ -360,7 +360,7 @@ async function cleanupTemporaryMessages(ctx) {
 }
 
 // Helper function to delete messages by IDs
-async function deleteMessagesByIds(ctx, messageIdsOrKeys) {
+async function deleteMessagesByIds_(ctx, messageIdsOrKeys) {
     // Check if it's an array of message IDs or session keys
     const isArrayOfIds = Array.isArray(messageIdsOrKeys) && 
                          messageIdsOrKeys.every(id => typeof id === 'number' || typeof id === 'string');
@@ -388,6 +388,44 @@ async function deleteMessagesByIds(ctx, messageIdsOrKeys) {
         });
     }
 }
+async function deleteMessagesByIds(ctx, messageIdsOrKeys) {
+  // Resolve chat ID safely
+  const chatId = ctx.chat?.id || ctx.callbackQuery?.message?.chat?.id;
+  if (!chatId) {
+    console.log('⚠️ Could not determine chat ID.');
+    return;
+  }
+
+  // Determine if argument is an array of IDs or session keys
+  const isArrayOfIds = Array.isArray(messageIdsOrKeys) && 
+                       messageIdsOrKeys.every(id => typeof id === 'number' || typeof id === 'string');
+
+  const messageIds = isArrayOfIds 
+    ? messageIdsOrKeys.map(id => Number(id))
+    : messageIdsOrKeys
+        .map(key => ctx.session[key])
+        .filter(id => id)
+        .map(id => Number(id));
+
+  for (const messageId of messageIds) {
+    try {
+      await ctx.telegram.deleteMessage(chatId, messageId);
+      console.log(`🗑️ Deleted message: ${messageId}`);
+    } catch (error) {
+      console.log(`⚠️ Could not delete message ${messageId}: ${error.message}`);
+    }
+  }
+
+  // Clean up session keys if applicable
+  if (!isArrayOfIds) {
+    for (const key of messageIdsOrKeys) {
+      if (ctx.session[key]) {
+        delete ctx.session[key];
+      }
+    }
+  }
+}
+
 
 // Specific cleanup for different flows
 async function cleanupAfterPayment(ctx) {

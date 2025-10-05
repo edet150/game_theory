@@ -265,8 +265,8 @@ bot.action(/^assign_method:(\w+)/, async (ctx) => {
   // --- Logic for 'random' (interactive card) ---
   } else if (method === 'random') {
   const randomNumbers = await generateRandomNumbers(ctx.session.poolId, ctx.session.quantityLimit);
-  ctx.session.selectedNumbers = randomNumbers;
-
+    ctx.session.selectedNumbers = randomNumbers;
+    
   const { text, reply_markup } = buildRandomGrid(randomNumbers);
   const parse_mode = "HTML";
 
@@ -970,13 +970,44 @@ bot.action('no_action', (ctx) => {
     await showPaymentConfirmation(ctx);
 });
 
-bot.action("verify_payment", async (ctx) => {
+bot.action("verify_payment__", async (ctx) => {
   await ctx.answerCbQuery();
     
     // Manual trigger verification
   await checkPaystackTransactions();
   await deleteMessagesByIds(ctx, ['paymentMessageId']);
 });
+  bot.action("verify_payment", async (ctx) => {
+  await ctx.answerCbQuery();
+
+  // Run Paystack verification
+  await checkPaystackTransactions();
+
+  const chatId = ctx.chat?.id || ctx.callbackQuery?.message?.chat?.id;
+
+  // 🗑️ Delete payment message
+  if (ctx.session.paymentMessageId) {
+    try {
+      await ctx.telegram.deleteMessage(chatId, ctx.session.paymentMessageId);
+      delete ctx.session.paymentMessageId; // clean up session
+      console.log("🗑️ Deleted paymentMessageId");
+    } catch (err) {
+      console.log("⚠️ Could not delete paymentMessageId:", err.message);
+    }
+  }
+
+  // 🗑️ Delete confirmation message
+  if (ctx.session.confirmationMessageId_) {
+    try {
+      await ctx.telegram.deleteMessage(chatId, ctx.session.confirmationMessageId_);
+      delete ctx.session.confirmationMessageId_; // clean up session
+      console.log("🗑️ Deleted confirmationMessageId");
+    } catch (err) {
+      console.log("⚠️ Could not delete confirmationMessageId:", err.message);
+    }
+  }
+});
+
 };
 
 
