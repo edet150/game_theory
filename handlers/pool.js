@@ -28,7 +28,10 @@ async function cleanupSessionMessages(ctx, messageKeys) {
 module.exports = (bot) => {
 bot.action(/^select_pool:(\w+)/, async (ctx) => {
   const isLocked = await redis.get('entries_locked');
-
+  if (isLocked) {
+    await ctx.answerCbQuery();
+    return await ctx.reply(`🔒 entries are currently locked, and willbe open on launch day`);
+  }
   await ctx.answerCbQuery();
   const poolName = ctx.match[1];
 
@@ -44,11 +47,9 @@ bot.action(/^select_pool:(\w+)/, async (ctx) => {
         // Special rules for Beta Arena
     if (poolName === "Bonus" || poolName === "Beta" || poolName === "HighRollers") {
       if (poolName === "Bonus") {
-        if (isLocked) {
-          await ctx.answerCbQuery();
-          return await ctx.reply(`🔒 Bonus entries are currently locked. and will be opened on special days, join the channel and lookout for this announcement. @${process.env.CHANNEL_NAME}`);
-        }
+
       }
+
       const pool = await RafflePool.findOne({ where: { name: `${poolName}` } });
       if (!pool) {
         return ctx.reply(`❌ ${poolName} Arena not found.`);

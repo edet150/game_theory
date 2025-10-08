@@ -22,7 +22,7 @@ async function showStartScreen(ctx) {
     });
       
       
-       // Fetch latest week info
+        // Fetch latest week info
             const today = new Date();
       
               // Get current week (based on dates)
