@@ -63,11 +63,11 @@ async function handlePartnerStart(ctx) {
 module.exports = (bot) => {
 
     // Partner command handler
-  bot.start(async (ctx) => {
-    await handlePartnerStart(ctx);
-  });
+    bot.start(async (ctx) => {
+        await handlePartnerStart(ctx);
+    });
 
-      bot.command('partner', async (ctx) => {
+    bot.command('partner', async (ctx) => {
         try {
             const telegramId = ctx.from.id;
             
@@ -110,7 +110,7 @@ module.exports = (bot) => {
     });
 
   
-  // Partner dashboard callback handler
+    // Partner dashboard callback handler
     bot.action('partner_dashboard', async (ctx) => {
         try {
             await ctx.answerCbQuery();
