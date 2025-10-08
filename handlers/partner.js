@@ -419,7 +419,7 @@ async function showPartnerDashboard(ctx, user) {
 
         // Generate referral link
         const referralLink = `https://t.me/${ctx.botInfo.username}?start=ref_${user.referral_code}`;
-        const referralLink2 = `https://t.me/game_theory_9ja_bot?start=ref_${user.referral_code}`;
+        const referralLink2 = `https://t.me/${process.env.GIVEAWAY_BOT_NAME}?start=ref_${user.referral_code}`;
         const referralCode = `ref_${user.referral_code}`;
 
         let dashboardText = 
