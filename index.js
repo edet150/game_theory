@@ -253,9 +253,6 @@ return res.send(`
       <h2>✅ Payment Complete</h2>
       <p>Kindly click the X button to close this browser tab and return to your bot</p>
 
-      // <a href="https://t.me/${process.env.CHANNEL_NAME}">
-      //   🚀 Open Telegram Channel
-      // </a>
 
       <script>
 
@@ -317,3 +314,7 @@ process.once('SIGTERM', () => {
     process.exit(1);
   }
 })();
+
+      // <a href="https://t.me/${process.env.CHANNEL_NAME}">
+      //   🚀 Open Telegram Channel
+      // </a>

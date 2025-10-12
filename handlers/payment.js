@@ -466,7 +466,7 @@ async function handleSuccessfulPayment(bot, paystackTransaction) {
 const summaryMessage = `
 🟢 *ENTRY CONFIRMATION SUMMARY*
 
-◎ *Draw:* ${summary_data.pool_name}
+◎ *Draw:* ${summary_data.pool_name} Draw
 ◎ *Price per entry:* ${formatUnitPrice(summary_data.unit_price)}
 ◎ *Entries purchased:* ${summary_data.quantity}
 ◎ *Selection method:* ${summary_data.method_name}
@@ -495,10 +495,10 @@ const summaryMessage = `
                 parse_mode: "HTML",
                 reply_markup: {
                     inline_keyboard: [
-                        [{ text: "ℹ️ What is Positions ?", callback_data: "how_it_works" }],
+                        [{ text: "ℹ️ How This Raffle Works?", callback_data: "how_it_works" }],
                         [{ text: "➕ Buy More Entries", callback_data: "start_over" }],
                         [{ text: "🏦 Setup Bank Account", callback_data: "bank_setup" }],
-                        [{ text: "📢 Join Channel", url: `https://t.me/${process.env.CHANNEL_NAME}` }]
+                        [{ text: "📢 Refer Friends", callback_data: "referral_dashboard" }]
                     ]
                 }
             }

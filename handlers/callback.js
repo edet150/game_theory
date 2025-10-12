@@ -98,7 +98,7 @@ console.log('ctx.session.bonusEntryFlow', ctx.session.bonusEntryFlow)
         const summaryMessage = `
 🎯 <b>BONUS ENTRY CONFIRMATION</b>
 
-🏷️ <b>Draw:</b> ${pool.name}
+🏷️ <b>Draw:</b> ${pool.name} Draw
 🎁 <b>Type:</b> Bonus Entries
 📊 <b>Entries Used:</b> ${finalNumbers.length}
 🎲 <b>Method:</b> ${method === 'random' ? 'Random Assignment' : 'Manual Selection'}

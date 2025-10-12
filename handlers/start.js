@@ -9,6 +9,35 @@ const fs = require('fs');
 const path = require('path');
 module.exports = (bot) => {
 
+bot.command("ad_statistics", async (ctx) => {
+  const input = ctx.message.text.split(" ")[1];
+  if (input) {
+    const key = `ads:${input}`;
+    const members = await redis.smembers(key);
+    if (!members.length) return ctx.reply(`No users for ad=${input}`);
+
+    let list = `📋 <b>Ad ${input} Users</b>\n\n`;
+    members.forEach((m, i) => {
+      const u = JSON.parse(m);
+      list += `${i + 1}. @${u.username} (${u.telegramId})\n`;
+    });
+    return ctx.reply(list, { parse_mode: "HTML" });
+  }
+
+  // otherwise show summary
+  const keys = await redis.keys("ads:*");
+  if (!keys.length) return ctx.reply("📊 No ad data yet.");
+
+  let summary = "📢 <b>Ad Campaign Stats</b>\n\n";
+  for (const key of keys) {
+    const adCode = key.split(":")[1];
+    const members = await redis.smembers(key);
+    summary += `🆔 <b>Ad ${adCode}</b>\n👥 ${members.length} unique users\n\n`;
+  }
+
+  await ctx.reply(summary, { parse_mode: "HTML" });
+});
+
 
 bot.command('how_it_works', async (ctx) => {
 
@@ -503,7 +532,7 @@ try {
 }
 
   
-async function handleUserReferral(ctx) {
+async function handleUserReferral_(ctx) {
   const startParams = ctx.startPayload;
   let referrer = null;
 
@@ -559,7 +588,72 @@ async function handleUserReferral(ctx) {
   referrer,
 };
 
+  }
+  async function handleUserReferral(ctx) {
+  const startParams = ctx.startPayload; // e.g. "ref_778&ad=001"
+  let referrer = null;
+  let adCode = null;
+
+  if (startParams) {
+    // extract referral and ad id from same payload
+    const refMatch = startParams.match(/ref_([A-Za-z0-9]+)/);
+    const adMatch = startParams.match(/ad=([A-Za-z0-9]+)/);
+
+    const referralCode = refMatch ? refMatch[1] : null;
+    adCode = adMatch ? adMatch[1] : null;
+
+    if (referralCode) {
+      referrer = await User.findOne({ where: { referral_code: referralCode } });
+    }
+  }
+
+  const telegramId = ctx.from.id;
+  const currentUsername = ctx.from.username || `user_${telegramId}`;
+  const firstName = ctx.from.first_name || 'user';
+
+  const [user, created] = await User.findOrCreate({
+    where: { telegram_id: telegramId },
+    defaults: {
+      telegram_username: currentUsername,
+      referred_by: referrer ? referrer.id : null,
+      referral_code: generateReferralCode(firstName),
+    },
+  });
+
+  if (!created && user.telegram_username !== currentUsername) {
+    user.telegram_username = currentUsername;
+    await user.save();
+  }
+
+  if (!user.referral_code) {
+    user.referral_code = generateReferralCode(firstName);
+    await user.save();
+  }
+
+  // 🤝 Handle referral count
+  if (referrer && created) {
+    referrer.total_referrals += 1;
+    await referrer.save();
+    await sendSuccess(ctx, `🎉 Welcome! You were referred by ${referrer.telegram_username}`);
+  }
+
+  if (!created && referrer && !user.referred_by) {
+    user.referred_by = referrer.id;
+    await user.save();
+    referrer.total_referrals += 1;
+    await referrer.save();
+  }
+
+  // 🎯 Handle optional ad tracking
+  if (adCode && created) {
+    const redisKey = `ads:${adCode}`;
+    await redis.sadd(redisKey, JSON.stringify({ telegramId, username: currentUsername }));
+    console.log(`📊 New user via ad=${adCode}: @${currentUsername}`);
+  }
+
+  return { user, created, referrer };
 }
+
 
 // 🔧 Generate a referral code from first name + random digits
 function generateReferralCode(firstName) {
