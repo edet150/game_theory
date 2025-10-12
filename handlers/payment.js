@@ -479,30 +479,32 @@ const summaryMessage = `
 
 > 💡 *Remember: The Raffle Draw takes place on 19th October, 2025 at 6:00 PM*
 `;
-        await bot.telegram.sendMessage(telegram_id, summaryMessage, { parse_mode: 'markdown' });
-        await bot.telegram.sendMessage(
-            telegram_id,
-            `🟢 Successful! Your ${quantity} entries in the <b>${pool.name}</b> Draw for week <b>${lottery_week_number}</b> have been confirmed. 🎉
-            
+  await bot.telegram.sendMessage(telegram_id, summaryMessage, { parse_mode: 'markdown' });
+  await bot.telegram.sendMessage(
+  telegram_id,
+  `🟢 Successful! Your ${quantity} entries in the <b>${pool.name}</b> Draw for week <b>${lottery_week_number}</b> have been confirmed. 🎉
+  
 📍 <b>Your Entry Positions:</b> ${positionsText}
 
-📢 Stay updated! Join our channel to see winning numbers, winners, and important announcements.
+💸 <b>Want Free Entries?</b> Invite your friends!  
+Each successful referral gives you bonus entries.  
 
 ⚠️ <i><b>Important:</b> Set up your bank details so we can pay you instantly if you win!</i>
 
-🎯 <b>Tip:</b> Spread your entries to improve your odds! 🚀`,
-            {
-                parse_mode: "HTML",
-                reply_markup: {
-                    inline_keyboard: [
-                        [{ text: "ℹ️ How This Raffle Works?", callback_data: "how_it_works" }],
-                        [{ text: "➕ Buy More Entries", callback_data: "start_over" }],
-                        [{ text: "🏦 Setup Bank Account", callback_data: "bank_setup" }],
-                        [{ text: "📢 Refer Friends", callback_data: "referral_dashboard" }]
-                    ]
-                }
-            }
-        );
+🎯 <b>Tip:</b> The more entries you have, the better your odds! 🚀`,
+  {
+    parse_mode: "HTML",
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "💰 Refer Friends (Get Free Entries)", callback_data: "referral_dashboard" }],
+        [{ text: "➕ Buy More Entries", callback_data: "start_over" }],
+        [{ text: "🏦 Setup Bank Account", callback_data: "bank_setup" }],
+        [{ text: "ℹ️ How This Raffle Works", callback_data: "how_it_works" }]
+      ]
+    }
+  }
+);
+
 
     } catch (error) {
         await t.rollback();
