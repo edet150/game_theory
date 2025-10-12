@@ -18,7 +18,7 @@ bot.command('how_it_works', async (ctx) => {
   await messageManager.sendPhotoAndTrack(ctx, imagePath, {
     caption:
       '🎭 <b>The Rules of the Game</b>\n\n' +
-      'Every Sunday at 6:00 PM WAT, we select <b>one strategist (winner)</b> from each pool.\n\n' +
+      'Every Sunday at 6:00 PM WAT, we select <b>one strategist (winner)</b> from each Draw.\n\n' +
       '1️⃣ <b>Winning Number</b>: The last 4 digits of the first Bitcoin block hash mined after 6:00 PM.\n\n' +
       '2️⃣ <b>Exact Match Wins</b>: Exact 4 digits = instant win.\n\n' +
       '3️⃣ <b>Inverse Match</b>: If no exact, we check reversed digits.\n\n' +
@@ -123,29 +123,23 @@ bot.action('how_it_works', async (ctx) => {
     const isInChannel = await isUserInChannel(ctx, REQUIRED_CHANNEL);
 
     if (!isInChannel) {
-      // If not in channel, show join + verify buttons
-      return await ctx.reply(
-`🎉 <b>Welcome!</b> To enjoy the full experience, please join our official channel.
-
-<b>Inside the channel, you’ll get:</b>  
-  - 🏆 <b>Winner announcements</b> (see who’s winning in real time!)
-   
-  - 🎁 <b>Exclusive offers</b> and bonus opportunities
-   
-  - 🔔 <b>Updates</b> on new draws and promotions
-   
-  - 👥 <b>Transparency</b>: see entries made by other players and total winning amounts  
-
-  👉 <b>Join now</b> and then click <b>✅ Verify</b> to unlock access!`,
-       {
+     return await ctx.reply(
+        `<b>Join our official channel</b> — this is where winners are announced every Sunday.\n\n` +
+        `◎ Watch live winner updates\n` +
+        `◎ Get notified about new draws\n` +
+        `◎ See total entries and prizes\n\n` +
+        `<b>Steps:</b>\n` +
+        `1️⃣ Click <b>Join Channel</b> and join the channel\n` +
+        `2️⃣ Return here and tap <b>✅ Verify</b> to continue.`,
+        {
           parse_mode: "HTML",
           disable_web_page_preview: true,
           reply_markup: {
             inline_keyboard: [
-              [{ text: "📢 Join Channel", url: `https://t.me/${REQUIRED_CHANNEL.replace('@','')}` }],
-              [{ text: " Verify", callback_data: "verify_channel" }]
-            ]
-          }
+              [{ text: "📢 Join Channel", url: `https://t.me/${REQUIRED_CHANNEL.replace('@', '')}` }],
+              [{ text: "✅ Verify", callback_data: "verify_channel" }],
+            ],
+          },
         }
       );
     }
@@ -233,33 +227,29 @@ bot.action('how_it_works', async (ctx) => {
       console.log('weekCode', numericPrizeMoney)
       // Compose welcome message
       const welcomeText =
-          `👋 Welcome to <b>Game Theory </b>\n\n` +
-          `Where numbers meet strategy.\n\n` +
-          `<b>This Round:</b>  ${weekLabel}\n` +
-          `<b>Winner Gets:</b>  ₦${numericPrizeMoney.toLocaleString()}\n\n` +
-          `<b>Entry Window:</b>  Monday–Saturday\n` +
-          `<b>Result Drop:</b>  Sunday 6:00 PM (Africa/Lagos)\n\n` +
-          `Choose your arena below to make your move:`
+  `👋 Welcome to <b>Modulo Raffle Draw</b>!\n\n` +
+  `<b>This Week:</b> ${weekLabel}\n` +
+  `<b>Jackpot Prize:</b> ₦${Number(prizeMoney).toLocaleString()}\n\n` +
+  `<b>Entries Open:</b> Monday to Saturday\n` +
+  `<b>Winner Announcement:</b> Sunday by 6:00 PM (Africa/Lagos)\n\n` +
+  `🎯 <b>How It Works:</b>\n` +
+  `1️⃣ Select an Draw below to enter the raffle\n` +
+  `2️⃣ Each Draw includes different entry amounts and prices\n` +
+  `3️⃣ Wait for the winner announcement on Sunday!\n\n` +
+  `💡 <b>Tip:</b> The more entries you have, the better your chances of winning this week’s jackpot!\n\n` +
+  `👇 Choose your Draw to begin:`;
 
-      // Send welcome message
-      const welcomeMessage = await ctx.reply(welcomeText, {
-        parse_mode: 'HTML',
-        reply_markup: {
-          inline_keyboard: [
-                  // [{ text: 'How It Works', callback_data: 'how_it_works' }],
-                [{ text: 'Alpha Arena (₦200 per entry)', callback_data: `select_pool:Alpha` }],
-                               [{ text: 'Beta Arena (₦500 per 5 entries)', callback_data: `select_pool:Beta` }],
-                [{ text: 'HighRollers Arena (₦1000 per 15 entries)', callback_data: `select_pool:HighRollers` }],
-                // [{ text: '🔒 Bonus Arena (₦1000 for 25 entries)', callback_data: `select_pool:Bonus` }],
-                  // [{ text: 'My Entries', callback_data: 'view_entries' }],
-                  // [{ text: 'Referral Dashboard', callback_data: 'referral_dashboard' }],
-              //     [
-              //   { text: '🏦 Setup Bank Account', callback_data: 'bank_setup' },
-              //   { text: '📋 My Bank Details', callback_data: 'bank_details' }
-              // ],
-          ]
-        }
-      });
+const welcomeMessage = await ctx.reply(welcomeText, {
+  parse_mode: 'HTML',
+  reply_markup: {
+    inline_keyboard: [
+        [{ text: '🎟 Single Draw – ₦200 for 1 entry', callback_data: `select_pool:Single` }],
+        [{ text: '💰 Value Draw – ₦500 for 5 entries', callback_data: `select_pool:Value` }],
+        [{ text: '🔥 Mega Draw – ₦1000 for 15 entries (Best Value!)', callback_data: `select_pool:Mega` }],
+      
+    ]
+  }
+});
 
     
       // Store the welcome message ID for future cleanup
@@ -306,35 +296,32 @@ bot.action('how_it_works', async (ctx) => {
         }
       }
 
-      // Fallback welcome message if there's an error
-      const fallbackMessage = await ctx.reply(
-
-  `👋 Welcome to *Game Theory* Where numbers meet strategy 🎭\n` +
-  `Where numbers meet strategy.\n\n` +
+// Fallback welcome message if there's an error
+const fallbackMessage = await ctx.reply(
+  `👋 Welcome to *Game Theory* — where numbers meet strategy.\n\n` +
   `📅 *This Round:* ${weekLabel}\n` +
-  `⚡ *Winner Gets:*  ₦${Number(prizeMoney).toLocaleString()}\n\n` +
-  `⏰ *Play Window:*  Monday–Saturday\n` +
-  `📢 *Result Drop:*  Sunday 6:00 PM (Africa/Lagos)\n\n` +
-  `Choose your arena below to make your move:`,
-        {
-          parse_mode: 'markdown',
-          reply_markup: {
-               inline_keyboard: [
-                  // [{ text: 'How It Works', callback_data: 'how_it_works' }],
-                [{ text: 'Alpha Arena (₦200 / entry)', callback_data: `select_pool:Alpha` }],
-                [{ text: 'Beta Arena (₦500 for 5 entries)', callback_data: `select_pool:Beta` }],
-                [{ text: 'HighRollers Arena (₦1000 for 15 entries)', callback_data: `select_pool:HighRollers` }],
-                // [{ text: '🔒 Bonus Arena (₦1000 for 25 entries)', callback_data: `select_pool:Bonus` }],
-                  // [{ text: 'My Entries', callback_data: 'view_entries' }],
-                  // [{ text: 'Referral Dashboard', callback_data: 'referral_dashboard' }],
-              //     [
-              //   { text: '🏦 Setup Bank Account', callback_data: 'bank_setup' },
-              //   { text: '📋 My Bank Details', callback_data: 'bank_details' }
-              // ],
-          ]
-          }
-        }
-      );
+  `💰 *Jackpot Prize:* ₦${Number(prizeMoney).toLocaleString()}\n\n` +
+  `⏰ *Entries Open:* Monday–Saturday\n` +
+  `🏆 *Winner Announced:* Sunday by 6:00 PM (Africa/Lagos)\n\n` +
+  `🎯 *How It Works:*\n` +
+  `1️⃣ Select a draw category below\n` +
+  `2️⃣ Get your entry ticket(s)\n` +
+  `3️⃣ Wait for the Sunday draw to see if you’ve won!\n\n` +
+  `💡 *Tip:* The more entries you have, the higher your chance of winning!\n\n` +
+  `👇 Choose your draw category to begin:`,
+  {
+    parse_mode: 'Markdown',
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: '🎟 Single Draw – ₦200 for 1 entry', callback_data: `select_pool:Single` }],
+        [{ text: '💰 Value Draw – ₦500 for 5 entries', callback_data: `select_pool:Value` }],
+        [{ text: '🔥 Mega Draw – ₦1000 for 15 entries (Best Value!)', callback_data: `select_pool:Mega` }],
+      ]
+    }
+  }
+);
+
+
 
       ctx.session.welcomeMessageId = fallbackMessage.message_id;
     }
@@ -358,47 +345,44 @@ const REQUIRED_CHANNEL = `@${process.env.CHANNEL_NAME}`; // <-- replace with you
 
 // Modified /start command
 bot.start(async (ctx) => {
-  await cleanupSelectionMessages(ctx);
-  handleUserReferral(ctx)
   try {
+    await cleanupSelectionMessages(ctx);
+    await handleUserReferral(ctx);
+
     const isInChannel = await isUserInChannel(ctx, REQUIRED_CHANNEL);
 
     if (!isInChannel) {
-      // If not in channel, show join + verify buttons
       return await ctx.reply(
-`🎉 <b>Welcome!</b> To enjoy the full experience, please join our official channel.
-
-<b>Inside the channel, you’ll get:</b>  
-  - 🏆 <b>Winner announcements</b> (see who’s winning in real time!)
-   
-  - 🎁 <b>Exclusive offers</b> and bonus opportunities
-   
-  - 🔔 <b>Updates</b> on new draws and promotions
-   
-  - 👥 <b>Transparency</b>: see entries made by other players and total winning amounts  
-
-  👉 <b>Join now</b> and then click <b>✅ Verify</b> to unlock access!`,
-       {
+        `<b>Join our official channel</b> — This is where <b>WINNERS</b> are announced <b>EVERY SUNDAY</b>.\n\n` +
+        `◎ Get live winner updates\n` +
+        `◎ Get notified about new draws\n` +
+        `◎ See total entries and prizes\n\n` +
+        `<b>Steps:</b>\n` +
+        `1️⃣ Click <b>Join Channel</b> and join the channel\n` +
+        `2️⃣ Return here and tap <b>✅ Verify</b> to continue.`,
+        {
           parse_mode: "HTML",
           disable_web_page_preview: true,
           reply_markup: {
             inline_keyboard: [
-              [{ text: "📢 Join Channel", url: `https://t.me/${REQUIRED_CHANNEL.replace('@','')}` }],
-              [{ text: " Verify", callback_data: "verify_channel" }]
-            ]
-          }
+              [{ text: "📢 Join Channel", url: `https://t.me/${REQUIRED_CHANNEL.replace('@', '')}` }],
+              [{ text: "✅ Verify", callback_data: "verify_channel" }],
+            ],
+          },
         }
       );
+
     }
 
-    // ✅ Already in channel → proceed directly
+    // ✅ User already in channel → continue
     await handleReferralAndStart(ctx);
 
   } catch (error) {
-    console.error('❌ Error in start command:', error);
-    await sendError(ctx, 'Something went wrong. Please try again.');
+    console.error("❌ Error in /start:", error);
+    await sendError(ctx, "Something went wrong. Please try again.");
   }
 });
+
 
   // 🔁 Verify button callback
 bot.action("verify_channel", async (ctx) => {

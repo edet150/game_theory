@@ -118,7 +118,7 @@ module.exports = (bot, bankSetupState) => {
             const poolName = ctx.message.text.trim();
             
             if (poolName.length < 2) {
-                await ctx.reply('Please enter a valid Arena name (min 2 characters):');
+                await ctx.reply('Please enter a valid Draw name (min 2 characters):');
                 return;
             }
     
@@ -128,13 +128,13 @@ module.exports = (bot, bankSetupState) => {
             });
     
             if (existingPool) {
-                await ctx.reply('❌ An Arena with this name already exists. Please choose a different name:');
+                await ctx.reply('❌ An Draw with this name already exists. Please choose a different name:');
                 return;
             }
     
             ctx.session.newPoolName = poolName;
             ctx.session.adminState = ADMIN_STATES.AWAITING_POOL_PRICE;
-            await ctx.reply('Please enter the price per entry for this Arena:');
+            await ctx.reply('Please enter the price per entry for this Draw:');
         }
     
         async function handlePoolPrice(ctx) {
@@ -147,7 +147,7 @@ module.exports = (bot, bankSetupState) => {
     
             ctx.session.newPoolPrice = price;
             ctx.session.adminState = ADMIN_STATES.AWAITING_POOL_MAX_ENTRIES;
-            await ctx.reply('Please enter the maximum number of entries for this Arena:');
+            await ctx.reply('Please enter the maximum number of entries for this Draw:');
         }
     
         async function handlePoolMaxEntries(ctx) {
@@ -167,7 +167,7 @@ module.exports = (bot, bankSetupState) => {
                     is_active: true
                 });
     
-                await ctx.reply(`✅ New Arena created successfully!\n\n` +
+                await ctx.reply(`✅ New Draw created successfully!\n\n` +
                     `Name: ${ctx.session.newPoolName}\n` +
                     `Price: ₦${ctx.session.newPoolPrice.toLocaleString()}\n` +
                     `Max Entries: ${maxEntries.toLocaleString()}`);
@@ -179,8 +179,8 @@ module.exports = (bot, bankSetupState) => {
     
                 await showAdminDashboard(ctx);
             } catch (error) {
-                console.error('Error creating Arena:', error);
-                await ctx.reply('❌ Error creating Arena. Please try again.');
+                console.error('Error creating Draw:', error);
+                await ctx.reply('❌ Error creating Draw. Please try again.');
             }
         }
       // Admin authentication states
@@ -261,7 +261,7 @@ module.exports = (bot, bankSetupState) => {
                         { text: '➕ Create New Pool', callback_data: 'admin_create_pool' }
                     ],
                     [
-                        { text: '📊 Arena Statistics', callback_data: 'admin_pool_stats' },
+                        { text: '📊 Draw Statistics', callback_data: 'admin_pool_stats' },
                         { text: '📋 Daily Entries Report', callback_data: 'admin_send_to_channel' }
                     ],
                     [
@@ -272,7 +272,7 @@ module.exports = (bot, bankSetupState) => {
                         { text: `${lockStatus} Entries`, callback_data: 'admin_toggle_entries_lock' }
                     ],
                     [
-                    { text: '🔒 Toggle Bonus Arena', callback_data: 'admin_toggle_bonus' },
+                    { text: '🔒 Toggle Bonus Draw', callback_data: 'admin_toggle_bonus' },
                     { text: '➕ Create New Bonus', callback_data: 'admin_create_bonus' }
                      ],
                     [
@@ -602,11 +602,11 @@ module.exports = (bot, bankSetupState) => {
         type: 'bonus'
       });
 
-      ctx.reply(`✅ Bonus Arena "${pool.name}" created successfully!`);
+      ctx.reply(`✅ Bonus Draw "${pool.name}" created successfully!`);
       ctx.session.nextAction = null;
     } catch (err) {
       console.error(err);
-      ctx.reply('⚠️ Failed to create Bonus Arena. Maybe name already exists?');
+      ctx.reply('⚠️ Failed to create Bonus Draw. Maybe name already exists?');
     }
       }
 

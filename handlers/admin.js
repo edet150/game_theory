@@ -523,7 +523,7 @@ module.exports = (bot, bankSetupState) => {
                         { text: '➕ Create New Pool', callback_data: 'admin_create_pool' }
                     ],
                     [
-                        { text: '📊 Arena Statistics', callback_data: 'admin_pool_stats' },
+                        { text: '📊 Draw Statistics', callback_data: 'admin_pool_stats' },
                         { text: '🚪 Logout', callback_data: 'admin_logout' }
                     ]
                 ]
@@ -551,7 +551,7 @@ module.exports = (bot, bankSetupState) => {
                         { text: '➕ Create New Pool', callback_data: 'admin_create_pool' }
                     ],
                     [
-                        { text: '📊 Arena Statistics', callback_data: 'admin_pool_stats' },
+                        { text: '📊 Draw Statistics', callback_data: 'admin_pool_stats' },
                         { text: '📋 Daily Entries Report', callback_data: 'admin_send_to_channel' }
                     ],
                     [
@@ -562,7 +562,7 @@ module.exports = (bot, bankSetupState) => {
                         { text: `${lockStatus} Entries`, callback_data: 'admin_toggle_entries_lock' }
                     ],
                     [
-                    { text: '🔒 Toggle Bonus Arena', callback_data: 'admin_toggle_bonus' },
+                    { text: '🔒 Toggle Bonus Draw', callback_data: 'admin_toggle_bonus' },
                     { text: '➕ Create New Bonus', callback_data: 'admin_create_bonus' }
                     ],
                     [
@@ -714,13 +714,13 @@ console.log(winningNumber)
 
         let message = `🏆 Winners for ${currentWeek.week_name} (Week ${currentWeek.week_number}):\n\n`;
         message += `**Winning Number:** ${winningNumber}\n`;
-        message += `**Prize Arena:** ₦${Number(winningRecord.winning_amount).toLocaleString()}\n\n`; // assuming amount lives in Winning
+        message += `**Prize Draw:** ₦${Number(winningRecord.winning_amount).toLocaleString()}\n\n`; // assuming amount lives in Winning
 
         winningEntries.forEach((entry, index) => {
         message += `**Winner ${index + 1}:**\n`;
         message += `👤 ${entry.User.username}\n`;
         message += `🔢 Entry #${entry.entry_number}\n`;
-        message += `🏊 Arena: ${entry.RafflePool.name}\n`;
+        message += `🏊 Draw: ${entry.RafflePool.name}\n`;
         // message += `📧 Email: ${entry.User.email || 'Not provided'}\n`;
         // message += `📞 Phone: ${entry.User.phone || 'Not provided'}\n\n`;
         });
@@ -851,7 +851,7 @@ console.log(winningNumber)
         const bonusPools = await RafflePool.findAll({ where: { type: 'bonus' } });
 
         if (!bonusPools.length) {
-        return ctx.reply('❌ No Bonus Arenas available.');
+        return ctx.reply('❌ No Bonus Draws available.');
         }
 
         const keyboard = bonusPools.map(pool => ([
@@ -862,12 +862,12 @@ console.log(winningNumber)
         ]));
 
         await ctx.reply(
-        '🎯 Select a Bonus Arena to lock/unlock:',
+        '🎯 Select a Bonus Draw to lock/unlock:',
         { reply_markup: { inline_keyboard: keyboard } }
         );
     } catch (err) {
         console.error(err);
-        ctx.reply('⚠️ Error toggling Bonus Arenas.');
+        ctx.reply('⚠️ Error toggling Bonus Draws.');
     }
     });
 
@@ -888,7 +888,7 @@ console.log(winningNumber)
         );
     } catch (err) {
         console.error(err);
-        ctx.reply('⚠️ Could not update Bonus Arena.');
+        ctx.reply('⚠️ Could not update Bonus Draw.');
     }
     });
 
@@ -949,7 +949,7 @@ bot.action('admin_create_bonus', async (ctx) => {
         ctx.session.adminState = ADMIN_STATES.AWAITING_POOL_NAME;
         
         await cleanupAdminMessages(ctx, ['adminDashboard']);
-        const message = await ctx.reply('Please enter the name for the new Arena:');
+        const message = await ctx.reply('Please enter the name for the new Draw:');
         trackMessage(ctx, 'poolNamePrompt');
         
         await ctx.answerCbQuery();
@@ -965,7 +965,7 @@ bot.action('admin_create_bonus', async (ctx) => {
                 }]
             });
 
-            let message = '📊 Arena Statistics:\n\n';
+            let message = '📊 Draw Statistics:\n\n';
             pools.forEach(pool => {
                 const entryCount = pool.Entries ? pool.Entries.length : 0;
                 const revenue = entryCount * pool.price_per_entry;
@@ -980,8 +980,8 @@ bot.action('admin_create_bonus', async (ctx) => {
             const sentMessage = await ctx.reply(message, { parse_mode: 'Markdown' });
             trackMessage(ctx, 'poolStats');
         } catch (error) {
-            console.error('Error getting Arena stats:', error);
-            await ctx.reply('❌ Error retrieving Arena statistics.');
+            console.error('Error getting Draw stats:', error);
+            await ctx.reply('❌ Error retrieving Draw statistics.');
         }
         await ctx.answerCbQuery();
     });
@@ -1127,7 +1127,7 @@ bot.action('admin_create_bonus', async (ctx) => {
         // Group entries by pool
         const entriesByPool = {};
         user.Entries.forEach(entry => {
-            const poolName = entry.RafflePool?.name || 'Unknown Arena';
+            const poolName = entry.RafflePool?.name || 'Unknown Draw';
             if (!entriesByPool[poolName]) {
                 entriesByPool[poolName] = 0;
             }
@@ -1295,7 +1295,7 @@ bot.action('admin_create_bonus', async (ctx) => {
         message += `👤 <b>Name:</b> ${entry.User?.telegram_username || 'N/A'}\n`;
         if (entry.User?.phone) message += `📞 <b>Phone:</b> ${entry.User.phone}\n`;
         if (entry.User?.email) message += `📧 <b>Email:</b> ${entry.User.email}\n`;
-        message += `🏊 <b>Arena:</b> ${entry.RafflePool?.name || 'N/A'}\n`;
+        message += `🏊 <b>Draw:</b> ${entry.RafflePool?.name || 'N/A'}\n`;
         if (winMethod === 'inverse match') {
             message += `🔢 <b>Entry Number:</b> #${entry.entry_number}\n`;
             message += `🔄 <b>Matched Inverse Of:</b> #${winningNumber}\n`;
@@ -1581,7 +1581,7 @@ bot.action('admin_create_bonus', async (ctx) => {
         const poolName = ctx.message.text.trim();
         
         if (poolName.length < 2) {
-            await ctx.reply('Please enter a valid Arena name (min 2 characters):');
+            await ctx.reply('Please enter a valid Draw name (min 2 characters):');
             return;
         }
 
@@ -1591,13 +1591,13 @@ bot.action('admin_create_bonus', async (ctx) => {
         });
 
         if (existingPool) {
-            await ctx.reply('❌ An Arena with this name already exists. Please choose a different name:');
+            await ctx.reply('❌ An Draw with this name already exists. Please choose a different name:');
             return;
         }
 
         ctx.session.newPoolName = poolName;
         ctx.session.adminState = ADMIN_STATES.AWAITING_POOL_PRICE;
-        await ctx.reply('Please enter the price per entry for this Arena:');
+        await ctx.reply('Please enter the price per entry for this Draw:');
     }
 
     async function handlePoolPrice(ctx) {
@@ -1610,7 +1610,7 @@ bot.action('admin_create_bonus', async (ctx) => {
 
         ctx.session.newPoolPrice = price;
         ctx.session.adminState = ADMIN_STATES.AWAITING_POOL_MAX_ENTRIES;
-        await ctx.reply('Please enter the maximum number of entries for this Arena:');
+        await ctx.reply('Please enter the maximum number of entries for this Draw:');
     }
 
     async function handlePoolMaxEntries(ctx) {
@@ -1630,7 +1630,7 @@ bot.action('admin_create_bonus', async (ctx) => {
                 is_active: true
             });
 
-            await ctx.reply(`✅ New Arena created successfully!\n\n` +
+            await ctx.reply(`✅ New Draw created successfully!\n\n` +
                 `Name: ${ctx.session.newPoolName}\n` +
                 `Price: ₦${ctx.session.newPoolPrice.toLocaleString()}\n` +
                 `Max Entries: ${maxEntries.toLocaleString()}`);
@@ -1642,8 +1642,8 @@ bot.action('admin_create_bonus', async (ctx) => {
 
             await showAdminDashboard(ctx);
         } catch (error) {
-            console.error('Error creating Arena:', error);
-            await ctx.reply('❌ Error creating Arena. Please try again.');
+            console.error('Error creating Draw:', error);
+            await ctx.reply('❌ Error creating Draw. Please try again.');
         }
     }
 // Helper function to compile user list with entries

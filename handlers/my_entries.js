@@ -33,7 +33,7 @@ module.exports = (bot) => {
 
       let replyMessage = '📝 Your Entries:\n\n';
       for (const pool in entriesByPool) {
-        replyMessage += `**${pool} Arena:**\n`;
+        replyMessage += `**${pool} Draw:**\n`;
         replyMessage += `${entriesByPool[pool].sort((a, b) => a - b).join(', ')}\n\n`;
       }
 

@@ -29,15 +29,14 @@ async function showPaymentConfirmation(ctx) {
   }
 
   const confirmationMessage = `
-🎯 *ORDER CONFIRMATION*
+🟢 *ORDER CONFIRMATION*
 
-🏷️ *Arena:* ${pool.name}
-💰 *Price:* ₦${pool.price_per_entry} for ${pool.quantity} entries
-📊 *Entries purchased:* ${session.quantity}
-🎲 *Selection method:* ${methodName}
-🔢 *Your numbers:* ${sortedNumbers.join(', ')}
+◎ *Price:* ₦${pool.price_per_entry} for ${pool.quantity} entries
+◎ *Entries purchased:* ${session.quantity}
+◎ *Selection method:* ${methodName}
+◎ *Your numbers:* ${sortedNumbers.join(', ')}
 
-💵 *Total Amount:* ₦${totalAmount}
+◎ *Total Amount:* ₦${totalAmount}
 
 ⚠️ *Please review your order before proceeding to payment.*
   `;
@@ -51,13 +50,20 @@ async function showPaymentConfirmation(ctx) {
     }
   }
 
+  // Determine the callback data based on pool name
+  const isAlpha = pool.name.toLowerCase() == 'Single';
+  const editButton = {
+    text: '✏️ Edit Selection',
+    callback_data: isAlpha ? 'edit_selection' : '_edit_selection'
+  };
+
   // Send new confirmation
   const confirmation = await ctx.reply(confirmationMessage, {
     parse_mode: 'Markdown',
     reply_markup: {
       inline_keyboard: [
         [{ text: '✅ Confirm & Pay with Paystack', callback_data: 'proceed_to_payment' }],
-        [{ text: '✏️ Edit Selection', callback_data: 'edit_selection' }],
+        [editButton],
         [{ text: '🔄 Re-start Game Selection', callback_data: 'start_over' }]
       ]
     }
@@ -174,7 +180,6 @@ async function showBonusEntrySummary(ctx, finalNumbers, pool, method) {
     const summaryMessage = `
 🎯 <b>BONUS ENTRY CONFIRMATION</b>
 
-🏷️ <b>Arena:</b> ${pool.name}
 🎁 <b>Type:</b> Bonus Entries
 📊 <b>Entries Used:</b> ${finalNumbers.length}
 🎲 <b>Method:</b> ${method === 'random' ? 'Random Assignment' : 'Manual Selection'}
@@ -246,7 +251,7 @@ bot.action(/^assign_method:(\w+)/, async (ctx) => {
     );
     
     // STORE THE GRID MESSAGE ID
-    const gridMessage = await ctx.reply(`Please choose *${ctx.session.quantityLimit}* numbers for the ${pool.name} Arena:`, {
+    const gridMessage = await ctx.reply(`Please choose *${ctx.session.quantityLimit}* numbers for the ${pool.name} Draw:`, {
       parse_mode: 'markdown',
       reply_markup: initialGrid.reply_markup
     });
@@ -787,7 +792,7 @@ bot.action("random_refresh", async (ctx) => {
       try {
         const pool = await RafflePool.findOne({ where: { name: ctx.session.poolName } });
         if (!pool) {
-          return ctx.reply('Arena not found. Please try again.');
+          return ctx.reply('Draw not found. Please try again.');
         }
 
         // Count number of paid entries
@@ -807,7 +812,7 @@ bot.action("random_refresh", async (ctx) => {
 
         // Send quantity selection message with tracking
         const quantityMessage = await messageManager.sendAndTrack(ctx,
-          `You've selected the ${pool.name} Arena!\n\n` +
+          `You've selected the ${pool.name} Draw!\n\n` +
           `*Price:* ₦${pool.price_per_entry} per entry\n\n` +
           // `*Max Entries:* ${pool.max_entries}\n` +
           // `*Current Entries:* ${currentEntriesCount}/${pool.max_entries}\n\n` +

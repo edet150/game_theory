@@ -66,7 +66,7 @@ module.exports = (bot) => {
       const pos = positionMap.get(entry.id) || '?';
       message +=
         `*🎯 Entry ${index + 1}* (POS *${pos}*)\n` +
-        `🏷️ *Arena:* *${entry.RafflePool?.name || 'N/A'}*\n` +
+        `🏷️ *Draw:* *${entry.RafflePool?.name || 'N/A'}*\n` +
         `🔢 *Number:* *${entry.entry_number}*\n` +
         `⏰ *Date:* *${new Date(entry.createdAt).toLocaleString()}*\n` +
         '─'.repeat(30) + '\n\n';
@@ -154,7 +154,7 @@ bot.action('view_entries', async (ctx) => {
       const pos = positionMap.get(entry.id) || '?';
       message +=
         `*🎯 Entry ${index + 1}* (POS *${pos}*)\n` +
-        `🏷️ *Arena:* *${entry.RafflePool?.name || 'N/A'}*\n` +
+        `🏷️ *Draw:* *${entry.RafflePool?.name || 'N/A'}*\n` +
         `🔢 *Number:* *${entry.entry_number}*\n` +
         `⏰ *Date:* *${new Date(entry.createdAt).toLocaleString()}*\n` +
         '─'.repeat(30) + '\n\n';
@@ -231,7 +231,7 @@ bot.command('view_entries', async (ctx) => {
       const pos = positionMap.get(entry.id) || '?';
       message +=
         `*🎯 Entry ${index + 1}* (POS *${pos}*)\n` +
-        `🏷️ *Arena:* *${entry.RafflePool?.name || 'N/A'}*\n` +
+        `🏷️ *Draw:* *${entry.RafflePool?.name || 'N/A'}*\n` +
         `🔢 *Number:* *${entry.entry_number}*\n` +
         `⏰ *Date:* *${new Date(entry.createdAt).toLocaleString()}*\n` +
         '─'.repeat(30) + '\n\n';

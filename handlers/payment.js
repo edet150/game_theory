@@ -111,57 +111,69 @@ async function updatePartnerCommission(userId, entryAmount, transaction = null) 
 
 // Show confirmation summary before payment
 async function showPaymentConfirmation(ctx) {
-    const session = ctx.session;
-    const pool = await RafflePool.findOne({ where: { name: session.poolName } });
-    const methodName = session.assignmentMethod === 'choose' ? 'Manual Selection' : 'Random Assignment';
-    const sortedNumbers = session.selectedNumbers ? [...session.selectedNumbers].sort((a, b) => a - b) : [];
+  const session = ctx.session;
+  const pool = await RafflePool.findOne({ where: { name: session.poolName } });
+  const methodName = session.assignmentMethod === 'choose' ? 'Manual Selection' : 'Random Assignment';
+  const sortedNumbers = session.selectedNumbers ? [...session.selectedNumbers].sort((a, b) => a - b) : [];
 
-    const confirmationMessage = `
-🎯 *ORDER CONFIRMATION*
+  let totalAmount;
 
-🏷️ *Pool:* ${pool.name}
-💰 *Price per entry:* ₦${pool.price_per_entry}
-📊 *Entries purchased:* ${session.quantity}
-🎲 *Selection method:* ${methodName}
-🔢 *Your numbers:* ${sortedNumbers.join(', ')}
+  if (session.quantity === pool.quantity) {
+    // User is buying exactly the package size
+    totalAmount = pool.price_per_entry;
+  } else {
+    // Derive per entry price from package
+    const perEntryPrice = pool.price_per_entry / pool.quantity;
+    totalAmount = perEntryPrice * session.quantity;
+  }
 
-💵 *Total Amount:* ₦${pool.price_per_entry * session.quantity}
+  const confirmationMessage = `
+🟢 *ORDER CONFIRMATION*
+
+◎ *Draw:* ${pool.name}
+◎ *Price:* ₦${pool.price_per_entry} for ${pool.quantity} entries
+◎ *Entries purchased:* ${session.quantity}
+◎ *Selection method:* ${methodName}
+◎ *Your numbers:* ${sortedNumbers.join(', ')}
+
+◎ *Total Amount:* ₦${totalAmount}
 
 ⚠️ *Please review your order before proceeding to payment.*
-    `;
+  `;
 
-    // ⬅️ Delete previous confirmation if it exists
-    // if (ctx.session.confirmationMessageId) {
-    //     try {
-    //         await ctx.deleteMessage(ctx.session.confirmationMessageId);
-    //     } catch (e) {
-    //         console.log("Previous confirmation already gone:", e.message);
-    //     }
-    // }
+  // Delete previous confirmation if exists
+  if (ctx.session.confirmationMessageId_) {
+    try {
+      await ctx.deleteMessage(ctx.session.confirmationMessageId_);
+    } catch (e) {
+      console.log("Previous confirmation already gone:", e.message);
+    }
+  }
 
-    // Send new confirmation
-    const confirmation = await ctx.reply(confirmationMessage, {
-        parse_mode: 'Markdown',
-        reply_markup: {
-            inline_keyboard: [
-                [
-                    { text: '✅ Confirm & Pay with Paystack', callback_data: 'proceed_to_payment' }
-                ],
-                [
-                    { text: '✏️ Edit Selection', callback_data: 'edit_selection' }
-                ],
-                [
-                    { text: '🔄 Re-start Game Selection', callback_data: 'start_over' }
-                ]
-            ]
-        }
-    });
+  // Determine the callback data based on pool name
+  const isAlpha = pool.name.toLowerCase() == 'Single';
+  const editButton = {
+    text: '✏️ Edit Selection',
+    callback_data: isAlpha ? 'edit_selection' : '_edit_selection'
+  };
 
-    // ⬅️ Store confirmation message ID
-    ctx.session.confirmationMessageId = confirmation.message_id;
+  // Send new confirmation
+  const confirmation = await ctx.reply(confirmationMessage, {
+    parse_mode: 'Markdown',
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: '✅ Confirm & Pay with Paystack', callback_data: 'proceed_to_payment' }],
+        [editButton],
+        [{ text: '🔄 Re-start Game Selection', callback_data: 'start_over' }]
+      ]
+    }
+  });
 
-    return confirmation;
+  ctx.session.confirmationMessageId_ = confirmation.message_id;
+
+  return confirmation;
 }
+
 
 async function initiatePayment(bot, ctx) {
     const session = ctx.session;
@@ -451,32 +463,33 @@ async function handleSuccessfulPayment(bot, paystackTransaction) {
             ? userEntryPositions.map(e => `#${e.entry_number} (Pos: ${e.position})`).join(', ')
             : 'Pending update';
 
-        const summaryMessage = `
-🎯 *ENTRY CONFIRMATION SUMMARY*
+const summaryMessage = `
+🟢 *ENTRY CONFIRMATION SUMMARY*
 
-🏷️ *Pool:* ${summary_data.pool_name}
-💰 *Price per entry:* ${formatUnitPrice(summary_data.unit_price)}
-📊 *Entries purchased:* ${summary_data.quantity}
-🎲 *Selection method:* ${summary_data.method_name}
-🔢 *Your numbers:* ${summary_data.numbers.join(', ')}
-📍 *Entry positions:* ${positionsText}
+◎ *Draw:* ${summary_data.pool_name}
+◎ *Price per entry:* ${formatUnitPrice(summary_data.unit_price)}
+◎ *Entries purchased:* ${summary_data.quantity}
+◎ *Selection method:* ${summary_data.method_name}
+◎ *Your numbers:* ${summary_data.numbers.join(', ')}
+◎ *Entry positions:* ${positionsText}
 
-⏰ *Entry time:* ${new Date(summary_data.entry_time).toLocaleString()}
-🏆 *Lottery Week:* ${lottery_week_number}
-✅ *Status:* Confirmed and paid
+◎ *Entry time:* ${new Date(summary_data.entry_time).toLocaleString()}
+◎ *Lottery Week:* ${lottery_week_number}
+◎ *Status:* Confirmed and paid
 
-💡 *Remember: The Raffle Draw takes place on 12th October, 2025 at 6:00 PM*
-        `;
-
+> 💡 *Remember: The Raffle Draw takes place on 19th October, 2025 at 6:00 PM*
+`;
         await bot.telegram.sendMessage(telegram_id, summaryMessage, { parse_mode: 'markdown' });
         await bot.telegram.sendMessage(
             telegram_id,
-            `✅ Successful! Your ${quantity} entries in the <b>${pool.name}</b> Pool for week <b>${lottery_week_number}</b> have been confirmed. 🎉
+            `🟢 Successful! Your ${quantity} entries in the <b>${pool.name}</b> Draw for week <b>${lottery_week_number}</b> have been confirmed. 🎉
             
 📍 <b>Your Entry Positions:</b> ${positionsText}
 
 📢 Stay updated! Join our channel to see winning numbers, winners, and important announcements.
-⚠️ <b>Important:</b> Set up your bank details so we can pay you instantly if you win!
+
+⚠️ <i><b>Important:</b> Set up your bank details so we can pay you instantly if you win!</i>
+
 🎯 <b>Tip:</b> Spread your entries to improve your odds! 🚀`,
             {
                 parse_mode: "HTML",

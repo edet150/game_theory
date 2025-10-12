@@ -60,35 +60,31 @@ async function showStartScreen(ctx) {
     // Example prize pool (later make dynamic: 80% of all entries)
     const prizeMoney = winningRecord.winning_amount ?? "100,000";
 
+const welcomeText =
+  `👋 Welcome to <b>Modulo Raffle Draw</b>!\n\n` +
+  `<b>This Week:</b> ${weekLabel}\n` +
+  `<b>Jackpot Prize:</b> ₦${Number(prizeMoney).toLocaleString()}\n\n` +
+  `<b>Entries Open:</b> Monday to Saturday\n` +
+  `<b>Winner Announcement:</b> Sunday by 6:00 PM (Africa/Lagos)\n\n` +
+  `🎯 <b>How It Works:</b>\n` +
+  `1️⃣ Choose a draw category below\n` +
+  `2️⃣ Get your entry ticket(s)\n` +
+  `3️⃣ Wait for the winner announcement on Sunday!\n\n` +
+  `💡 <b>Tip:</b> The more entries you have, the better your chances of winning this week’s jackpot!\n\n` +
+  `👇 Select your draw category to begin:`;
 
-    // Fixed welcome text with proper HTML formatting
-    const welcomeText = 
-        `👋 Welcome to <b>Game Theory </b>\n\n` +
-        `Where numbers meet strategy.\n\n` +
-        `<b style="color:blue;">This Round:</b>  ${weekLabel}\n` +
-        `<b>Winner Gets:</b>  ₦ ${Number(prizeMoney).toLocaleString()}\n\n` +
-        `<b>Entry Window:</b>  Monday–Saturday\n` +
-        `<b>Result Drop:</b>  Sunday 6:00 PM (Africa/Lagos)\n\n` +
-        `Choose your arena below to make your move:`;
+const options = {
+  parse_mode: 'HTML',
+  reply_markup: {
+    inline_keyboard: [
+      [{ text: '🎟 Single Draw – ₦200 for 1 entry', callback_data: `select_pool:Single` }],
+      [{ text: '💰 Value Draw – ₦500 for 5 entries', callback_data: `select_pool:Value` }],
+      [{ text: '🔥 Mega Draw – ₦1000 for 15 entries (Best Value!)', callback_data: `select_pool:Mega` }],
+    ]
+  }
+};
 
-    const options = {
-        parse_mode: 'HTML',
-        reply_markup: {
-            inline_keyboard: [
-                // [{ text: 'How It Works', callback_data: 'how_it_works' }],
-                [{ text: 'Alpha Arena (₦200 / entry)', callback_data: `select_pool:Alpha` }],
-                [{ text: 'Beta Arena (₦500 for 5 entries)', callback_data: `select_pool:Beta` }],
-                [{ text: 'HighRollers Arena (₦1000 for 15 entries)', callback_data: `select_pool:HighRollers` }],
-                // [{ text: '🔒 Bonus Arena (₦1000 for 25 entries)', callback_data: `select_pool:Bonus` }],
-                // [{ text: 'My Entries', callback_data: 'view_entries' }],
-                // [{ text: 'Referral Dashboard', callback_data: 'referral_dashboard' }],
-    //             [
-    //     { text: '🏦 Setup Bank Account', callback_data: 'bank_setup' },
-    //     { text: '📋 My Bank Details', callback_data: 'bank_details' }
-    //   ],
-            ]
-        }
-    };
+
 
     let messageId;
 

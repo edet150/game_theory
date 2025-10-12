@@ -33,10 +33,10 @@ const { Telegraf } = require('telegraf');
 // Bot 2
 const { createBot } = require('./bot/botfactory.js');
 const { bot: bot2 } = createBot(process.env.TELEGRAM_BOT_TOKEN2);
-bot2.launch();
+// bot2.launch();
 
 const { bot: partnerBot } = createBot(process.env.TELEGRAM_PARTNER_Bot);
-partnerBot.launch();
+// partnerBot.launch();
 
 const bot = getbotInstance();
 const redis = getRedisClient();
@@ -251,16 +251,14 @@ return res.send(`
     </head>
     <body>
       <h2>✅ Payment Complete</h2>
-      <p>Kindly close the browser session to return to your bot</p>
+      <p>Kindly click the X button to close this browser tab and return to your bot</p>
 
-      <a href="https://t.me/${process.env.CHANNEL_NAME}">
-        🚀 Open Telegram Channel
-      </a>
+      // <a href="https://t.me/${process.env.CHANNEL_NAME}">
+      //   🚀 Open Telegram Channel
+      // </a>
 
       <script>
-        setTimeout(() => {
-          window.location.href = "https://t.me/${process.env.BOT_NAME}";
-        }, 6000);
+
       </script>
     </body>
   </html>

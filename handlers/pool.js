@@ -34,25 +34,25 @@ bot.action(/^select_pool:(\w+)/, async (ctx) => {
   }
   await ctx.answerCbQuery();
   const poolName = ctx.match[1];
-
+console.log(poolName)
   // Store pool choice in session
   ctx.session.poolName = poolName;
 
   if (!poolName) {
-    console.error('Arena name is undefined');
-    return ctx.reply('Invalid Arena selection. Please try again.');
+    console.error('Draw name is undefined');
+    return ctx.reply('Invalid Draw selection. Please try again.');
   }
 
   try {
-        // Special rules for Beta Arena
-    if (poolName === "Bonus" || poolName === "Beta" || poolName === "HighRollers") {
+        // Special rules for Beta Draw
+    if (poolName === "Bonus" || poolName === "Value" || poolName === "Mega") {
       if (poolName === "Bonus") {
 
       }
 
       const pool = await RafflePool.findOne({ where: { name: `${poolName}` } });
       if (!pool) {
-        return ctx.reply(`❌ ${poolName} Arena not found.`);
+        return ctx.reply(`❌ ${poolName} Draw not found.`);
       }
 
       // Check if locked by admin
@@ -71,7 +71,7 @@ bot.action(/^select_pool:(\w+)/, async (ctx) => {
       }
 
       const assignmentMessage = await ctx.reply(
-        `🎉 You've selected the *${pool.name} Arena*!\n\n` +
+        `🎉 You've selected the *${pool.name} Draw*!\n\n` +
         `💰 *Price:* ₦${pool.price_per_entry} for ${pool.quantity} entries\n` +
         // `🎟️ Entries Locked: ${pool.quantity} (fixed)\n` +
           noteText +
@@ -97,7 +97,7 @@ bot.action(/^select_pool:(\w+)/, async (ctx) => {
 
     if (poolName === "Beta_") {
       const betaMessage = await ctx.reply(
-        "🔒 *Beta Arena is currently locked!*\n\n" +
+        "🔒 *Beta Draw is currently locked!*\n\n" +
         "It is only available to users who have referred new players and on certain days that will be announced on our channel. 📢",
         {
           parse_mode: "Markdown",
@@ -116,12 +116,12 @@ bot.action(/^select_pool:(\w+)/, async (ctx) => {
       return;
     }
 
-    // Special rules for HighRollers Arena
-    // Special rules for HighRollers Arena
+    // Special rules for HighRollers Draw
+    // Special rules for HighRollers Draw
   if (poolName === "HighRollers_") {
     const highRollersMessage = await ctx.reply(
-      "🔒 *HighRollers Arena Access Restricted!*\n\n" +
-      "This Arena is only available to users who have referred new players. 🎯\n\n" +
+      "🔒 *HighRollers Draw Access Restricted!*\n\n" +
+      "This Draw is only available to users who have referred new players. 🎯\n\n" +
       "Invite friends to unlock access in your referral dashboard.",
       {
         parse_mode: "Markdown",
@@ -138,10 +138,10 @@ bot.action(/^select_pool:(\w+)/, async (ctx) => {
     return;
   }
 
-    // Default flow for Alpha Arena (or others)
+    // Default flow for Alpha Draw (or others)
     const pool = await RafflePool.findOne({ where: { name: poolName } });
     if (!pool) {
-      ctx.reply('Arena not found. Please try again.');
+      ctx.reply('Draw not found. Please try again.');
       return;
         }
         
@@ -172,7 +172,7 @@ bot.action(/^select_pool:(\w+)/, async (ctx) => {
 
     // Send quantity selection message and store its ID
     const quantityMessage = await ctx.reply(
-      `You've selected the ${pool.name} Arena!\n\n` +
+      `You've selected the ${pool.name} Draw!\n\n` +
       `💰 *Price:* ₦${pool.price_per_entry} per entry\n\n` +
       // `📊 *Max Entries:* ${pool.max_entries}\n` +
       // `🎲 *Current Entries:* ${currentEntriesCount}/${pool.max_entries}\n\n` +
@@ -209,8 +209,8 @@ bot.action(/^select_pool:(\w+)/, async (ctx) => {
     ctx.session.nextAction = 'prompt_quantity';
 
   } catch (error) {
-    console.error('Error selecting Arena:', error);
-    ctx.reply('Could not retrieve Arena information. Please try again.');
+    console.error('Error selecting Draw:', error);
+    ctx.reply('Could not retrieve Draw information. Please try again.');
   }
 });
 
