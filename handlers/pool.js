@@ -30,7 +30,7 @@ bot.action(/^select_pool:(\w+)/, async (ctx) => {
   const isLocked = await redis.get('entries_locked');
   if (isLocked) {
     await ctx.answerCbQuery();
-    return await ctx.reply(`🔒 entries are currently locked, and willbe open on launch day`);
+    return await ctx.reply(`🔒 entries are currently locked, and will be open on launch day`);
   }
   await ctx.answerCbQuery();
   const poolName = ctx.match[1];
@@ -121,7 +121,7 @@ bot.action(/^select_pool:(\w+)/, async (ctx) => {
   if (poolName === "HighRollers_") {
     const highRollersMessage = await ctx.reply(
       "🔒 *HighRollers Arena Access Restricted!*\n\n" +
-      "This pool is only available to users who have referred new players. 🎯\n\n" +
+      "This Arena is only available to users who have referred new players. 🎯\n\n" +
       "Invite friends to unlock access in your referral dashboard.",
       {
         parse_mode: "Markdown",
@@ -209,7 +209,7 @@ bot.action(/^select_pool:(\w+)/, async (ctx) => {
     ctx.session.nextAction = 'prompt_quantity';
 
   } catch (error) {
-    console.error('Error selecting pool:', error);
+    console.error('Error selecting Arena:', error);
     ctx.reply('Could not retrieve Arena information. Please try again.');
   }
 });

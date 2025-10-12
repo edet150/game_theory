@@ -31,7 +31,7 @@ async function showPaymentConfirmation(ctx) {
   const confirmationMessage = `
 🎯 *ORDER CONFIRMATION*
 
-🏷️ *Pool:* ${pool.name}
+🏷️ *Arena:* ${pool.name}
 💰 *Price:* ₦${pool.price_per_entry} for ${pool.quantity} entries
 📊 *Entries purchased:* ${session.quantity}
 🎲 *Selection method:* ${methodName}
@@ -246,7 +246,7 @@ bot.action(/^assign_method:(\w+)/, async (ctx) => {
     );
     
     // STORE THE GRID MESSAGE ID
-    const gridMessage = await ctx.reply(`Please choose *${ctx.session.quantityLimit}* numbers for the ${pool.name} Pool:`, {
+    const gridMessage = await ctx.reply(`Please choose *${ctx.session.quantityLimit}* numbers for the ${pool.name} Arena:`, {
       parse_mode: 'markdown',
       reply_markup: initialGrid.reply_markup
     });
@@ -787,7 +787,7 @@ bot.action("random_refresh", async (ctx) => {
       try {
         const pool = await RafflePool.findOne({ where: { name: ctx.session.poolName } });
         if (!pool) {
-          return ctx.reply('Pool not found. Please try again.');
+          return ctx.reply('Arena not found. Please try again.');
         }
 
         // Count number of paid entries
@@ -807,7 +807,7 @@ bot.action("random_refresh", async (ctx) => {
 
         // Send quantity selection message with tracking
         const quantityMessage = await messageManager.sendAndTrack(ctx,
-          `You've selected the ${pool.name} Pool!\n\n` +
+          `You've selected the ${pool.name} Arena!\n\n` +
           `*Price:* ₦${pool.price_per_entry} per entry\n\n` +
           // `*Max Entries:* ${pool.max_entries}\n` +
           // `*Current Entries:* ${currentEntriesCount}/${pool.max_entries}\n\n` +
