@@ -7,6 +7,7 @@ const messageManager = require('../utils/messageManager');
 const { sendError, sendSuccess } = require('../utils/responseUtils');
 // In handleSuccessfulPayment function
 const redisService = require('../services/redisService');
+
 async function updatePartnerCommission(userId, entryAmount, transaction = null) {
     try {
         console.log('🔍 [updatePartnerCommission] STARTING - userId:', userId, 'entryAmount:', entryAmount);
@@ -24,27 +25,27 @@ async function updatePartnerCommission(userId, entryAmount, transaction = null) 
 
         console.log('👤 [updatePartnerCommission] User found:', referredUser.id, 'Referred by:', referredUser.referred_by);
 
-        // 2️⃣ Check if this user was referred by a partner
+        // 2️⃣ Check if this user was referred by someone
         if (!referredUser.referred_by) {
             console.log('ℹ️ [updatePartnerCommission] User was not referred by anyone.');
             return;
         }
 
-        // 3️⃣ Fetch the partner (referrer)
-        const partner = await User.findOne({
-            where: { id: referredUser.referred_by, partner: true },
+        // 3️⃣ Fetch the referrer (could be partner or normal user)
+        const referrer = await User.findOne({
+            where: { id: referredUser.referred_by },
             transaction
         });
 
-        if (!partner) {
-            console.log('⚠️ [updatePartnerCommission] Referrer not found or not a partner:', referredUser.referred_by);
+        if (!referrer) {
+            console.log('⚠️ [updatePartnerCommission] Referrer not found:', referredUser.referred_by);
             return;
         }
 
-        console.log('✅ [updatePartnerCommission] Partner found:', partner.id);
+        console.log('✅ [updatePartnerCommission] Referrer found:', referrer.id, 'Partner status:', referrer.partner);
 
-        // 4️⃣ Calculate commission
-        const commissionRate = 0.15;
+        // 4️⃣ Determine commission rate
+        const commissionRate = referrer.partner ? 0.15 : 0.10;
         const commission = entryAmount * commissionRate;
 
         console.log('💰 [updatePartnerCommission] Calculating commission:', {
@@ -53,60 +54,55 @@ async function updatePartnerCommission(userId, entryAmount, transaction = null) 
             commission
         });
 
-        // 5️⃣ Update partner’s commission
+        // 5️⃣ Update referrer’s commission
         await User.increment('partner_commission', {
             by: commission,
-            where: { id: partner.id },
+            where: { id: referrer.id },
             transaction
         });
 
-        // 6️⃣ Set partner start date if not set
-        if (!partner.partner_start_date) {
+        // 6️⃣ Set partner start date if partner but not yet started
+        if (referrer.partner && !referrer.partner_start_date) {
             await User.update(
                 { partner_start_date: new Date() },
-                { where: { id: partner.id }, transaction }
+                { where: { id: referrer.id }, transaction }
             );
         }
 
-        // // 7️⃣ Update total referrals count
-        // await User.increment('total_referrals', {
-        //     by: 1,
-        //     where: { id: partner.id },
-        //     transaction
-        // });
-
-        // console.log(`✅ [updatePartnerCommission] SUCCESS - Commission ₦${commission} added to partner ${partner.id}`);
-
-        // 8️⃣ Try sending Telegram notification
-        if (partner.telegram_id) {
+        // 7️⃣ Send Telegram notification
+        if (referrer.telegram_id) {
             try {
                 await bot.telegram.sendMessage(
-                    partner.telegram_id,
+                    referrer.telegram_id,
                     `🎉 Commission earned!\n\n` +
                     `Your referral just purchased entries worth ₦${entryAmount}\n` +
                     `💰 Commission: ₦${commission}\n` +
-                    `📊 Check your partner dashboard for details!`,
+                    `(${referrer.partner ? 'Partner 15%' : 'Referral 10%'} rate applied)\n` +
+                    `📊 Check your dashboard for details!`,
                     {
                         reply_markup: {
                             inline_keyboard: [
-                                [{ text: "👥 Partner Dashboard", callback_data: "partner_dashboard" }]
+                                [{ text: "👥 Dashboard", callback_data: "open_partner_dashboard" }]
                             ]
                         }
                     }
                 );
-                console.log('📱 [updatePartnerCommission] Notification sent successfully to Telegram ID:', partner.telegram_id);
+                console.log('📱 [updatePartnerCommission] Notification sent successfully to Telegram ID:', referrer.telegram_id);
             } catch (notificationError) {
                 console.log('❌ [updatePartnerCommission] Could not send Telegram notification:', notificationError.message);
             }
         } else {
-            console.log('ℹ️ [updatePartnerCommission] Partner has no telegram_id, skipping notification.');
+            console.log('ℹ️ [updatePartnerCommission] Referrer has no telegram_id, skipping notification.');
         }
+
+        console.log(`✅ [updatePartnerCommission] SUCCESS - ₦${commission} added to user ${referrer.id}`);
 
     } catch (error) {
         console.error('❌ [updatePartnerCommission] ERROR:', error.message);
         console.error(error.stack);
     }
 }
+
 
 
 // Show confirmation summary before payment

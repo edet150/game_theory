@@ -275,7 +275,8 @@ const welcomeMessage = await ctx.reply(welcomeText, {
         [{ text: '🎟 Single Draw – ₦200 for 1 entry', callback_data: `select_pool:Single` }],
         [{ text: '💰 Value Draw – ₦500 for 5 entries', callback_data: `select_pool:Value` }],
         [{ text: '🔥 Mega Draw – ₦1000 for 15 entries (Best Value!)', callback_data: `select_pool:Mega` }],
-      
+         [{ text: '💸 Refer & Earn – Get 10% Commission', callback_data: `refer_and_earn` }]
+
     ]
   }
 });
@@ -345,6 +346,7 @@ const fallbackMessage = await ctx.reply(
         [{ text: '🎟 Single Draw – ₦200 for 1 entry', callback_data: `select_pool:Single` }],
         [{ text: '💰 Value Draw – ₦500 for 5 entries', callback_data: `select_pool:Value` }],
         [{ text: '🔥 Mega Draw – ₦1000 for 15 entries (Best Value!)', callback_data: `select_pool:Mega` }],
+        [{ text: '💸 Refer & Earn – Get 10% Commission', callback_data: `refer_and_earn` }]
       ]
     }
   }
@@ -371,6 +373,110 @@ const fallbackMessage = await ctx.reply(
   }
 
 const REQUIRED_CHANNEL = `@${process.env.CHANNEL_NAME}`; // <-- replace with your channel
+async function handleUserReferral(ctx) {
+  console.log("🚀 [handleUserReferral] Start");
+  const startParams = ctx.startPayload; // e.g. "ref_778&ad=001"
+  let referrer = null;
+  let adCode = null;
+  let isNewUser = false;
+
+  console.log("📦 startParams =", startParams);
+
+  if (startParams) {
+    console.log('🌍 startParams =', startParams); // e.g. "ref_official_iso-ad-001"
+
+    // ✅ Extract referral code (between "ref_" and "-ad-")
+    const refMatch = startParams.match(/ref_([\w-]+?)-ad-/);
+
+    // ✅ Extract ad code (after "-ad-")
+    const adMatch = startParams.match(/-ad-([\w-]+)/);
+
+    const referralCode = refMatch ? refMatch[1] : null;
+    adCode = adMatch ? adMatch[1] : null;
+
+    console.log('🎯 Extracted referralCode =', referralCode);
+    console.log('🎯 Extracted adCode =', adCode);
+
+    // Find referrer if referral code exists
+    if (referralCode) {
+      referrer = await User.findOne({ where: { referral_code: referralCode } });
+      console.log('👤 Referrer found:', referrer ? referrer.telegram_username : 'NOT FOUND');
+    }
+  }
+
+  const telegramId = ctx.from.id;
+  const currentUsername = ctx.from.username || `user_${telegramId}`;
+  const firstName = ctx.from.first_name || 'user';
+
+  console.log("💬 Telegram info:", { telegramId, currentUsername, firstName });
+
+  // Check if user exists FIRST
+  let user = await User.findOne({ where: { telegram_id: telegramId } });
+  
+  if (!user) {
+    console.log("🆕 Creating NEW user");
+    // User doesn't exist - create with referral data
+    user = await User.create({
+      telegram_id: telegramId,
+      telegram_username: currentUsername,
+      referred_by: referrer ? referrer.id : null,
+      referral_code: generateReferralCode(firstName),
+    });
+    isNewUser = true;
+    console.log("🧾 NEW user created:", user.toJSON());
+  } else {
+    console.log("✅ EXISTING user found:", user.toJSON());
+    // Update username if changed
+    if (user.telegram_username !== currentUsername) {
+      console.log("✏️ Updating username from", user.telegram_username, "to", currentUsername);
+      user.telegram_username = currentUsername;
+      await user.save();
+    }
+  }
+
+  // 🎯 AD CODE TRACKING - ONLY for new users (first time creation)
+  if (adCode && isNewUser) {
+    const redisKey = `ads:${adCode}`;
+    console.log("🧠 Adding NEW user to redis ad tracking:", redisKey);
+    await redis.sadd(redisKey, JSON.stringify({ 
+      telegramId, 
+      username: currentUsername,
+      joined_at: new Date().toISOString()
+    }));
+    console.log("✅ Ad code tracked for new user");
+  }
+
+  // 🔗 REFERRAL PROCESSING - Only process if user is new AND has a referrer
+  if (isNewUser && referrer && referrer.id !== user.id) {
+    console.log("🔗 Processing referral for new user");
+    
+    // Update user's referred_by if not set
+    if (!user.referred_by) {
+      user.referred_by = referrer.id;
+      await user.save();
+      console.log("✅ User saved with referred_by =", user.referred_by);
+    }
+
+    // Increment referrer's total_referrals
+    referrer.total_referrals += 1;
+    await referrer.save();
+    console.log("📈 Referrer total_referrals incremented to", referrer.total_referrals);
+
+    await sendSuccess(ctx, `🎉 Welcome! You were referred by @${referrer.telegram_username}`);
+  } else if (isNewUser && referrer) {
+    console.log("🆕 New user with referrer");
+    await sendSuccess(ctx, `🎉 Welcome! You were referred by @${referrer.telegram_username}`);
+  } else if (isNewUser) {
+    console.log("🆕 New user without referrer");
+    await sendSuccess(ctx, `🎉 Welcome to the lottery!`);
+  } else {
+    console.log("ℹ️ Existing user - no referral processing needed");
+  }
+
+  console.log("✅ [handleUserReferral] Done - isNewUser:", isNewUser);
+  return { user, created: isNewUser, referrer };
+}
+
 
 // Modified /start command
 bot.start(async (ctx) => {
@@ -589,70 +695,7 @@ async function handleUserReferral_(ctx) {
 };
 
   }
-  async function handleUserReferral(ctx) {
-  const startParams = ctx.startPayload; // e.g. "ref_778&ad=001"
-  let referrer = null;
-  let adCode = null;
 
-  if (startParams) {
-    // extract referral and ad id from same payload
-    const refMatch = startParams.match(/ref_([A-Za-z0-9]+)/);
-    const adMatch = startParams.match(/ad=([A-Za-z0-9]+)/);
-
-    const referralCode = refMatch ? refMatch[1] : null;
-    adCode = adMatch ? adMatch[1] : null;
-
-    if (referralCode) {
-      referrer = await User.findOne({ where: { referral_code: referralCode } });
-    }
-  }
-
-  const telegramId = ctx.from.id;
-  const currentUsername = ctx.from.username || `user_${telegramId}`;
-  const firstName = ctx.from.first_name || 'user';
-
-  const [user, created] = await User.findOrCreate({
-    where: { telegram_id: telegramId },
-    defaults: {
-      telegram_username: currentUsername,
-      referred_by: referrer ? referrer.id : null,
-      referral_code: generateReferralCode(firstName),
-    },
-  });
-
-  if (!created && user.telegram_username !== currentUsername) {
-    user.telegram_username = currentUsername;
-    await user.save();
-  }
-
-  if (!user.referral_code) {
-    user.referral_code = generateReferralCode(firstName);
-    await user.save();
-  }
-
-  // 🤝 Handle referral count
-  if (referrer && created) {
-    referrer.total_referrals += 1;
-    await referrer.save();
-    await sendSuccess(ctx, `🎉 Welcome! You were referred by ${referrer.telegram_username}`);
-  }
-
-  if (!created && referrer && !user.referred_by) {
-    user.referred_by = referrer.id;
-    await user.save();
-    referrer.total_referrals += 1;
-    await referrer.save();
-  }
-
-  // 🎯 Handle optional ad tracking
-  if (adCode && created) {
-    const redisKey = `ads:${adCode}`;
-    await redis.sadd(redisKey, JSON.stringify({ telegramId, username: currentUsername }));
-    console.log(`📊 New user via ad=${adCode}: @${currentUsername}`);
-  }
-
-  return { user, created, referrer };
-}
 
 
 // 🔧 Generate a referral code from first name + random digits

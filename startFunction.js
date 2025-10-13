@@ -79,7 +79,9 @@ const options = {
     inline_keyboard: [
       [{ text: '🎟 Single Draw – ₦200 for 1 entry', callback_data: `select_pool:Single` }],
       [{ text: '💰 Value Draw – ₦500 for 5 entries', callback_data: `select_pool:Value` }],
-      [{ text: '🔥 Mega Draw – ₦1000 for 15 entries (Best Value!)', callback_data: `select_pool:Mega` }],
+        [{ text: '🔥 Mega Draw – ₦1000 for 15 entries (Best Value!)', callback_data: `select_pool:Mega` }],
+        [{ text: '💸 Refer & Earn – Get 10% Commission', callback_data: `refer_and_earn` }]
+
     ]
   }
 };

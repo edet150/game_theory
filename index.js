@@ -19,6 +19,7 @@ const accountHandler = require('./handlers/accounts');
 const messageHandler = require('./handlers/message');
 const giveawayHandler = require('./handlers/giveaway');
 const partnerHandler = require('./handlers/partner');
+const partnerHandler_user = require('./handlers/partner_user');
 const managePartner = require('./handlers/managePartners');
 const giveawayAdminHandler = require('./handlers/giveawayAdmin');
 require('./cron/paystack_checker');
@@ -60,13 +61,14 @@ const redis = getRedisClient();
 setTimeout(function () {
   giveawayHandler(bot2);
   giveawayAdminHandler(bot2);
-  partnerHandler(partnerBot);
+  // partnerHandler(partnerBot);
 }, 3000)
 // Register handlers
   const bankSetupState = new Map();
 setTimeout(function () {
   messageHandler(bot, bankSetupState);
 }, 3000)
+partnerHandler_user(bot);
 startHandler(bot);
 accountHandler(bot, bankSetupState);
 adminHandler(bot, bankSetupState);
