@@ -472,7 +472,7 @@ const summaryMessage = `
 ◎ *Entry time:* ${new Date(summary_data.entry_time).toLocaleString()}
 ◎ *Lottery Week:* ${lottery_week_number}
 ◎ *Status:* Confirmed and paid.
-◎ *How It Works:* You can win with your number or position click /how_it_works to see more.
+◎ *How It Works:* You can win with your number or position click /howitworks to see more.
 
  💡 *Remember: The Raffle Draw takes place on 26th October, 2025 at 6:00 PM*
 `;
@@ -481,7 +481,7 @@ await bot.telegram.sendMessage(
   telegram_id,
   `💰 <b>Earn 10% Commission for 3 Months!</b>
 
-Invite friends to play and earn <b>10%</b> of whatever they spend — automatically, every time! 🔥  
+Invite friends to play and earn <b>10%</b> of whatever they spend - automatically, every time! 🔥  
 
 Turn your network into <b>passive income</b> 💸  
 No stress, no waiting - just steady earnings while others play.  

@@ -66,6 +66,33 @@ bot.command('how_it_works', async (ctx) => {
     }
   });
 });
+    bot.command('howitworks', async (ctx) => {
+
+
+  // Send image from local `/images` folder in your project root
+  const imagePath = "./images/block.jpg"; // adjust path if needed
+  await messageManager.sendPhotoAndTrack(ctx, imagePath, {
+    caption:
+      '🎭 <b>The Rules of the Game</b>\n\n' +
+      'Every Sunday at 6:00 PM WAT, we select <b>one strategist (winner)</b> from each pool.\n\n' +
+      '1️⃣ <b>Winning Number</b>: The last 4 digits of the first Bitcoin block hash mined after 6:00 PM.\n\n' +
+      '2️⃣ <b>Exact Match Wins</b>: Exact 4 digits = instant win.\n\n' +
+      '3️⃣ <b>Inverse Match</b>: If no exact, we check reversed digits.\n\n' +
+      '4️⃣ <b>Modulo Fallback</b>: If no match, we divide the winning number by total entries and take the remainder as the winner’s position. ' +
+      'Example (from image above): 9293 (winning number) with 100 entries → remainder 93, so the <b>93rd entry</b> wins. Always guarantees a winner.\n\n' +
+      '🪑 <b>What is Position?</b>\n' +
+      'Think of position like seats in a row. The first entry is seat 1, the second entry is seat 2, and so on. ' +
+      'If modulo gives us 93, it simply means the person sitting in seat 93 wins.\n\n' +
+      '💡 <b>Strategy Tip</b>: Spread your entries across different positions. This gives you more coverage and better chances if modulo decides the winner.\n\n' +
+      '✅ <b>Transparency</b>: Anyone can verify the winning number at btcscan.org.\n',
+    parse_mode: "HTML",
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "🔙 Back", callback_data: "start_over" }]
+      ]
+    }
+  });
+});
 
 bot.action('how_it_works', async (ctx) => {
   await ctx.answerCbQuery();
@@ -94,6 +121,7 @@ bot.action('how_it_works', async (ctx) => {
     }
   });
 });
+
 
 
 
