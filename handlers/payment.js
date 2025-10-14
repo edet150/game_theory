@@ -471,35 +471,36 @@ const summaryMessage = `
 
 ◎ *Entry time:* ${new Date(summary_data.entry_time).toLocaleString()}
 ◎ *Lottery Week:* ${lottery_week_number}
-◎ *Status:* Confirmed and paid
+◎ *Status:* Confirmed and paid.
+◎ *How It Works:* You can win with your number or position click /how_it_works to see more.
 
-> 💡 *Remember: The Raffle Draw takes place on 19th October, 2025 at 6:00 PM*
+ 💡 *Remember: The Raffle Draw takes place on 26th October, 2025 at 6:00 PM*
 `;
   await bot.telegram.sendMessage(telegram_id, summaryMessage, { parse_mode: 'markdown' });
-  await bot.telegram.sendMessage(
+await bot.telegram.sendMessage(
   telegram_id,
-  `🟢 Successful! Your ${quantity} entries in the <b>${pool.name}</b> Draw for week <b>${lottery_week_number}</b> have been confirmed. 🎉
-  
-📍 <b>Your Entry Positions:</b> ${positionsText}
+  `💰 <b>Earn 10% Commission for 3 Months!</b>
 
-💸 <b>Want Free Entries?</b> Invite your friends!  
-Each successful referral gives you bonus entries.  
+Invite friends to play and earn <b>10%</b> of whatever they spend — automatically, every time! 🔥  
 
-⚠️ <i><b>Important:</b> Set up your bank details so we can pay you instantly if you win!</i>
+Turn your network into <b>passive income</b> 💸  
+No stress, no waiting - just steady earnings while others play.  
 
-🎯 <b>Tip:</b> The more entries you have, the better your odds! 🚀`,
+⚡ <b>Start now</b> — get your referral link and begin earning today! 🏆`,
+
   {
     parse_mode: "HTML",
     reply_markup: {
       inline_keyboard: [
-        [{ text: "💰 Refer Friends (Get Free Entries)", callback_data: "referral_dashboard" }],
-        [{ text: "➕ Buy More Entries", callback_data: "start_over" }],
-        [{ text: "🏦 Setup Bank Account", callback_data: "bank_setup" }],
-        [{ text: "ℹ️ How This Raffle Works", callback_data: "how_it_works" }]
+        [{ text: "💸 Get My Referral Link", callback_data: "refer_and_earn" }],
+        // [{ text: "📊 My Referrals", callback_data: "referral_dashboard" }],
+        [{ text: "🏦 Setup Payouts", callback_data: "bank_setup" }],
+        [{ text: "ℹ️ How It Works", callback_data: "how_it_works" }]
       ]
     }
   }
 );
+
 
 
     } catch (error) {

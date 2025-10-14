@@ -176,7 +176,7 @@ bot.command('destroy', async (ctx) => {
     const introMsg = await messageManager.sendAndTrack(
       ctx,
       `💸 <b>Welcome to the Refer & Earn Program!</b>\n\n` +
-      `Invite your friends to join and earn commissions every time they participate.\n\n` +
+      `Invite your friends to join and earn 10% commission every time they participate.\n\n` +
       `Here’s what you can do:\n` +
       `• 📊 Track your earnings\n` +
       `• 👥 View your referrals\n` +
@@ -227,7 +227,7 @@ bot.action('refer_and_earn', async (ctx) => {
     const introMsg = await messageManager.sendAndTrack(
       ctx,
       `💸 <b>Welcome to the Refer & Earn Program!</b>\n\n` +
-      `Invite your friends to join and earn commissions every time they participate.\n\n` +
+      `Invite your friends to join and earn 10% commission every time they participate.\n\n` +
       `Here’s what you can do:\n` +
       `• 📊 Track your earnings\n` +
       `• 👥 View your referrals\n` +
@@ -273,7 +273,7 @@ bot.action('open_partner_dashboard', async (ctx) => {
     // Withdraw commission handler
 bot.action('partner_withdraw', async (ctx) => {
   try {
-    await ctx.answerCbQuery();
+    // await ctx.answerCbQuery('');
     const telegramId = ctx.from.id;
 
     // Cleanup previous messages but keep dashboard
@@ -291,9 +291,9 @@ bot.action('partner_withdraw', async (ctx) => {
     }
 
     const commission = Number(user.partner_commission) || 0;
-
-    // 🏦 Check if user has bank setup and verified
-    if (!user.bank_account_number || user.bank_verified !== 1) {
+if (!user.bank_account_number && user.bank_verified !== 1) {
+     console.log(user.bank_account_number )
+        console.log(user.bank_verified )
       const msg = await messageManager.sendAndTrack(
         ctx,
         `🏦 You need to set up your bank account before withdrawing.\n\n` +
@@ -301,17 +301,17 @@ bot.action('partner_withdraw', async (ctx) => {
       );
       ctx.session.withdrawConfirmId = msg.message_id;
       return;
-    }
+}
 
     if (commission <= 0) {
-      await ctx.answerCbQuery('❌ No commission available to withdraw.');
+      await ctx.answerCbQuery(`❌ No commission available to withdraw.`);
       return;
     }
 
     // 🔍 Check withdrawal threshold
-    if (commission > 5000) {
-      await ctx.answerCbQuery(`⚠️ Withdrawal amount ₦${commission.toLocaleString()} requires admin approval.`);
-      return;
+    if (commission > 1 && commission < 5000) {
+    await ctx.answerCbQuery(`⚠️ Withdrawal amount must be up to ₦5000.`);
+    return;
     }
 
     // ✅ Ask for confirmation
@@ -331,7 +331,8 @@ bot.action('partner_withdraw', async (ctx) => {
           ]
         }
       }
-    );
+      );
+      console.log(msg)
     ctx.session.withdrawConfirmId = msg.message_id;
 
   } catch (error) {
