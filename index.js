@@ -37,7 +37,7 @@ const { bot: bot2 } = createBot(process.env.TELEGRAM_BOT_TOKEN2);
 // bot2.launch();
 
 const { bot: partnerBot } = createBot(process.env.TELEGRAM_PARTNER_Bot);
-// partnerBot.launch();
+partnerBot.launch();
 
 const bot = getbotInstance();
 const redis = getRedisClient();
@@ -61,7 +61,7 @@ const redis = getRedisClient();
 setTimeout(function () {
   giveawayHandler(bot2);
   giveawayAdminHandler(bot2);
-  // partnerHandler(partnerBot);
+  partnerHandler(partnerBot);
 }, 3000)
 // Register handlers
   const bankSetupState = new Map();
