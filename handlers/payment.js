@@ -102,6 +102,103 @@ async function updatePartnerCommission(userId, entryAmount, transaction = null) 
         console.error(error.stack);
     }
 }
+async function updatePartnerFlatCommission(userId, entryAmount, transaction = null) {
+    try {
+        console.log('🔍 [updatePartnerFlatCommission] STARTING - userId:', userId, 'entryAmount:', entryAmount);
+
+        // 1️⃣ Fetch the user who made the transaction
+        const referredUser = await User.findOne({
+            where: { id: userId },
+            transaction
+        });
+
+        if (!referredUser) {
+            console.log('⚠️ [updatePartnerFlatCommission] User not found:', userId);
+            return;
+        }
+
+        console.log('👤 [updatePartnerFlatCommission] User found:', referredUser.id, 'Referred by:', referredUser.referred_by);
+
+        // 2️⃣ Check if this user was referred by someone
+        if (!referredUser.referred_by) {
+            console.log('ℹ️ [updatePartnerFlatCommission] User was not referred by anyone.');
+            return;
+        }
+
+        // 3️⃣ Check if this is the first transaction
+        const previousTransactions = await Entry.count({
+            where: { user_id: referredUser.id },
+            transaction
+        });
+
+        if (previousTransactions > 1) {
+            console.log('ℹ️ [updatePartnerFlatCommission] Not first transaction — no commission applied.');
+            return;
+        }
+
+        // 4️⃣ Fetch the referrer
+        const referrer = await User.findOne({
+            where: { id: referredUser.referred_by },
+            transaction
+        });
+
+        if (!referrer) {
+            console.log('⚠️ [updatePartnerFlatCommission] Referrer not found:', referredUser.referred_by);
+            return;
+        }
+
+        console.log('✅ [updatePartnerFlatCommission] Referrer found:', referrer.id);
+
+        // 5️⃣ Flat commission logic
+        const commission = 500;
+
+        // 6️⃣ Update referrer’s commission
+        await User.increment('partner_commission', {
+            by: commission,
+            where: { id: referrer.id },
+            transaction
+        });
+
+        // 7️⃣ Set partner start date if applicable
+        if (referrer.partner && !referrer.partner_start_date) {
+            await User.update(
+                { partner_start_date: new Date() },
+                { where: { id: referrer.id }, transaction }
+            );
+        }
+
+        // 8️⃣ Send Telegram notification
+        if (referrer.telegram_id) {
+            try {
+                await bot.telegram.sendMessage(
+                    referrer.telegram_id,
+                    `🎉 Commission earned!\n\n` +
+                    `Your referral just made their *first purchase* worth ₦${entryAmount}\n` +
+                    `💰 You’ve earned a flat ₦${commission} commission!\n` +
+                    `📊 Check your dashboard for details.`,
+                    {
+                        reply_markup: {
+                            inline_keyboard: [
+                                [{ text: "👥 Dashboard", callback_data: "open_partner_dashboard" }]
+                            ]
+                        }
+                    }
+                );
+                console.log('📱 [updatePartnerFlatCommission] Notification sent successfully to Telegram ID:', referrer.telegram_id);
+            } catch (notificationError) {
+                console.log('❌ [updatePartnerFlatCommission] Could not send Telegram notification:', notificationError.message);
+            }
+        } else {
+            console.log('ℹ️ [updatePartnerFlatCommission] Referrer has no telegram_id, skipping notification.');
+        }
+
+        console.log(`✅ [updatePartnerFlatCommission] SUCCESS - ₦${commission} added to user ${referrer.id}`);
+
+    } catch (error) {
+        console.error('❌ [updatePartnerFlatCommission] ERROR:', error.message);
+        console.error(error.stack);
+    }
+}
 
 
 
@@ -414,7 +511,7 @@ async function handleSuccessfulPayment(bot, paystackTransaction) {
 
         // Referral + Partner
         await awardReferralBonusIfFirstPurchase(user.id, quantity, paymentRecord.id, bot, t);
-        await updatePartnerCommission(user.id, amount / 100, t);
+        await updatePartnerFlatCommission(user.id, amount / 100, t);
 
         // ✅ Now safely get user entry positions WITHIN the same transaction
         console.log('🔍 [handleSuccessfulPayment] Calling getUserEntryPositions with:', {

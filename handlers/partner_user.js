@@ -176,7 +176,7 @@ bot.command('destroy', async (ctx) => {
     const introMsg = await messageManager.sendAndTrack(
       ctx,
       `💸 <b>Welcome to the Refer & Earn Program!</b>\n\n` +
-      `Invite your friends to join and earn 10% commission every time they participate.\n\n` +
+      `Invite your friends to join and earn a ₦500 commission when they make their first purchase.\n\n` +
       `Here’s what you can do:\n` +
       `• 📊 Track your earnings\n` +
       `• 👥 View your referrals\n` +
@@ -227,7 +227,7 @@ bot.action('refer_and_earn', async (ctx) => {
     const introMsg = await messageManager.sendAndTrack(
       ctx,
       `💸 <b>Welcome to the Refer & Earn Program!</b>\n\n` +
-      `Invite your friends to join and earn 10% commission every time they participate.\n\n` +
+      `Invite your friends to join and earn a ₦500 commission when they make their first purchase.\n\n` +
       `Here’s what you can do:\n` +
       `• 📊 Track your earnings\n` +
       `• 👥 View your referrals\n` +
