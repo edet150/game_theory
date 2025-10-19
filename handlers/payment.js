@@ -575,14 +575,14 @@ const summaryMessage = `
 `;
       
     // Send the GIF first
-    await ctx.replyWithAnimation({ source: './images/deposit.mp4' });
+    await ctx.replyWithAnimation({ source: '../images/deposit.mp4' });
 
     // Then send the confirmation message
     await ctx.telegram.sendMessage(telegram_id, summaryMessage, { parse_mode: 'Markdown' });
 
 await bot.telegram.sendMessage(
   telegram_id,
-  `💰 <b>Earn 10% Commission for 3 Months!</b>
+  `💰 <b>Earn ₦500 Commission for every referral</b>
 
 Invite friends to play and earn <b>10%</b> of whatever they spend - automatically, every time! 🔥  
 

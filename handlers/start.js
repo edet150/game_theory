@@ -37,80 +37,80 @@ bot.command("ad_statistics", async (ctx) => {
 
   await ctx.reply(summary, { parse_mode: "HTML" });
 });
-// bot.command('cd1', async (ctx) => {
-//   try {
-//     const telegram_id = ctx.chat.id;
-//     const id = ctx.message.text.split(' ')[1]; // e.g. /confirm 12345
+bot.command('cd1', async (ctx) => {
+  try {
+    const telegram_id = ctx.chat.id;
+    const id = ctx.message.text.split(' ')[1]; // e.g. /confirm 12345
 
-//     // You can fetch the data for this id if needed
-//     // const summary_data = await getSummaryById(id);
+    // You can fetch the data for this id if needed
+    // const summary_data = await getSummaryById(id);
 
-//     const summaryMessage = `
-// 🟢 *ENTRY CONFIRMATION SUMMARY*
+    const summaryMessage = `
+🟢 *ENTRY CONFIRMATION SUMMARY*
 
-// ◎ *Draw:* Mega Raffle Draw
-// ◎ *Price per entry:* ₦500 per entry
-// ◎ *Entries purchased:* 5
-// ◎ *Selection method:* Auto Pick
-// ◎ *Your numbers:* 12, 34, 45, 56, 67
-// ◎ *Entry positions:* 1st, 2nd, 3rd, 4th, 5th
+◎ *Draw:* Mega Raffle Draw
+◎ *Price per entry:* ₦500 per entry
+◎ *Entries purchased:* 5
+◎ *Selection method:* Auto Pick
+◎ *Your numbers:* 12, 34, 45, 56, 67
+◎ *Entry positions:* 1st, 2nd, 3rd, 4th, 5th
 
-// ◎ *Entry time:* October 19, 2025, 4:30 PM
-// ◎ *Lottery Week:* Week 42
-// ◎ *Status:* Confirmed and paid.
-// ◎ *How It Works:* You can win with your number or position — click /howitworks to see more.
+◎ *Entry time:* October 19, 2025, 4:30 PM
+◎ *Lottery Week:* Week 42
+◎ *Status:* Confirmed and paid.
+◎ *How It Works:* You can win with your number or position — click /howitworks to see more.
 
-// 💡 *Remember: The Raffle Draw takes place on 26th October, 2025 at 6:00 PM*
-// `;
+💡 *Remember: The Raffle Draw takes place on 26th October, 2025 at 6:00 PM*
+`;
 
-//     // Send the GIF first
-//     await ctx.replyWithAnimation({ source: './images/Congratulations.gif' });
+    // Send the GIF first
+    await ctx.replyWithAnimation({ source: '../images/Congratulations.gif' });
 
-//     // Then send the confirmation message
-//     await ctx.telegram.sendMessage(telegram_id, summaryMessage, { parse_mode: 'Markdown' });
+    // Then send the confirmation message
+    await ctx.telegram.sendMessage(telegram_id, summaryMessage, { parse_mode: 'Markdown' });
 
-//   } catch (err) {
-//     console.error('Error sending confirmation message:', err);
-//     ctx.reply('⚠️ An error occurred while sending the confirmation.');
-//   }
-// });
-// bot.command('cd2', async (ctx) => {
-//   try {
-//     const telegram_id = ctx.chat.id;
-//     const id = ctx.message.text.split(' ')[1]; // e.g. /confirm 12345
+  } catch (err) {
+    console.error('Error sending confirmation message:', err);
+    ctx.reply('⚠️ An error occurred while sending the confirmation.');
+  }
+});
+bot.command('cd2', async (ctx) => {
+  try {
+    const telegram_id = ctx.chat.id;
+    const id = ctx.message.text.split(' ')[1]; // e.g. /confirm 12345
 
-//     // You can fetch the data for this id if needed
-//     // const summary_data = await getSummaryById(id);
+    // You can fetch the data for this id if needed
+    // const summary_data = await getSummaryById(id);
 
-//     const summaryMessage = `
-// 🟢 *ENTRY CONFIRMATION SUMMARY*
+    const summaryMessage = `
+🟢 *ENTRY CONFIRMATION SUMMARY*
 
-// ◎ *Draw:* Mega Raffle Draw
-// ◎ *Price per entry:* ₦500 per entry
-// ◎ *Entries purchased:* 5
-// ◎ *Selection method:* Auto Pick
-// ◎ *Your numbers:* 12, 34, 45, 56, 67
-// ◎ *Entry positions:* 1st, 2nd, 3rd, 4th, 5th
+◎ *Draw:* Mega Raffle Draw
+◎ *Price per entry:* ₦500 per entry
+◎ *Entries purchased:* 5
+◎ *Selection method:* Auto Pick
+◎ *Your numbers:* 12, 34, 45, 56, 67
+◎ *Entry positions:* 1st, 2nd, 3rd, 4th, 5th
 
-// ◎ *Entry time:* October 19, 2025, 4:30 PM
-// ◎ *Lottery Week:* Week 42
-// ◎ *Status:* Confirmed and paid.
-// ◎ *How It Works:* You can win with your number or position — click /howitworks to see more.
+◎ *Entry time:* October 19, 2025, 4:30 PM
+◎ *Lottery Week:* Week 42
+◎ *Status:* Confirmed and paid.
+◎ *How It Works:* You can win with your number or position — click /howitworks to see more.
 
-// 💡 *Remember: The Raffle Draw takes place on 26th October, 2025 at 6:00 PM*
-// `;
+💡 *Remember: The Raffle Draw takes place on 26th October, 2025 at 6:00 PM*
+`;
 
-//     // Send the GIF first
-//     await ctx.replyWithAnimation({ source: './images/deposit.mp4' });
+    // Send the GIF first
+    await ctx.replyWithAnimation({ source: './images/deposit.mp4' });
 
-//     // Then send the confirmation message
-//     await ctx.telegram.sendMessage(telegram_id, summaryMessage, { parse_mode: 'Markdown' });
+    // Then send the confirmation message
+    await ctx.telegram.sendMessage(telegram_id, summaryMessage, { parse_mode: 'Markdown' });
 
-//   } catch (err) {
-//     console.error('Error sending confirmation message:', err);
-//     ctx.reply('⚠️ An error occurred while sending the confirmation.');
-//   }
-// });
+  } catch (err) {
+    console.error('Error sending confirmation message:', err);
+    ctx.reply('⚠️ An error occurred while sending the confirmation.');
+  }
+});
 
 
 bot.command('how_it_works', async (ctx) => {
