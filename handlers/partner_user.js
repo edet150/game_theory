@@ -150,7 +150,7 @@ bot.command('destroy', async (ctx) => {
     // 📣 Refer & Earn (Partner Dashboard) callback
     bot.command('refer_and_earn', async (ctx) => {
   try {
-    await ctx.answerCbQuery();
+  
     const telegramId = ctx.from.id;
 
     // 🧹 Clean up previous session messages
