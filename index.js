@@ -61,7 +61,7 @@ const redis = getRedisClient();
 setTimeout(function () {
   giveawayHandler(bot2);
   giveawayAdminHandler(bot2);
-  partnerHandler(partnerBot);
+  // partnerHandler(partnerBot);
 }, 3000)
 // Register handlers
   const bankSetupState = new Map();
