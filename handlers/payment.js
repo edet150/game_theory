@@ -575,7 +575,7 @@ const summaryMessage = `
 `;
       
     // Send the GIF first
-    await ctx.replyWithAnimation({ source: '../images/deposit.mp4' });
+    // await ctx.replyWithAnimation({ source: '../images/deposit.mp4' });
 
     // Then send the confirmation message
     await ctx.telegram.sendMessage(telegram_id, summaryMessage, { parse_mode: 'Markdown' });
@@ -584,10 +584,10 @@ await bot.telegram.sendMessage(
   telegram_id,
   `💰 <b>Earn ₦500 Commission for every referral</b>
 
-Invite friends to play and earn <b>10%</b> of whatever they spend - automatically, every time! 🔥  
+Invite friends to play and earn <b>₦500</b> when they purchase their entry ticket 🔥  
 
 Turn your network into <b>passive income</b> 💸  
-No stress, no waiting - just steady earnings while others play.  
+No stress, no waiting - just steady earnings.  
 
 ⚡ <b>Start now</b> — get your referral link and begin earning today! 🏆`,
 
