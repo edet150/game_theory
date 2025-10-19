@@ -476,7 +476,13 @@ const summaryMessage = `
 
  💡 *Remember: The Raffle Draw takes place on 26th October, 2025 at 6:00 PM*
 `;
-  await bot.telegram.sendMessage(telegram_id, summaryMessage, { parse_mode: 'markdown' });
+      
+    // Send the GIF first
+    await ctx.replyWithAnimation({ source: './images/deposit.mp4' });
+
+    // Then send the confirmation message
+    await ctx.telegram.sendMessage(telegram_id, summaryMessage, { parse_mode: 'Markdown' });
+
 await bot.telegram.sendMessage(
   telegram_id,
   `💰 <b>Earn 10% Commission for 3 Months!</b>
