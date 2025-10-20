@@ -271,75 +271,190 @@ bot.action('open_partner_dashboard', async (ctx) => {
 
 
     // Withdraw commission handler
-bot.action('partner_withdraw', async (ctx) => {
-  try {
-    // await ctx.answerCbQuery('');
-    const telegramId = ctx.from.id;
+    // bot.action('partner_withdraw', async (ctx) => {
+    //   try {
+    //     // await ctx.answerCbQuery('');
+    //     const telegramId = ctx.from.id;
 
-    // Cleanup previous messages but keep dashboard
-    await cleanupSessionMessages(ctx, [
-      'withdrawConfirmId',
-      'partnerTransactionsId'
-    ]);
+    //     // Cleanup previous messages but keep dashboard
+    //     await cleanupSessionMessages(ctx, [
+    //       'withdrawConfirmId',
+    //       'partnerTransactionsId'
+    //     ]);
 
-    const user = await User.findOne({ where: { telegram_id: telegramId } });
+    //     const user = await User.findOne({ where: { telegram_id: telegramId } });
 
-    if (!user) {
-      const msg = await messageManager.sendAndTrack(ctx, '❌ Partner not found.');
-      ctx.session.withdrawConfirmId = msg.message_id;
-      return;
-    }
+    //     if (!user) {
+    //       const msg = await messageManager.sendAndTrack(ctx, '❌ Partner not found.');
+    //       ctx.session.withdrawConfirmId = msg.message_id;
+    //       return;
+    //     }
 
-    const commission = Number(user.partner_commission) || 0;
-if (!user.bank_account_number && user.bank_verified !== 1) {
-     console.log(user.bank_account_number )
-        console.log(user.bank_verified )
-      const msg = await messageManager.sendAndTrack(
-        ctx,
-        `🏦 You need to set up your bank account before withdrawing.\n\n` +
-        `👉 Click /bank_setup to add and verify your account.`
-      );
-      ctx.session.withdrawConfirmId = msg.message_id;
-      return;
-}
+    //     const commission = Number(user.partner_commission) || 0;
+    // if (!user.bank_account_number && user.bank_verified !== 1) {
+    //      console.log(user.bank_account_number )
+    //         console.log(user.bank_verified )
+    //       const msg = await messageManager.sendAndTrack(
+    //         ctx,
+    //         `🏦 You need to set up your bank account before withdrawing.\n\n` +
+    //         `👉 Click /bank_setup to add and verify your account.`
+    //       );
+    //       ctx.session.withdrawConfirmId = msg.message_id;
+    //       return;
+    // }
 
-    if (commission <= 0) {
-      await ctx.answerCbQuery(`❌ No commission available to withdraw.`);
-      return;
-    }
+    //     if (commission <= 0) {
+    //       await ctx.answerCbQuery(`❌ No commission available to withdraw.`);
+    //       return;
+    //     }
 
-    // 🔍 Check withdrawal threshold
-    if (commission > 1 && commission < 5000) {
-    await ctx.answerCbQuery(`⚠️ Withdrawal amount must be up to ₦5000.`);
-    return;
-    }
+    //     // 🔍 Check withdrawal threshold
+    //     if (commission > 1 && commission < 5000) {
+    //     await ctx.answerCbQuery(`⚠️ Withdrawal amount must be up to ₦5000.`);
+    //     return;
+    //     }
 
-    // ✅ Ask for confirmation
-    const msg = await messageManager.sendAndTrack(
-      ctx,
-      `⚠️ *Withdrawal Confirmation*\n\n` +
-      `You are about to withdraw: *₦${commission.toLocaleString()}*\n\n` +
-      `Are you sure you want to proceed?`,
-      {
-        parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: '✅ Yes, Withdraw', callback_data: 'confirm_withdraw' },
-              { text: '❌ Cancel', callback_data: 'partner_dashboard' }
-            ]
-          ]
+    //     // ✅ Ask for confirmation
+    //     const msg = await messageManager.sendAndTrack(
+    //       ctx,
+    //       `⚠️ *Withdrawal Confirmation*\n\n` +
+    //       `You are about to withdraw: *₦${commission.toLocaleString()}*\n\n` +
+    //       `Are you sure you want to proceed?`,
+    //       {
+    //         parse_mode: 'Markdown',
+    //         reply_markup: {
+    //           inline_keyboard: [
+    //             [
+    //               { text: '✅ Yes, Withdraw', callback_data: 'confirm_withdraw' },
+    //               { text: '❌ Cancel', callback_data: 'partner_dashboard' }
+    //             ]
+    //           ]
+    //         }
+    //       }
+    //       );
+    //       console.log(msg)
+    //     ctx.session.withdrawConfirmId = msg.message_id;
+
+    //   } catch (error) {
+    //     console.error('Withdraw error:', error);
+    //     await ctx.answerCbQuery('❌ Withdrawal error');
+    //   }
+    // });
+  
+    bot.action('partner_withdraw', async (ctx) => {
+      try {
+        const telegramId = ctx.from.id;
+
+        // 🧹 Cleanup previous session messages
+        await cleanupSessionMessages(ctx, [
+          'withdrawConfirmId',
+          'partnerTransactionsId'
+        ]);
+
+        // 🔍 Find user
+        const user = await User.findOne({ where: { telegram_id: telegramId } });
+        if (!user) {
+          const msg = await messageManager.sendAndTrack(ctx, '❌ Partner not found.');
+          ctx.session.withdrawConfirmId = msg.message_id;
+          return;
         }
-      }
-      );
-      console.log(msg)
-    ctx.session.withdrawConfirmId = msg.message_id;
 
-  } catch (error) {
-    console.error('Withdraw error:', error);
-    await ctx.answerCbQuery('❌ Withdrawal error');
-  }
-});
+        const commission = Number(user.partner_commission) || 0;
+
+        // 🏦 Check if bank is set up
+        if (!user.bank_account_number || user.bank_verified !== 1) {
+          const msg = await messageManager.sendAndTrack(
+            ctx,
+            `🏦 You need to set up your bank account before withdrawing.\n\n` +
+            `👉 Click /bank_setup to add and verify your account.`
+          );
+          ctx.session.withdrawConfirmId = msg.message_id;
+          return;
+        }
+
+        // 💸 Check if user has any commission
+        if (commission <= 0) {
+          await ctx.answerCbQuery(`❌ No commission available to withdraw.`);
+          return;
+        }
+
+        // ⚙️ Withdrawal threshold
+        if (commission > 1 && commission < 5000) {
+          await ctx.answerCbQuery(`⚠️ Withdrawal amount must be up to ₦5000.`);
+          return;
+        }
+
+        // 📅 Get current week
+        const today = new Date();
+        const currentWeek = await Week.findOne({
+          where: {
+            starts_at: { [Op.lte]: today },
+            ends_at: { [Op.gte]: today }
+          }
+        });
+
+        if (!currentWeek) {
+          const msg = await messageManager.sendAndTrack(ctx, '⚠️ No current week found.');
+          ctx.session.withdrawConfirmId = msg.message_id;
+          return;
+        }
+
+        // 🎟️ Check if user has ever made any entry (active player)
+        const totalEntries = await Entry.count({ where: { user_id: user.id } });
+        if (totalEntries === 0) {
+          const msg = await messageManager.sendAndTrack(
+            ctx,
+            `🚫 You need to be an active player before withdrawing commissions.\n\n` +
+            `🎟️ Purchase at least one raffle entry to become eligible.`
+          );
+          ctx.session.withdrawConfirmId = msg.message_id;
+          return;
+        }
+
+        // 🎯 Check if user has entry in the *current week*
+        const currentWeekEntries = await Entry.count({
+          where: {
+            user_id: user.id,
+            lottery_week_id: currentWeek.id
+          }
+        });
+
+        if (currentWeekEntries === 0) {
+          const msg = await messageManager.sendAndTrack(
+            ctx,
+            `⏳ You can only withdraw after participating in the *current week's draw.*\n\n` +
+            `🎯 Make an entry in this week's raffle to activate withdrawal access.`
+          );
+          ctx.session.withdrawConfirmId = msg.message_id;
+          return;
+        }
+
+        // ✅ All checks passed — ask for withdrawal confirmation
+        const msg = await messageManager.sendAndTrack(
+          ctx,
+          `⚠️ *Withdrawal Confirmation*\n\n` +
+          `You are about to withdraw: *₦${commission.toLocaleString()}*\n\n` +
+          `Are you sure you want to proceed?`,
+          {
+            parse_mode: 'Markdown',
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  { text: '✅ Yes, Withdraw', callback_data: 'confirm_withdraw' },
+                  { text: '❌ Cancel', callback_data: 'partner_dashboard' }
+                ]
+              ]
+            }
+          }
+        );
+
+        ctx.session.withdrawConfirmId = msg.message_id;
+
+      } catch (error) {
+        console.error('Withdraw error:', error);
+        await ctx.answerCbQuery('❌ Withdrawal error');
+      }
+    });
 
 
 

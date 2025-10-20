@@ -469,7 +469,7 @@ async function handleSuccessfulPayment0(bot, paystackTransaction) {
         const lotteryWeek = await Week.findByPk(lottery_week_id, { transaction: t });
 
         if (!user || !pool || !lotteryWeek) {
-            throw new Error(`User, Pool, or Lottery Week not found`);
+            throw new Error(`User, Pool, or Raffle Week not found`);
         }
 
         // Avoid duplicate processing
@@ -567,7 +567,7 @@ const summaryMessage = `
 ◎ *Entry positions:* ${positionsText}
 
 ◎ *Entry time:* ${new Date(summary_data.entry_time).toLocaleString()}
-◎ *Lottery Week:* ${lottery_week_number}
+◎ *Raffle Week:* ${lottery_week_number}
 ◎ *Status:* Confirmed and paid.
 ◎ *How It Works:* You can win with your number or position click /howitworks to see more.
 
@@ -651,7 +651,7 @@ async function handleSuccessfulPayment(bot, paystackTransaction) {
     const lotteryWeek = await Week.findByPk(lottery_week_id, { transaction: t });
 
     if (!user || !pool || !lotteryWeek) {
-      throw new Error(`User, Pool, or Lottery Week not found`);
+      throw new Error(`User, Pool, or Raffle Week not found`);
     }
 
     // Avoid duplicate processing
@@ -741,7 +741,7 @@ async function handleSuccessfulPayment(bot, paystackTransaction) {
 ◎ *Entry positions:* ${positionsText}
 
 ◎ *Entry time:* ${new Date(summary_data.entry_time).toLocaleString()}
-◎ *Lottery Week:* ${lottery_week_number}
+◎ *Raffle Week:* ${lottery_week_number}
 ◎ *Status:* Confirmed and paid.
 ◎ *How It Works:* You can win with your number or position — click /howitworks to see more.
 

@@ -56,7 +56,7 @@ bot.command('cd1', async (ctx) => {
 ◎ *Entry positions:* 1st, 2nd, 3rd, 4th, 5th
 
 ◎ *Entry time:* October 19, 2025, 4:30 PM
-◎ *Lottery Week:* Week 42
+◎ *Raffle Week:* Week 42
 ◎ *Status:* Confirmed and paid.
 ◎ *How It Works:* You can win with your number or position — click /howitworks to see more.
 
@@ -93,7 +93,7 @@ bot.command('cd2', async (ctx) => {
 ◎ *Entry positions:* 1st, 2nd, 3rd, 4th, 5th
 
 ◎ *Entry time:* October 19, 2025, 4:30 PM
-◎ *Lottery Week:* Week 42
+◎ *Raffle Week:* Week 42
 ◎ *Status:* Confirmed and paid.
 ◎ *How It Works:* You can win with your number or position — click /howitworks to see more.
 
