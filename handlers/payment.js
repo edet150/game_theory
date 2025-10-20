@@ -444,7 +444,7 @@ async function getUserEntryPositions(userId, poolId, weekCode, selectedNumbers, 
 }
 
 
-async function handleSuccessfulPayment(bot, paystackTransaction) {
+async function handleSuccessfulPayment0(bot, paystackTransaction) {
     const t = await sequelize.transaction();
 
     try {
@@ -511,7 +511,7 @@ async function handleSuccessfulPayment(bot, paystackTransaction) {
 
         // Referral + Partner
         await awardReferralBonusIfFirstPurchase(user.id, quantity, paymentRecord.id, bot, t);
-        await updatePartnerFlatCommission(user.id, amount / 100, t);
+        // await updatePartnerFlatCommission(user.id, amount / 100, t);
 
         // ✅ Now safely get user entry positions WITHIN the same transaction
         console.log('🔍 [handleSuccessfulPayment] Calling getUserEntryPositions with:', {
@@ -575,7 +575,7 @@ const summaryMessage = `
 `;
       
     // Send the GIF first
-    // await ctx.replyWithAnimation({ source: '../images/deposit.mp4' });
+    await ctx.replyWithAnimation({ source: './images/deposit.mp4' });
 
     // Then send the confirmation message
     await ctx.telegram.sendMessage(telegram_id, summaryMessage, { parse_mode: 'Markdown' });
@@ -620,6 +620,232 @@ No stress, no waiting - just steady earnings.
     }
 }
 
+// ===========================
+// ✅ handleSuccessfulPayment()
+// ===========================
+async function handleSuccessfulPayment(bot, paystackTransaction) {
+  const t = await sequelize.transaction();
+  let telegram_id = null; // in case of failure
+
+  try {
+    const { id, reference, amount, metadata, status } = paystackTransaction;
+
+    const { 
+      telegram_id: tgId, 
+      user_id, 
+      pool_id, 
+      quantity, 
+      assignmentMethod, 
+      selectedNumbers,
+      lottery_week_id,
+      lottery_week_number,
+      lottery_week_name,
+      lottery_week_code,
+      summary_data
+    } = metadata;
+
+    telegram_id = tgId;
+
+    const user = await User.findByPk(user_id, { transaction: t });
+    const pool = await RafflePool.findByPk(pool_id, { transaction: t });
+    const lotteryWeek = await Week.findByPk(lottery_week_id, { transaction: t });
+
+    if (!user || !pool || !lotteryWeek) {
+      throw new Error(`User, Pool, or Lottery Week not found`);
+    }
+
+    // Avoid duplicate processing
+    const existingPayment = await Payment.findOne({
+      where: { paystack_transaction_id: id },
+      transaction: t
+    });
+    if (existingPayment) {
+      console.log(`Payment with transaction ID ${id} already processed. Skipping.`);
+      await t.commit();
+      return;
+    }
+
+    // Create payment record
+    const paymentRecord = await Payment.create({
+      user_id: user.id,
+      pool_id: pool.id,
+      lottery_week_id: lotteryWeek.id,
+      paystack_transaction_id: id,
+      paystack_reference: reference,
+      amount: amount / 100,
+      status,
+      quantity
+    }, { transaction: t });
+
+    // Create entries
+    const result = await finalizeEntries(
+      user.id,
+      pool.id,
+      selectedNumbers,
+      lottery_week_code,
+      lottery_week_name,
+      id,
+      false,
+      t
+    );
+
+    if (!result.success) throw new Error(`Failed to create entries: ${result.message}`);
+
+    // Referral or Partner Bonus
+    await awardReferralBonusIfFirstPurchase(user.id, quantity, paymentRecord.id, bot, t);
+    await updatePartnerFlatCommission(user.id, amount / 100, t);
+
+    // Get entry positions
+    const userEntryPositions = await getUserEntryPositions(
+      user.id,
+      pool.id,
+      lottery_week_code,
+      selectedNumbers,
+      t
+    );
+
+    console.log('📊 [handleSuccessfulPayment] Positions result:', userEntryPositions);
+
+    // ✅ Commit before running anything else (Telegram, Redis)
+    await t.commit();
+
+    // ---- POST-COMMIT SECTION ----
+    const entryData = {
+      numbers: selectedNumbers,
+      poolId: pool.id,
+      poolName: pool.name,
+      method: summary_data.method_name,
+      quantity: summary_data.quantity,
+      lottery_week_id: lotteryWeek.id,
+      lottery_week_number: lotteryWeek.week_number,
+      payment_reference: reference,
+      payment_amount: amount / 100,
+    };
+
+    await redisService.addFinalizedEntry(telegram_id, entryData);
+    console.log(`✅ Processed transaction ${id}, entries created.`);
+
+    // ---- Telegram Confirmation ----
+    const positionsText = userEntryPositions.length
+      ? userEntryPositions.map(e => `#${e.entry_number} (Pos: ${e.position})`).join(', ')
+      : 'Pending update';
+
+    const summaryMessage = `
+🟢 *ENTRY CONFIRMATION SUMMARY*
+
+◎ *Draw:* ${summary_data.pool_name} Draw
+◎ *Price per entry:* ${formatUnitPrice(summary_data.unit_price)}
+◎ *Entries purchased:* ${summary_data.quantity}
+◎ *Selection method:* ${summary_data.method_name}
+◎ *Your numbers:* ${summary_data.numbers.join(', ')}
+◎ *Entry positions:* ${positionsText}
+
+◎ *Entry time:* ${new Date(summary_data.entry_time).toLocaleString()}
+◎ *Lottery Week:* ${lottery_week_number}
+◎ *Status:* Confirmed and paid.
+◎ *How It Works:* You can win with your number or position — click /howitworks to see more.
+
+💡 *Remember: The Raffle Draw takes place on 26th October, 2025 at 6:00 PM*
+`;
+
+    // Send GIF + Confirmation Message
+    await bot.telegram.sendAnimation(telegram_id, { source: './images/deposit.mp4' });
+    await bot.telegram.sendMessage(telegram_id, summaryMessage, { parse_mode: 'Markdown' });
+
+    // ---- Referral Promotion Message ----
+    await bot.telegram.sendMessage(
+      telegram_id,
+      `💰 <b>Earn ₦500 Commission for every referral</b>
+
+Invite friends to play and earn <b>₦500</b> when they purchase their entry ticket 🔥  
+
+Turn your network into <b>passive income</b> 💸  
+No stress, no waiting — just steady earnings.  
+
+⚡ <b>Start now</b> — get your referral link and begin earning today! 🏆`,
+      {
+        parse_mode: "HTML",
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "💸 Get My Referral Link", callback_data: "refer_and_earn" }],
+            [{ text: "🏦 Setup Payouts", callback_data: "bank_setup" }],
+            [{ text: "ℹ️ How It Works", callback_data: "how_it_works" }]
+          ]
+        }
+      }
+    );
+
+  } catch (error) {
+    // only rollback if still active
+    if (!t.finished) {
+      await t.rollback();
+    }
+
+    console.error("❌ Error handling successful payment:", error);
+
+    if (telegram_id) {
+      await bot.telegram.sendMessage(
+        telegram_id,
+        "❌ An error occurred while processing your payment. Please contact support."
+      );
+    }
+  }
+}
+
+
+
+
+
+
+// ===========================
+// ✅ checkPaystackTransactions()
+// ===========================
+async function checkPaystackTransactions() {
+  console.log(`[Cron] Checking for new Paystack transactions...`);
+  
+  const now = Date.now();
+  const oneMinuteAgo = now - 3600000; // 1 hour
+
+  try {
+    const fromDateISO = new Date(oneMinuteAgo).toISOString();
+    const toDateISO = new Date(now).toISOString();
+
+    const response = await axios.get('https://api.paystack.co/transaction', {
+      headers: {
+        Authorization: `Bearer ${process.env.PAYSTACK_SEC_TEST}`,
+      },
+      params: {
+        from: fromDateISO,
+        to: toDateISO,
+        status: 'success',
+      },
+    });
+
+    const transactions = response.data.data || [];
+    console.log(`[Cron] Found ${transactions.length} transactions in the last hour.`);
+
+    for (const transaction of transactions) {
+      const isProcessed = await redisClient.sismember(PAYSTACK_TRANSACTION_KEY, transaction.id);
+
+      if (!isProcessed) {
+        console.log(`[Cron] Processing new transaction: ${transaction.id}`);
+
+        try {
+          await handleSuccessfulPayment(bot, transaction);
+          await redisClient.sadd(PAYSTACK_TRANSACTION_KEY, transaction.id);
+        } catch (err) {
+          console.error(`[Cron] Error processing transaction ${transaction.id}:`, err.message);
+        }
+
+      } else {
+        console.log(`[Cron] Transaction ${transaction.id} already processed, skipping.`);
+      }
+    }
+
+  } catch (error) {
+    console.error('[Cron] Error fetching transactions from Paystack:', error.response?.data || error.message);
+  }
+}
 
 
 // ----------------- Utility -----------------

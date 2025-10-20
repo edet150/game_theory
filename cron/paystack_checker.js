@@ -35,7 +35,7 @@ const PAYSTACK_TRANSACTION_KEY = 'processed_paystack_transactions';
 let lastCheckTimestamp = Date.now(); // Initialize the timestamp
 const bot = getbotInstance();
 
-async function checkPaystackTransactions() {
+async function checkPaystackTransaction0() {
     console.log(`[Cron] Checking for new Paystack transactions...`);
     
     const now = Date.now();
@@ -81,6 +81,52 @@ async function checkPaystackTransactions() {
     } catch (error) {
         console.error('[Cron] Error fetching transactions from Paystack:', error.response?.data || error.message);
     }
+}
+async function checkPaystackTransactions() {
+  console.log(`[Cron] Checking for new Paystack transactions...`);
+  
+  const now = Date.now();
+  const oneMinuteAgo = now - 3600000; // 1 hour
+
+  try {
+    const fromDateISO = new Date(oneMinuteAgo).toISOString();
+    const toDateISO = new Date(now).toISOString();
+
+    const response = await axios.get('https://api.paystack.co/transaction', {
+      headers: {
+        Authorization: `Bearer ${process.env.PAYSTACK_SEC_TEST}`,
+      },
+      params: {
+        from: fromDateISO,
+        to: toDateISO,
+        status: 'success',
+      },
+    });
+
+    const transactions = response.data.data || [];
+    console.log(`[Cron] Found ${transactions.length} transactions in the last hour.`);
+
+    for (const transaction of transactions) {
+      const isProcessed = await redisClient.sismember(PAYSTACK_TRANSACTION_KEY, transaction.id);
+
+      if (!isProcessed) {
+        console.log(`[Cron] Processing new transaction: ${transaction.id}`);
+
+        try {
+          await handleSuccessfulPayment(bot, transaction);
+          await redisClient.sadd(PAYSTACK_TRANSACTION_KEY, transaction.id);
+        } catch (err) {
+          console.error(`[Cron] Error processing transaction ${transaction.id}:`, err.message);
+        }
+
+      } else {
+        console.log(`[Cron] Transaction ${transaction.id} already processed, skipping.`);
+      }
+    }
+
+  } catch (error) {
+    console.error('[Cron] Error fetching transactions from Paystack:', error.response?.data || error.message);
+  }
 }
 
 // Schedule the function to run every 5 seconds
