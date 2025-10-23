@@ -582,14 +582,14 @@ const summaryMessage = `
 
 await bot.telegram.sendMessage(
   telegram_id,
-  `💰 <b>Earn ₦500 Commission for every referral</b>
+  `💰 <b>Earn 10% Commission on Every Referral!</b>
 
-Invite friends to play and earn <b>₦500</b> when they purchase their entry ticket 🔥  
+Invite friends to play and earn <b>10%</b> of their play amount every time they play - for 3 full months!  
 
 Turn your network into <b>passive income</b> 💸  
-No stress, no waiting - just steady earnings.  
+No stress, no waiting - just steady earnings rolling in.  
 
-⚡ <b>Start now</b> — get your referral link and begin earning today! 🏆`,
+⚡ <b>Start earning now</b> — grab your referral link and watch the commissions grow! 🏆`,
 
   {
     parse_mode: "HTML",
@@ -693,7 +693,7 @@ async function handleSuccessfulPayment(bot, paystackTransaction) {
 
     // Referral or Partner Bonus
     await awardReferralBonusIfFirstPurchase(user.id, quantity, paymentRecord.id, bot, t);
-    await updatePartnerFlatCommission(user.id, amount / 100, t);
+    await updatePartnerCommission(user.id, amount / 100, t);
 
     // Get entry positions
     const userEntryPositions = await getUserEntryPositions(
@@ -755,14 +755,14 @@ async function handleSuccessfulPayment(bot, paystackTransaction) {
     // ---- Referral Promotion Message ----
     await bot.telegram.sendMessage(
       telegram_id,
-      `💰 <b>Earn ₦500 Commission for every referral</b>
+      `💰 <b>Earn 10% Commission on Every Referral!</b>
 
-Invite friends to play and earn <b>₦500</b> when they purchase their entry ticket 🔥  
+Invite friends to play and earn <b>10%</b> of their play amount every time they play - for 3 full months!  
 
 Turn your network into <b>passive income</b> 💸  
-No stress, no waiting — just steady earnings.  
+No stress, no waiting - just steady earnings rolling in.  
 
-⚡ <b>Start now</b> — get your referral link and begin earning today! 🏆`,
+⚡ <b>Start earning now</b> — grab your referral link and watch the commissions grow! 🏆`,
       {
         parse_mode: "HTML",
         reply_markup: {

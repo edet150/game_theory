@@ -377,7 +377,7 @@ const welcomeMessage = await ctx.reply(welcomeText, {
         [{ text: '🎟 Single Draw – ₦200 for 1 entry', callback_data: `select_pool:Single` }],
         [{ text: '💰 Value Draw – ₦500 for 5 entries', callback_data: `select_pool:Value` }],
         [{ text: '🔥 Mega Draw – ₦1000 for 15 entries (Best Value!)', callback_data: `select_pool:Mega` }],
-         [{ text: '💸 Refer & Earn – Get ₦500 per referral', callback_data: `refer_and_earn` }]
+        [{ text: '💸 Refer & Earn – Get 10% per referral', callback_data: `refer_and_earn` }]
 
     ]
   }
@@ -448,7 +448,7 @@ const fallbackMessage = await ctx.reply(
         [{ text: '🎟 Single Draw – ₦200 for 1 entry', callback_data: `select_pool:Single` }],
         [{ text: '💰 Value Draw – ₦500 for 5 entries', callback_data: `select_pool:Value` }],
         [{ text: '🔥 Mega Draw – ₦1000 for 15 entries (Best Value!)', callback_data: `select_pool:Mega` }],
-        [{ text: '💸 Refer & Earn – Get ₦500 per referral', callback_data: `refer_and_earn` }]
+        [{ text: '💸 Refer & Earn – Get 10% per referral', callback_data: `refer_and_earn` }]
       ]
     }
   }
@@ -484,28 +484,35 @@ async function handleUserReferral(ctx) {
 
   console.log("📦 startParams =", startParams);
 
-  if (startParams) {
-    console.log('🌍 startParams =', startParams); // e.g. "ref_official_iso-ad-001"
+if (startParams) {
+  console.log('🌍 startParams =', startParams); // e.g. "ref_official_iso" or "ref_official_iso-ad-001"
 
-    // ✅ Extract referral code (between "ref_" and "-ad-")
+  // ✅ Extract referral code (everything after "ref_" until end or until "-ad-")
+  let referralCode = null;
+  adCode = null;
+
+  if (startParams.includes('-ad-')) {
+    // Format: ref_CODE-ad-ADCODE
     const refMatch = startParams.match(/ref_([\w-]+?)-ad-/);
-
-    // ✅ Extract ad code (after "-ad-")
     const adMatch = startParams.match(/-ad-([\w-]+)/);
-
-    const referralCode = refMatch ? refMatch[1] : null;
+    
+    referralCode = refMatch ? refMatch[1] : null;
     adCode = adMatch ? adMatch[1] : null;
-
-    console.log('🎯 Extracted referralCode =', referralCode);
-    console.log('🎯 Extracted adCode =', adCode);
-
-    // Find referrer if referral code exists
-    if (referralCode) {
-      referrer = await User.findOne({ where: { referral_code: referralCode } });
-      console.log('👤 Referrer found:', referrer ? referrer.telegram_username : 'NOT FOUND');
-    }
+  } else {
+    // Format: ref_CODE (no ad code)
+    const refMatch = startParams.match(/ref_([\w-]+)/);
+    referralCode = refMatch ? refMatch[1] : null;
   }
 
+  console.log('🎯 Extracted referralCode =', referralCode);
+  console.log('🎯 Extracted adCode =', adCode);
+
+  // Find referrer if referral code exists
+  if (referralCode) {
+    referrer = await User.findOne({ where: { referral_code: referralCode } });
+    console.log('👤 Referrer found:', referrer ? referrer.telegram_username : 'NOT FOUND');
+  }
+}
   const telegramId = ctx.from.id;
   const currentUsername = ctx.from.username || `user_${telegramId}`;
   const firstName = ctx.from.first_name || 'user';
