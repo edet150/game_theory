@@ -741,7 +741,7 @@ console.log(winningNumber)
     await safeAnswerCbQuery(ctx);
 
     if (!ctx.session?.isAdmin) {
-        await ctx.reply('❌ Please login as admin first using /admin');
+        await ctx.reply('❌ Please login as admin first using /admin_dadi');
         return;
     }
 
@@ -1103,7 +1103,7 @@ bot.action('admin_create_bonus', async (ctx) => {
         let message = `📋 *Daily Entries Report - ${currentDate}*\n\n`;
         message += `*Week:* ${currentWeek.week_name}\n`;
         // message += `*Total Participants:* ${users.length}\n`;
-        // message += `*Total Entries:* ${allEntries.length}\n`;
+        message += `*Total Entries:* ${allEntries.length}\n`;
         message += `*Winning Amount:* ₦ ${Number(winningAmount).toLocaleString() || 'Not yet set'}\n\n`;
         message += "━━━━━━━━━━━━━━━━━━━━\n\n";
 
@@ -1280,7 +1280,7 @@ bot.action('admin_create_bonus', async (ctx) => {
         message += `<b>Date:</b> ${currentDate}\n`;
         message += `<b>Week:</b> ${currentWeek.week_name}\n`;
         message += `<b>Winning Number (signal):</b> ${winningNumber}\n`;
-        // message += `<b>Total Entries This Week:</b> ${totalEntriesCount}\n`;
+        message += `<b>Total Entries This Week:</b> ${totalEntriesCount}\n`;
         if (winMethod === 'inverse match') {
         const inverseNumber = winningNumber.split('').reverse().join('');
         message += `<b>Inverse Number:</b> ${inverseNumber}\n`;
@@ -1432,7 +1432,7 @@ bot.action('admin_create_bonus', async (ctx) => {
     }
     
     async function sendToTelegramChannel(ctx, message) {
-    const CHANNEL_USERNAME = 'alpha_entry'; // Your channel username without @
+    const CHANNEL_USERNAME = process.env.CHANNEL_NAME; // Your channel username without @
     
     try {
         // Handle both string and array messages
@@ -1759,7 +1759,7 @@ bot.action('admin_create_bonus', async (ctx) => {
 
 // Helper function to send message to channel
 async function sendToTelegramChannel(ctx, message) {
-    const CHANNEL_USERNAME = 'alpha_entries'; // Your channel username without @
+    const CHANNEL_USERNAME = process.env.CHANNEL_NAME; // Your channel username without @
     
     try {
         // Split long messages (Telegram has a 4096 character limit per message)
