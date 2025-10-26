@@ -265,12 +265,22 @@ bot.action('how_it_works', async (ctx) => {
         {
           parse_mode: "HTML",
           disable_web_page_preview: true,
-          reply_markup: {
+             reply_markup: {
             inline_keyboard: [
-              [{ text: "📢 Join Channel", url: `https://t.me/${REQUIRED_CHANNEL.replace('@', '')}` }],
-              [{ text: "✅ Verify", callback_data: "verify_channel" }],
-            ],
-          },
+              [
+                {
+                  text: "📢 Join Channel",
+                  url: `https://t.me/${REQUIRED_CHANNEL.replace('@', '')}?attach`
+                }
+              ],
+              [
+                {
+                  text: "✅ Try again",
+                  callback_data: "verify_channel"
+                }
+              ]
+            ]
+          }
         }
       );
     }
@@ -374,7 +384,7 @@ const welcomeMessage = await ctx.reply(welcomeText, {
   parse_mode: 'HTML',
   reply_markup: {
     inline_keyboard: [
-        [{ text: '🎟 Single Draw – ₦200 for 1 entry', callback_data: `select_pool:Single` }],
+        // [{ text: '🎟 Single Draw – ₦200 for 1 entry', callback_data: `select_pool:Single` }],
         [{ text: '💰 Value Draw – ₦500 for 5 entries', callback_data: `select_pool:Value` }],
         [{ text: '🔥 Mega Draw – ₦1000 for 15 entries (Best Value!)', callback_data: `select_pool:Mega` }],
         // [{ text: '💸 Refer & Earn – Get 10% per referral', callback_data: `refer_and_earn` }]
@@ -445,7 +455,7 @@ const fallbackMessage = await ctx.reply(
     parse_mode: 'Markdown',
     reply_markup: {
       inline_keyboard: [
-        [{ text: '🎟 Single Draw – ₦200 for 1 entry', callback_data: `select_pool:Single` }],
+        // [{ text: '🎟 Single Draw – ₦200 for 1 entry', callback_data: `select_pool:Single` }],
         [{ text: '💰 Value Draw – ₦500 for 5 entries', callback_data: `select_pool:Value` }],
         [{ text: '🔥 Mega Draw – ₦1000 for 15 entries (Best Value!)', callback_data: `select_pool:Mega` }],
         // [{ text: '💸 Refer & Earn – Get 10% per referral', callback_data: `refer_and_earn` }]
@@ -603,16 +613,26 @@ bot.start(async (ctx) => {
         `◎ See total entries and prizes\n\n` +
         `<b>Steps:</b>\n` +
         `1️⃣ Click <b>Join Channel</b> and join the channel\n` +
-        `2️⃣ Return here and tap <b>✅ Verify</b> to continue.`,
+        `2️⃣ Return here and tap <b>✅ Try again</b> to continue.`,
         {
           parse_mode: "HTML",
-          disable_web_page_preview: true,
-          reply_markup: {
+          disable_web_page_preview: false,
+        reply_markup: {
             inline_keyboard: [
-              [{ text: "📢 Join Channel", url: `https://t.me/${REQUIRED_CHANNEL.replace('@', '')}` }],
-              [{ text: "✅ Verify", callback_data: "verify_channel" }],
-            ],
-          },
+              [
+                {
+                  text: "📢 Join Channel",
+                  url: `https://t.me/${REQUIRED_CHANNEL.replace('@', '')}?attach`
+                }
+              ],
+              [
+                {
+                  text: "✅ Try again",
+                  callback_data: "verify_channel"
+                }
+              ]
+            ]
+          }
         }
       );
 
@@ -643,7 +663,7 @@ bot.action("verify_channel", async (ctx) => {
         disable_web_page_preview: true,
         reply_markup: {
           inline_keyboard: [
-            [{ text: "📢 Join Channel", url: `https://t.me/${REQUIRED_CHANNEL.replace('@','')}` }],
+            [{ text: "📢 Join Channel", url: `https://t.me/+4RcBQwHYB3kwNWY8` }],
             [{ text: "Verify", callback_data: "verify_channel" }]
           ]
         }

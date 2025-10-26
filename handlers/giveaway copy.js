@@ -160,14 +160,25 @@ module.exports = (bot) => {
           disable_web_page_preview: true,
           reply_markup: {
             inline_keyboard: [
-              [{ text: "📢 Join Channel", url: `https://t.me/${REQUIRED_CHANNEL.replace('@','')}` }],
-              [{ text: "✅ Verify", callback_data: "verify_channel" }]
+              [
+                {
+                  text: "📢 Join Channel",
+                  url: `https://t.me/${REQUIRED_CHANNEL.replace('@', '')}?attach`
+                }
+              ],
+              [
+                {
+                  text: "✅ Try again",
+                  callback_data: "verify_channel"
+                }
+              ]
             ]
           }
         }
       );
       return;
     }
+
     
     // Check if user has bank details in giveaway table
     const hasBank = await hasBankDetails(userId);
