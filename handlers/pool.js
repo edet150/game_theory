@@ -30,7 +30,7 @@ bot.action(/^select_pool:(\w+)/, async (ctx) => {
   const isLocked = await redis.get('entries_locked');
   if (isLocked) {
     await ctx.answerCbQuery();
-    return await ctx.reply(`🔒 entries are currently locked, and will be open on launch day`);
+    return await ctx.reply(`🔒 entries are currently locked, and will be made open, from Monday morning`);
   }
   await ctx.answerCbQuery();
   const poolName = ctx.match[1];

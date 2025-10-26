@@ -413,7 +413,7 @@ async function getUserEntryPositions(userId, poolId, weekCode, selectedNumbers, 
                 status: 'paid'
             },
             attributes: ['entry_number', 'user_id'],
-            order: [['entry_number', 'ASC']],
+            order: [['id', 'ASC']],
             transaction
         });
 
@@ -580,29 +580,29 @@ const summaryMessage = `
     // Then send the confirmation message
     await ctx.telegram.sendMessage(telegram_id, summaryMessage, { parse_mode: 'Markdown' });
 
-await bot.telegram.sendMessage(
-  telegram_id,
-  `💰 <b>Earn 10% Commission on Every Referral!</b>
+// await bot.telegram.sendMessage(
+//   telegram_id,
+//   `💰 <b>Earn 10% Commission on Every Referral!</b>
 
-Invite friends to play and earn <b>10%</b> of their play amount every time they play - for 3 full months!  
+// Invite friends to play and earn <b>10%</b> of their play amount every time they play - for 3 full months!  
 
-Turn your network into <b>passive income</b> 💸  
-No stress, no waiting - just steady earnings rolling in.  
+// Turn your network into <b>passive income</b> 💸  
+// No stress, no waiting - just steady earnings rolling in.  
 
-⚡ <b>Start earning now</b> — grab your referral link and watch the commissions grow! 🏆`,
+// ⚡ <b>Start earning now</b> — grab your referral link and watch the commissions grow! 🏆`,
 
-  {
-    parse_mode: "HTML",
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "💸 Get My Referral Link", callback_data: "refer_and_earn" }],
-        // [{ text: "📊 My Referrals", callback_data: "referral_dashboard" }],
-        [{ text: "🏦 Setup Payouts", callback_data: "bank_setup" }],
-        [{ text: "ℹ️ How It Works", callback_data: "how_it_works" }]
-      ]
-    }
-  }
-);
+//   {
+//     parse_mode: "HTML",
+//     reply_markup: {
+//       inline_keyboard: [
+//         [{ text: "💸 Get My Referral Link", callback_data: "refer_and_earn" }],
+//         // [{ text: "📊 My Referrals", callback_data: "referral_dashboard" }],
+//         [{ text: "🏦 Setup Payouts", callback_data: "bank_setup" }],
+//         [{ text: "ℹ️ How It Works", callback_data: "how_it_works" }]
+//       ]
+//     }
+//   }
+// );
 
 
 
@@ -753,27 +753,27 @@ async function handleSuccessfulPayment(bot, paystackTransaction) {
     await bot.telegram.sendMessage(telegram_id, summaryMessage, { parse_mode: 'Markdown' });
 
     // ---- Referral Promotion Message ----
-    await bot.telegram.sendMessage(
-      telegram_id,
-      `💰 <b>Earn 10% Commission on Every Referral!</b>
+//     await bot.telegram.sendMessage(
+//       telegram_id,
+//       `💰 <b>Earn 10% Commission on Every Referral!</b>
 
-Invite friends to play and earn <b>10%</b> of their play amount every time they play - for 3 full months!  
+// Invite friends to play and earn <b>10%</b> of their play amount every time they play - for 3 full months!  
 
-Turn your network into <b>passive income</b> 💸  
-No stress, no waiting - just steady earnings rolling in.  
+// Turn your network into <b>passive income</b> 💸  
+// No stress, no waiting - just steady earnings rolling in.  
 
-⚡ <b>Start earning now</b> — grab your referral link and watch the commissions grow! 🏆`,
-      {
-        parse_mode: "HTML",
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: "💸 Get My Referral Link", callback_data: "refer_and_earn" }],
-            [{ text: "🏦 Setup Payouts", callback_data: "bank_setup" }],
-            [{ text: "ℹ️ How It Works", callback_data: "how_it_works" }]
-          ]
-        }
-      }
-    );
+// ⚡ <b>Start earning now</b> — grab your referral link and watch the commissions grow! 🏆`,
+//       {
+//         parse_mode: "HTML",
+//         reply_markup: {
+//           inline_keyboard: [
+//             [{ text: "💸 Get My Referral Link", callback_data: "refer_and_earn" }],
+//             [{ text: "🏦 Setup Payouts", callback_data: "bank_setup" }],
+//             [{ text: "ℹ️ How It Works", callback_data: "how_it_works" }]
+//           ]
+//         }
+//       }
+//     );
 
   } catch (error) {
     // only rollback if still active
