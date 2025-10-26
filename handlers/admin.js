@@ -1280,7 +1280,7 @@ bot.action('admin_create_bonus', async (ctx) => {
         message += `<b>Date:</b> ${currentDate}\n`;
         message += `<b>Week:</b> ${currentWeek.week_name}\n`;
         message += `<b>Winning Number (signal):</b> ${winningNumber}\n`;
-        message += `<b>Total Entries This Week:</b> ${totalEntriesCount}\n`;
+        // message += `<b>Total Entries This Week:</b> ${totalEntriesCount}\n`;
         if (winMethod === 'inverse match') {
         const inverseNumber = winningNumber.split('').reverse().join('');
         message += `<b>Inverse Number:</b> ${inverseNumber}\n`;
