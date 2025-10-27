@@ -375,7 +375,7 @@ bot.action('how_it_works', async (ctx) => {
   `<b>Winner Announcement:</b> Sunday by 6:00 PM (Africa/Lagos)\n\n` +
   `🎯 <b>How It Works:</b>\n` +
   `1️⃣ Select an Draw below to enter the raffle\n` +
-  `2️⃣ Each Draw includes different entry amounts and prices\n` +
+  `2️⃣ Select your number/numbers \n` +
   `3️⃣ Wait for the winner announcement on Sunday!\n\n` +
   `💡 <b>Tip:</b> The more entries you have, the better your chances of winning this week’s jackpot!\n\n` +
   `👇 Choose your Draw to begin:`;
@@ -447,7 +447,7 @@ const fallbackMessage = await ctx.reply(
   `🏆 *Winner Announced:* Sunday by 6:00 PM (Africa/Lagos)\n\n` +
   `🎯 *How It Works:*\n` +
   `1️⃣ Select a draw category below\n` +
-  `2️⃣ Get your entry ticket(s)\n` +
+  `2️⃣ Select your Number(s)\n` +
   `3️⃣ Wait for the Sunday draw to see if you’ve won!\n\n` +
   `💡 *Tip:* The more entries you have, the higher your chance of winning!\n\n` +
   `👇 Choose your draw category to begin:`,
