@@ -767,63 +767,63 @@ try {
 }
 
   
-async function handleUserReferral_(ctx) {
-  const startParams = ctx.startPayload;
-  let referrer = null;
+// async function handleUserReferral_(ctx) {
+//   const startParams = ctx.startPayload;
+//   let referrer = null;
 
-  if (startParams && startParams.startsWith('ref_')) {
-    const referralCode = startParams.replace('ref_', '');
-    referrer = await User.findOne({ where: { referral_code: referralCode } });
-  }
+//   if (startParams && startParams.startsWith('ref_')) {
+//     const referralCode = startParams.replace('ref_', '');
+//     referrer = await User.findOne({ where: { referral_code: referralCode } });
+//   }
 
-  const telegramId = ctx.from.id;
-  const currentUsername = ctx.from.username || `user_${telegramId}`;
-  const firstName = ctx.from.first_name || 'user';
+//   const telegramId = ctx.from.id;
+//   const currentUsername = ctx.from.username || `user_${telegramId}`;
+//   const firstName = ctx.from.first_name || 'user';
 
-  const [user, created] = await User.findOrCreate({
-    where: { telegram_id: telegramId },
-    defaults: {
-      telegram_username: currentUsername,
-      referred_by: referrer ? referrer.id : null,
-      referral_code: generateReferralCode(firstName),
-    },
-  });
+//   const [user, created] = await User.findOrCreate({
+//     where: { telegram_id: telegramId },
+//     defaults: {
+//       telegram_username: currentUsername,
+//       referred_by: referrer ? referrer.id : null,
+//       referral_code: generateReferralCode(firstName),
+//     },
+//   });
 
-  // 🔄 Update username if it has changed
-  if (!created && user.telegram_username !== currentUsername) {
-    user.telegram_username = currentUsername;
-    await user.save();
-  }
+//   // 🔄 Update username if it has changed
+//   if (!created && user.telegram_username !== currentUsername) {
+//     user.telegram_username = currentUsername;
+//     await user.save();
+//   }
 
-  // 🔑 Ensure referral_code exists
-  if (!user.referral_code) {
-    user.referral_code = generateReferralCode(firstName);
-    await user.save();
-  }
+//   // 🔑 Ensure referral_code exists
+//   if (!user.referral_code) {
+//     user.referral_code = generateReferralCode(firstName);
+//     await user.save();
+//   }
 
-  // 🤝 Handle referral logic
-  if (referrer && created) {
-    referrer.total_referrals += 1;
-    await referrer.save();
-    await sendSuccess(ctx, `🎉 Welcome! You were referred by ${referrer.telegram_username}`);
-  }
+//   // 🤝 Handle referral logic
+//   if (referrer && created) {
+//     referrer.total_referrals += 1;
+//     await referrer.save();
+//     await sendSuccess(ctx, `🎉 Welcome! You were referred by ${referrer.telegram_username}`);
+//   }
 
-  // ⚙️ Assign referrer for existing user (only once)
-  if (!created && referrer && !user.referred_by) {
-    user.referred_by = referrer.id;
-    await user.save();
+//   // ⚙️ Assign referrer for existing user (only once)
+//   if (!created && referrer && !user.referred_by) {
+//     user.referred_by = referrer.id;
+//     await user.save();
 
-    referrer.total_referrals += 1;
-    await referrer.save();
-  }
+//     referrer.total_referrals += 1;
+//     await referrer.save();
+//   }
 
-  return {
-  user,
-  created,
-  referrer,
-};
+//   return {
+//   user,
+//   created,
+//   referrer,
+// };
 
-  }
+//   }
 
 
 
