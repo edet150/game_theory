@@ -270,7 +270,7 @@ bot.action('how_it_works', async (ctx) => {
               [
                 {
                   text: "📢 Join Channel",
-                   url: `https://t.me/+14MnYEtWmZVkMTJk`
+                  url: `https://t.me/${REQUIRED_CHANNEL.replace('@', '')}?attach`
                 }
               ],
               [
@@ -458,7 +458,6 @@ const fallbackMessage = await ctx.reply(
         // [{ text: '🎟 Single Draw – ₦200 for 1 entry', callback_data: `select_pool:Single` }],
         [{ text: '💰 Value Draw – ₦500 for 5 entries', callback_data: `select_pool:Value` }],
         [{ text: '🔥 Mega Draw – ₦1000 for 15 entries (Best Value!)', callback_data: `select_pool:Mega` }],
-        [{ text: '🎟 Mega Bonus – ₦500 for 1 entry', callback_data: `select_pool:Single` }],
         // [{ text: '💸 Refer & Earn – Get 10% per referral', callback_data: `refer_and_earn` }]
       ]
     }
@@ -623,8 +622,7 @@ bot.start(async (ctx) => {
               [
                 {
                   text: "📢 Join Channel",
-                  url: `https://t.me/+14MnYEtWmZVkMTJk`
-                  // url: `https://t.me/+4RcBQwHYB3kwNWY8`
+                  url: `https://t.me/${REQUIRED_CHANNEL.replace('@', '')}?attach`
                 }
               ],
               [
@@ -665,7 +663,7 @@ bot.action("verify_channel", async (ctx) => {
         disable_web_page_preview: true,
         reply_markup: {
           inline_keyboard: [
-            [{ text: "📢 Join Channel", url: `https://t.me/+14MnYEtWmZVkMTJk` }],
+            [{ text: "📢 Join Channel", url: `https://t.me/+4RcBQwHYB3kwNWY8` }],
             [{ text: "Verify", callback_data: "verify_channel" }]
           ]
         }
