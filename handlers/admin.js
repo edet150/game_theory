@@ -559,7 +559,8 @@ module.exports = (bot, bankSetupState) => {
                         { text: '📢 Post Winning Number', callback_data: 'admin_post_winning_number' }
                     ],
                     [
-                        { text: `${lockStatus} Entries`, callback_data: 'admin_toggle_entries_lock' }
+                        { text: `${lockStatus} Entries`, callback_data: 'admin_toggle_entries_lock' },
+                        { text: `All Users`, callback_data: 'admin_all_users' }
                     ],
                     [
                     { text: '🔒 Toggle Bonus Draw', callback_data: 'admin_toggle_bonus' },
@@ -569,7 +570,8 @@ module.exports = (bot, bankSetupState) => {
                     { text: '🤝 Manage Partners', callback_data: 'admin_manage_partners' }
                     ],
                     [
-                        { text: '🚪 Logout', callback_data: 'admin_logout' }
+                        { text: '🚪 Logout', callback_data: 'admin_logout' },
+                        { text: '🚪 revenue', callback_data: 'admin_weekly_revenue' }
                     ]
                 ]
             }
@@ -955,36 +957,154 @@ bot.action('admin_create_bonus', async (ctx) => {
         await ctx.answerCbQuery();
     });
 
-    bot.action('admin_pool_stats', async (ctx) => {
-        try {
-            const pools = await RafflePool.findAll({
-                include: [{
-                    model: Entry,
-                    where: { status: 'paid' },
-                    required: false
-                }]
-            });
 
-            let message = '📊 Draw Statistics:\n\n';
-            pools.forEach(pool => {
-                const entryCount = pool.Entries ? pool.Entries.length : 0;
-                const revenue = entryCount * pool.price_per_entry;
-                
-                message += `**${pool.name}**\n`;
-                message += `📈 Entries: ${entryCount}/${pool.max_entries}\n`;
-                message += `💰 Revenue: ₦${revenue.toLocaleString()}\n`;
-                message += `🎫 Price: ₦${pool.price_per_entry.toLocaleString()}/entry\n\n`;
-            });
 
-            await cleanupAdminMessages(ctx, ['adminDashboard']);
-            const sentMessage = await ctx.reply(message, { parse_mode: 'Markdown' });
-            trackMessage(ctx, 'poolStats');
-        } catch (error) {
-            console.error('Error getting Draw stats:', error);
-            await ctx.reply('❌ Error retrieving Draw statistics.');
-        }
-        await ctx.answerCbQuery();
+bot.action('admin_pool_stats', async (ctx) => {
+  try {
+    const today = new Date();
+
+    // Find current active week
+    const currentWeek = await Week.findOne({
+      where: {
+        starts_at: { [Op.lte]: today },
+        ends_at: { [Op.gte]: today }
+      }
     });
+
+    if (!currentWeek) {
+      await ctx.reply('❌ No active week found.');
+      return;
+    }
+
+    // ✅ Fetch entries directly by week_code and status
+    const entries = await Entry.findAll({
+      where: {
+        status: 'paid',
+        week_code: currentWeek.code
+      },
+      include: [
+        { model: User, required: true },
+        { model: RafflePool, required: true }
+      ]
+    });
+
+    if (!entries.length) {
+      await ctx.reply(`No paid entries found for *${currentWeek.week_name}* (${currentWeek.code}).`, { parse_mode: 'Markdown' });
+      return;
+    }
+
+    // ✅ Build response
+    let message = `👥 *Users Who Entered This Week*\nWeek: *${currentWeek.week_name} (${currentWeek.code})*\n\n`;
+    const seen = new Set();
+
+    for (const entry of entries) {
+      const user = entry.User;
+      if (seen.has(user.telegram_id)) continue;
+      seen.add(user.telegram_id);
+
+      const username = user.telegram_username
+        ? `@${user.telegram_username}`
+        : `[${user.telegram_id}](tg://user?id=${user.telegram_id})`;
+
+      message += `👤 ${username}\n`;
+      message += `🆔 \`${user.telegram_id}\`\n`;
+      message += `💬 ${user.first_name || ''} ${user.last_name || ''}\n\n`;
+    }
+
+    // Split long messages into multiple Telegram messages if necessary
+    const chunks = message.match(/[\s\S]{1,3500}/g) || [];
+    for (const chunk of chunks) {
+      await ctx.reply(chunk, { parse_mode: 'Markdown' });
+    }
+
+  } catch (error) {
+    console.error('Error fetching weekly users:', error);
+    await ctx.reply('❌ Error retrieving user entries for this week.');
+  }
+
+  await ctx.answerCbQuery();
+});
+
+    
+bot.action('admin_all_users', async (ctx) => {
+  try {
+    const users = await User.findAll({ order: [['createdAt', 'DESC']] });
+
+    if (!users.length) {
+      await ctx.reply('No users found.');
+      return;
+    }
+
+    let message = `📋 *All Registered Users*\n\n`;
+    for (const user of users) {
+      const username = user.telegram_username
+        ? `@${user.telegram_username}`
+        : `[${user.telegram_id}](tg://user?id=${user.telegram_id})`;
+
+      message += `👤 ${username}\n`;
+      message += `🆔 \`${user.telegram_id}\`\n`;
+      message += `💬 ${user.first_name || ''} ${user.last_name || ''}\n\n`;
+    }
+
+    const chunks = message.match(/[\s\S]{1,3500}/g) || [];
+    for (const chunk of chunks) {
+      await ctx.reply(chunk, { parse_mode: 'Markdown' });
+    }
+  } catch (error) {
+    console.error('Error fetching all users:', error);
+    await ctx.reply('❌ Error retrieving all users.');
+  }
+
+  await ctx.answerCbQuery();
+});
+bot.action('admin_weekly_revenue', async (ctx) => {
+  try {
+    const today = new Date();
+
+    // ✅ Find the current week
+    const currentWeek = await Week.findOne({
+      where: {
+        starts_at: { [Op.lte]: today },
+        ends_at: { [Op.gte]: today }
+      }
+    });
+
+    if (!currentWeek) {
+      await ctx.reply('⚠️ No active week found.');
+      return await ctx.answerCbQuery();
+    }
+
+    // ✅ Sum up all payments within current week
+    const payments = await Payment.findAll({
+      where: {
+        createdAt: {
+          [Op.between]: [currentWeek.starts_at, currentWeek.ends_at]
+        },
+        status: 'success'
+      }
+    });
+
+    const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
+    const totalTransactions = payments.length;
+
+    // ✅ Format response message
+    const message = 
+      `💰 <b>Weekly Revenue Report</b>\n\n` +
+      `📅 Week: <b>${currentWeek.code}</b>\n` +
+      `🗓 Period: ${new Date(currentWeek.starts_at).toLocaleDateString()} - ${new Date(currentWeek.ends_at).toLocaleDateString()}\n\n` +
+      `💸 Total Transactions: <b>${totalTransactions}</b>\n` +
+      `💰 Total Revenue: <b>₦${totalRevenue.toLocaleString()}</b>`;
+
+    await ctx.reply(message, { parse_mode: 'HTML' });
+  } catch (error) {
+    console.error('Error calculating weekly revenue:', error);
+    await ctx.reply('❌ Error retrieving weekly revenue.');
+  }
+
+  await ctx.answerCbQuery();
+});
+
+
 
     bot.action('admin_logout', async (ctx) => {
         ctx.session.isAdmin = false;

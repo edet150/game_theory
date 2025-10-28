@@ -34,10 +34,10 @@ const { Telegraf } = require('telegraf');
 // Bot 2
 const { createBot } = require('./bot/botfactory.js');
 const { bot: bot2 } = createBot(process.env.TELEGRAM_BOT_TOKEN2);
-bot2.launch();
+// bot2.launch();
 
 const { bot: partnerBot } = createBot(process.env.TELEGRAM_PARTNER_Bot);
-partnerBot.launch();
+// partnerBot.launch();
 
 const bot = getbotInstance();
 const redis = getRedisClient();
