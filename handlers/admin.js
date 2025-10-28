@@ -541,7 +541,7 @@ module.exports = (bot, bankSetupState) => {
         
         const keyboard = {
             reply_markup: {
-                inline_keyboard: [
+                 inline_keyboard: [
                     [
                         { text: '🏆 Set Winning Number', callback_data: 'admin_set_winning_number' },
                         { text: '💰 Update Prize Amount', callback_data: 'admin_set_winning_amount' }
