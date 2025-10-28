@@ -270,7 +270,7 @@ bot.action('how_it_works', async (ctx) => {
               [
                 {
                   text: "📢 Join Channel",
-                  url: `https://t.me/+14MnYEtWmZVkMTJk`
+                   url: `https://t.me/+14MnYEtWmZVkMTJk`
                 }
               ],
               [
@@ -665,7 +665,7 @@ bot.action("verify_channel", async (ctx) => {
         disable_web_page_preview: true,
         reply_markup: {
           inline_keyboard: [
-            [{ text: "📢 Join Channel", url: `https://t.me/+4RcBQwHYB3kwNWY8` }],
+            [{ text: "📢 Join Channel", url: `https://t.me/+14MnYEtWmZVkMTJk` }],
             [{ text: "Verify", callback_data: "verify_channel" }]
           ]
         }
