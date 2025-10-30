@@ -88,13 +88,58 @@ historyHandler(bot);
 bot.use(cleanupMiddleware);
 
 
+// Command to post a message with an inline button to the channel
+// bot.command("post", async (ctx) => {
+//   const CHANNEL_CHAT_ID = process.env.GROUPCHATID; // Replace with your private channel's chat ID
 
+//   try {
+//     await ctx.telegram.sendMessage(
+//       CHANNEL_CHAT_ID,
+//       `🎉 Welcome to our private channel!\n\n` +
+//       `To get started, click the button below to interact with our bot and verify your membership.`,
+//       {
+//         parse_mode: "HTML",
+//         reply_markup: {
+//           inline_keyboard: [
+//             [
+//               {
+//                 text: "🚀 Start with Bot",
+//                 url: `https://t.me/${process.env.BOT_NAME}?start=verify_channel` // Deep link to bot with start parameter
+//               }
+//             ]
+//           ]
+//         }
+//       }
+//     );
+//     await ctx.reply("✅ Message posted to the channel!");
+//   } catch (error) {
+//     console.error("Error posting to channel:", error);
+//     await ctx.reply("❌ Failed to post message to the channel. Ensure bot is admin.");
+//   }
+// });
+// bot.command("channelinfo", async (ctx) => {
+//   const CHANNEL_ID = process.env.GROUPCHATID; // Or numeric ID like -1001234567890
+
+//   try {
+//     const chat = await ctx.telegram.getChat('-1003041455060');
+//     await ctx.reply(
+//       `Channel: ${chat.title}\n` +
+//       `Description: ${chat.description || 'None'}\n` +
+//       `Subscribers: ${chat.subscribers_count || 'N/A'}\n` +
+//       `Type: ${chat.type}`,
+//       { parse_mode: "HTML" }
+//     );
+//   } catch (error) {
+//     console.error("Error fetching channel info:", error);
+//     await ctx.reply("❌ Error: Could not fetch channel info. Ensure bot is admin.");
+//   }
+// });
 
 
 // bot.use(cleanupMiddleware);
 
 
-// bot2.use((ctx, next) => {
+// bot.use((ctx, next) => {
 //   console.log('sippiose')
 //   console.log(ctx)
 //   console.log("Update type:", ctx.updateType, ctx.update);

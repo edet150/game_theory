@@ -250,8 +250,9 @@ bot.action('how_it_works', async (ctx) => {
           }
     }
     
-      try {
-    const isInChannel = await isUserInChannel(ctx, REQUIRED_CHANNEL);
+    try {
+      
+    const isInChannel = await isUserInChannel(ctx, process.env.GROUPCHATID);
 
     if (!isInChannel) {
      return await ctx.reply(
@@ -270,7 +271,7 @@ bot.action('how_it_works', async (ctx) => {
               [
                 {
                   text: "📢 Join Channel",
-                  url: `https://t.me/${REQUIRED_CHANNEL.replace('@', '')}?attach`
+                  url: `https://t.me/${process.env.CHANNEL_ID}`
                 }
               ],
               [
@@ -476,6 +477,8 @@ const fallbackMessage = await ctx.reply(
   // 🔍 Utility to check membership
   async function isUserInChannel(ctx, channelUsername) {
     try {
+      console.log(channelUsername);
+      
       const member = await ctx.telegram.getChatMember(channelUsername, ctx.from.id);
       return ['member', 'administrator', 'creator'].includes(member.status);
     } catch (error) {
@@ -598,14 +601,40 @@ if (startParams) {
 
 
 // Modified /start command
+// Handle /start command
 bot.start(async (ctx) => {
   try {
     await cleanupSelectionMessages(ctx);
     await handleUserReferral(ctx);
 
-    const isInChannel = await isUserInChannel(ctx, REQUIRED_CHANNEL);
+    const REQUIRED_CHANNEL_CHAT_ID = process.env.GROUPCHATID || "-1001234567890";
+    const REQUIRED_CHANNEL_INVITE_LINK = `https://t.me/${process.env.CHANNEL_ID || '+4RcBQwHYB3kwNWY8'}?attach`;
+    const BOT_NAME = process.env.BOT_NAME || "YourBot";
+
+    const isInChannel = await isUserInChannel(ctx, REQUIRED_CHANNEL_CHAT_ID);
 
     if (!isInChannel) {
+      // Post welcome message to channel first
+      await ctx.telegram.sendMessage(
+        REQUIRED_CHANNEL_CHAT_ID,
+        `🎉 Welcome <a href="tg://user?id=${ctx.from.id}">@${ctx.from.username || 'no username'}</a> to our private channel!\n\n` +
+        `To continue the raffle draw, click below to return to the bot.`,
+        {
+          parse_mode: "HTML",
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: "🎰 Continue Raffle",
+                  url: `https://t.me/${BOT_NAME}?start=raffle`
+                }
+              ]
+            ]
+          }
+        }
+      );
+
+      // Then send reply to user
       return await ctx.reply(
         `<b>Join our official channel</b> — This is where <b>WINNERS</b> are announced <b>EVERY SUNDAY</b>.\n\n` +
         `◎ Get live winner updates\n` +
@@ -613,16 +642,17 @@ bot.start(async (ctx) => {
         `◎ See total entries and prizes\n\n` +
         `<b>Steps:</b>\n` +
         `1️⃣ Click <b>Join Channel</b> and join the channel\n` +
-        `2️⃣ Return here and tap <b>✅ Try again</b> to continue.`,
+        `2️⃣ Check the channel for a welcome message, then click the button there to return to the bot and continue the raffle\n` +
+        `3️⃣ Alternatively, tap <b>✅ Try again</b> to confirm your membership`,
         {
           parse_mode: "HTML",
           disable_web_page_preview: false,
-        reply_markup: {
+          reply_markup: {
             inline_keyboard: [
               [
                 {
                   text: "📢 Join Channel",
-                  url: `https://t.me/${REQUIRED_CHANNEL.replace('@', '')}?attach`
+                  url: REQUIRED_CHANNEL_INVITE_LINK
                 }
               ],
               [
@@ -635,7 +665,6 @@ bot.start(async (ctx) => {
           }
         }
       );
-
     }
 
     // ✅ User already in channel → continue
@@ -647,13 +676,198 @@ bot.start(async (ctx) => {
   }
 });
 
-
-  // 🔁 Verify button callback
+// Handle verify_channel action
 bot.action("verify_channel", async (ctx) => {
+  try {
+    await ctx.answerCbQuery("Checking… ⏳");
+    const REQUIRED_CHANNEL_CHAT_ID = process.env.GROUPCHATID || "-1001234567890";
+    const REQUIRED_CHANNEL_INVITE_LINK = `https://t.me/${process.env.CHANNEL_ID || '+4RcBQwHYB3kwNWY8'}?attach`;
+    const BOT_NAME = process.env.BOT_NAME || "YourBot";
+
+    const isInChannel = await isUserInChannel(ctx, REQUIRED_CHANNEL_CHAT_ID);
+
+    if (!isInChannel) {
+      // Post welcome message to channel first
+      await ctx.telegram.sendMessage(
+        REQUIRED_CHANNEL_CHAT_ID,
+        `🎉 Welcome <a href="tg://user?id=${ctx.from.id}">@${ctx.from.username || 'no username'}</a> to our private channel!\n\n` +
+        `To continue the raffle draw, click below to return to the bot.`,
+        {
+          parse_mode: "HTML",
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: "🎰 Continue Raffle",
+                  url: `https://t.me/${BOT_NAME}?start=raffle`
+                }
+              ]
+            ]
+          }
+        }
+      );
+
+      // Then send reply to user
+      return await ctx.reply(
+        `<b>Join our official channel</b> — This is where <b>WINNERS</b> are announced <b>EVERY SUNDAY</b>.\n\n` +
+        `◎ Get live winner updates\n` +
+        `◎ Get notified about new draws\n` +
+        `◎ See total entries and prizes\n\n` +
+        `<b>Steps:</b>\n` +
+        `1️⃣ Click <b>Join Channel</b> and join the channel\n` +
+        `2️⃣ Check the channel for a welcome message, then click the button there to return to the bot and continue the raffle\n` +
+        `3️⃣ Alternatively, tap <b>✅ Try again</b> to confirm your membership`,
+        {
+          parse_mode: "HTML",
+          disable_web_page_preview: false,
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: "📢 Join Channel",
+                  url: REQUIRED_CHANNEL_INVITE_LINK
+                }
+              ],
+              [
+                {
+                  text: "✅ Try again",
+                  callback_data: "verify_channel"
+                }
+              ]
+            ]
+          }
+        }
+      );
+    }
+
+    console.log(`Verified channel member: User ${ctx.from.id} (@${ctx.from.username || 'no username'}) at ${new Date().toISOString()}`);
+    await ctx.reply(
+      "✅ You have successfully joined the channel! Click below to continue the raffle draw.",
+      {
+        parse_mode: "HTML",
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "🎰 Continue Raffle",
+                url: `https://t.me/${BOT_NAME}?start=raffle`
+              }
+            ]
+          ]
+        }
+      }
+    );
+
+  } catch (error) {
+    console.error("❌ Error in verify_channel action:", error);
+    await ctx.reply("❌ Something went wrong. Please try again.");
+  }
+});
+
+// Handle /verify_channel command (for consistency with previous code)
+bot.command("verify_channel", async (ctx) => {
+  try {
+    await ctx.reply("Checking your channel membership… ⏳");
+    const REQUIRED_CHANNEL_CHAT_ID = process.env.GROUPCHATID || "-1001234567890";
+    const REQUIRED_CHANNEL_INVITE_LINK = `https://t.me/${process.env.CHANNEL_ID || '+4RcBQwHYB3kwNWY8'}?attach`;
+    const BOT_NAME = process.env.BOT_NAME || "YourBot";
+
+    const isInChannel = await isUserInChannel(ctx, REQUIRED_CHANNEL_CHAT_ID);
+
+    if (!isInChannel) {
+      // Post welcome message to channel first
+      await ctx.telegram.sendMessage(
+        REQUIRED_CHANNEL_CHAT_ID,
+        `🎉 Welcome <a href="tg://user?id=${ctx.from.id}">${ctx.from.first_name || 'user'}</a> to our Updates and Announcement channel!\n\n` +
+        `To continue the raffle draw, click below to return to the bot.`,
+        {
+          parse_mode: "HTML",
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: "🎰 Continue Raffle",
+                  url: `https://t.me/${BOT_NAME}?start=raffle`
+                }
+              ]
+            ]
+          }
+        }
+      );
+
+      // Then send reply to user
+      return await ctx.reply(
+        `<b>Join our official channel</b> — This is where <b>WINNERS</b> are announced <b>EVERY SUNDAY</b>.\n\n` +
+        `◎ Get live winner updates\n` +
+        `◎ Get notified about new draws\n` +
+        `◎ See total entries and prizes\n\n` +
+        `<b>Steps:</b>\n` +
+        `1️⃣ Click <b>Join Channel</b> and join the channel\n` +
+        `2️⃣ Check the channel for a welcome message, then click the button there to return to the bot and continue the raffle\n` +
+        `3️⃣ Alternatively, tap <b>✅ Try again</b> to confirm your membership`,
+        {
+          parse_mode: "HTML",
+          disable_web_page_preview: false,
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: "📢 Join Channel",
+                  url: REQUIRED_CHANNEL_INVITE_LINK
+                }
+              ],
+              [
+                {
+                  text: "✅ Try again",
+                  callback_data: "verify_channel"
+                }
+              ]
+            ]
+          }
+        }
+      );
+    }
+
+    console.log(`Verified channel member: User ${ctx.from.id} (@${ctx.from.username || 'no username'}) at ${new Date().toISOString()}`);
+    await ctx.reply(
+      "✅ You have successfully joined the channel! Click below to continue the raffle draw.",
+      {
+        parse_mode: "HTML",
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "🎰 Continue Raffle",
+                url: `https://t.me/${BOT_NAME}?start=raffle`
+              }
+            ]
+          ]
+        }
+      }
+    );
+
+  } catch (error) {
+    console.error("❌ Error in /verify_channel:", error);
+    await ctx.reply("❌ Something went wrong. Please try again.");
+  }
+});
+
+
+  
+
+
+
+
+
+
+
+
+  
+  
+bot.command("verify_channel", async (ctx) => {
   await ctx.answerCbQuery("Checking… ⏳");
 
-  const isInChannel = await isUserInChannel(ctx, REQUIRED_CHANNEL);
-
+  const isInChannel = await isUserInChannel(ctx, process.env.GROUPCHATID);
   if (!isInChannel) {
     return await ctx.reply(
       `<b>❌ Error:</b> You haven’t joined our channel yet.\n\n` +
@@ -663,7 +877,63 @@ bot.action("verify_channel", async (ctx) => {
         disable_web_page_preview: true,
         reply_markup: {
           inline_keyboard: [
-            [{ text: "📢 Join Channel", url: `https://t.me/+4RcBQwHYB3kwNWY8` }],
+            [{ text: "📢 Join Channel", url: `https://t.me/${process.env.CHANNEL_ID}` }],
+            [{ text: "Verify", callback_data: "verify_channel" }]
+          ]
+        }
+      }
+    );
+  }
+
+  // ✅ Verified → continue
+  await sendSuccess(ctx, `Verified! Welcome aboard 🎉`);
+  await handleReferralAndStart(ctx);
+  // const fullName = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(" ");
+  // 🎉 Send a welcome message to the channel
+
+try {
+  const fullName = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(" ");
+
+//   await ctx.telegram.sendMessage(
+//     REQUIRED_CHANNEL, // channel username or numeric ID
+// `🎉 Please welcome <a href="tg://user?id=${ctx.from.id}">${fullName}</a>!  
+      
+// They just verified and joined our community 🚀`,
+//     {
+//       parse_mode: "HTML",
+//       reply_markup: {
+//         inline_keyboard: [
+//           [
+//             {
+//               text: "🎭 Return to Game Theory Bot",
+//               url: `https://t.me/${process.env.BOT_NAME}`
+//             }
+//           ]
+//         ]
+//       }
+//     }
+//   );
+} catch (err) {
+  console.error("⚠️ Could not send welcome message to channel:", err.message);
+}
+
+});
+
+  // 🔁 Verify button callback
+bot.action("verify_channel", async (ctx) => {
+  await ctx.answerCbQuery("Checking… ⏳");
+
+  const isInChannel = await isUserInChannel(ctx, process.env.GROUPCHATID);
+  if (!isInChannel) {
+    return await ctx.reply(
+      `<b>❌ Error:</b> You haven’t joined our channel yet.\n\n` +
+      `To enjoy the full experience, please join our official channel.`,
+      {
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "📢 Join Channel", url: `https://t.me/${process.env.CHANNEL_ID}` }],
             [{ text: "Verify", callback_data: "verify_channel" }]
           ]
         }

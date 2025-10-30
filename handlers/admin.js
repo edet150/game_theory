@@ -1128,10 +1128,10 @@ bot.action('admin_weekly_revenue', async (ctx) => {
             const processingMsg = await ctx.reply('🔄 Compiling user list for channel...');
             
             // Get the user list with entries
-            const userListMessage = await compileUserListWithEntries();
+            const userListMessage = await compileUserListWithEntries(ctx);
             
             // Send to channel
-            await sendToTelegramChannel(ctx, userListMessage);
+            await sendToTelegramChannelHTML(ctx, userListMessage);
             
             // Update processing message
             await ctx.editMessageText('✅ User list successfully sent to channel!', {
@@ -1154,130 +1154,139 @@ bot.action('admin_weekly_revenue', async (ctx) => {
         }
     });
 
-    async function compileUserListWithEntries() {
-    try {
-        // Get current week
-        const today = new Date();
-        const currentWeek = await Week.findOne({
-            where: {
-                starts_at: { [Op.lte]: today },
-                ends_at: { [Op.gte]: today }
-            }
-        });
+async function compileUserListWithEntries(ctx) {
+  try {
+    // Get current week
+    const today = new Date();
+    const currentWeek = await Week.findOne({
+      where: {
+        starts_at: { [Op.lte]: today },
+        ends_at: { [Op.gte]: today },
+      },
+    });
 
-        if (!currentWeek) {
-            throw new Error('No current week found');
-        }
-        // Get the winning record for this week
-        const winningRecord = await Winning.findOne({
-            where: { week_code: currentWeek.code }
-        });
+    if (!currentWeek) {
+      throw new Error("No current week found");
+    }
 
-        if (!winningRecord) {
-            throw new Error('No winning number found for this week');
-        }
+    // Get the winning record for this week
+    const winningRecord = await Winning.findOne({
+      where: { week_code: currentWeek.code },
+    });
 
-        const winningAmount = winningRecord.winning_amount;
+    if (!winningRecord) {
+      throw new Error("No winning number found for this week");
+    }
 
-        // Get all users with their paid entries for current week
-        const users = await User.findAll({
-            include: [{
-                model: Entry,
-                where: { 
-                    week_code: currentWeek.code,
-                    status: 'paid'
-                },
-                include: [{
-                    model: RafflePool
-                }]
-            }],
-            order: [['id', 'ASC']]
-        });
+    const winningAmount = winningRecord.winning_amount;
 
-        // Get all entries for modulo positioning
-        const allEntries = await Entry.findAll({
-            where: { 
-                week_code: currentWeek.code,
-                status: 'paid'
+    // Get all users with their paid entries for current week
+    const users = await User.findAll({
+      include: [
+        {
+          model: Entry,
+          where: {
+            week_code: currentWeek.code,
+            status: "paid",
+          },
+          include: [
+            {
+              model: RafflePool,
             },
-            order: [['id', 'ASC']]
-        });
+          ],
+        },
+      ],
+      order: [["telegram_id", "ASC"]], // Use telegram_id for consistency
+    });
 
-        // Create a map of entry numbers to their modulo position
-        const entryPositionMap = new Map();
-        allEntries.forEach((entry, index) => {
-            entryPositionMap.set(entry.entry_number, index + 1); // Position starts at 1
-        });
+    // Get all entries for modulo positioning
+    const allEntries = await Entry.findAll({
+      where: {
+        week_code: currentWeek.code,
+        status: "paid",
+      },
+      order: [["id", "ASC"]],
+    });
 
-        // Get current date for the report
-        const now = new Date();
-        const options = { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-        };
-        const currentDate = now.toLocaleDateString('en-US', options);
+    // Create a map of entry numbers to their modulo position
+    const entryPositionMap = new Map();
+    allEntries.forEach((entry, index) => {
+      entryPositionMap.set(entry.entry_number, index + 1); // Position starts at 1
+    });
 
-        // Compile the message
-        let message = `📋 *Daily Entries Report - ${currentDate}*\n\n`;
-        message += `*Week:* ${currentWeek.week_name}\n`;
-        // message += `*Total Participants:* ${users.length}\n`;
-        message += `*Total Entries:* ${allEntries.length}\n`;
-        message += `*Winning Amount:* ₦ ${Number(winningAmount).toLocaleString() || 'Not yet set'}\n\n`;
-        message += "━━━━━━━━━━━━━━━━━━━━\n\n";
+    // Get current date for the report
+    const now = new Date();
+    const options = {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    };
+    const currentDate = now.toLocaleDateString("en-US", options);
 
-        let userCount = 1;
+    // Compile the message in HTML
+    let message = `<b>📋 Daily Entries Report - ${currentDate}</b>\n\n`;
+    message += `<b>Week:</b> ${currentWeek.week_name}\n`;
+    message += `<b>Total Entries:</b> ${allEntries.length}\n`;
+    message += `<b>Winning Amount:</b> ₦${Number(winningAmount).toLocaleString() || "Not yet set"}\n\n`;
+    message += "━━━━━━━━━━━━━━━━━━━━\n\n";
 
-   for (const user of users) {
-    if (user.Entries && user.Entries.length > 0) {
-        message += `*${userCount}. ${user.telegram_username}* `;
-        
-        // Add contact info if available
-        if (user.phone || user.email) {
-            message += `(`;
-            if (user.phone) message += `📞 ${user.phone}`;
-            if (user.phone && user.email) message += `, `;
-            if (user.email) message += `📧 ${user.email}`;
-            message += `)`;
+    let userCount = 1;
+
+    for (const user of users) {
+      if (user.Entries && user.Entries.length > 0) {
+        // Get first name (use ctx.from for current user, fetch for others)
+        let firstName = `user_${user.telegram_id}`; // Fallback
+        let telegramId = user.telegram_id; // Assumes telegram_id in User model
+        if (user.telegram_id === ctx.from.id) {
+          firstName = ctx.from.first_name || `user_${user.telegram_id}`;
+        } else {
+          try {
+            const member = await ctx.telegram.getChatMember(
+              process.env.GROUPCHATID || "-1001234567890",
+              user.telegram_id
+            );
+            firstName = member.user.first_name || `user_${user.telegram_id}`;
+          } catch (error) {
+            console.error(`Error fetching first_name for user ${user.telegram_id}:`, error.message);
+          }
         }
 
-        message += `\n`;
+        message += `<b>${userCount}. <a href="tg://user?id=${telegramId}">${firstName}</a></b>\n`;
 
         // Group entries by pool
         const entriesByPool = {};
-        user.Entries.forEach(entry => {
-            const poolName = entry.RafflePool?.name || 'Unknown Draw';
-            if (!entriesByPool[poolName]) {
-                entriesByPool[poolName] = 0;
-            }
-            entriesByPool[poolName]++;
+        user.Entries.forEach((entry) => {
+          const poolName = entry.RafflePool?.name || "Unknown Draw";
+          if (!entriesByPool[poolName]) {
+            entriesByPool[poolName] = 0;
+          }
+          entriesByPool[poolName]++;
         });
 
         // Add count per pool
         for (const [poolName, count] of Object.entries(entriesByPool)) {
-            message += `   🏊 *${poolName}:* ${count} entries\n`;
+          message += `   🏊 <b>${poolName}:</b> ${count} entries\n`;
         }
 
         message += `\n`;
         userCount++;
+      }
     }
+
+    message += "━━━━━━━━━━━━━━━━━━━━\n\n";
+    message += "<b>Note:</b> This is a daily summary of all entries.\n";
+    message += "The draw will be held on Sunday.\n";
+
+    return message; // Return string only
+  } catch (error) {
+    console.error("Error compiling user list:", error);
+    throw new Error("Failed to compile user list");
+  }
 }
-
-
-        message += "━━━━━━━━━━━━━━━━━━━━\n\n";
-        message += "*Note:* This is a daily summary of all entries. \n";
-        message += "The draw will be held on sunday.\n";
-
-        return message;
-    } catch (error) {
-        console.error('Error compiling user list:', error);
-        throw new Error('Failed to compile user list');
-    }
-    }
     // Updated sendToTelegramChannel function to support HTML
     async function sendToTelegramChannelHTML(ctx, message) {
-        const CHANNEL_USERNAME = process.env.CHANNEL_NAME; // Your channel username without @
+        const CHANNEL_USERNAME = process.env.GROUPCHATID; // Your channel username without @
         
         try {
             // Handle both string and array messages
@@ -1285,7 +1294,7 @@ bot.action('admin_weekly_revenue', async (ctx) => {
             
             for (let i = 0; i < messagesToSend.length; i++) {
                 await ctx.telegram.sendMessage(
-                    `@${CHANNEL_USERNAME}`,
+                    `${CHANNEL_USERNAME}`,
                     messagesToSend[i],
                     { 
                         parse_mode: 'HTML', // Changed from Markdown to HTML
@@ -1550,7 +1559,7 @@ message += `💡 <b>Tip:</b> Enter multiple times to improve your chances whenev
     }
     
     async function sendToTelegramChannel(ctx, message) {
-    const CHANNEL_USERNAME = process.env.CHANNEL_NAME; // Your channel username without @
+    const CHANNEL_USERNAME = process.env.GROUPCHATID; // Your channel username without @
     
     try {
         // Handle both string and array messages
@@ -1558,7 +1567,7 @@ message += `💡 <b>Tip:</b> Enter multiple times to improve your chances whenev
         
         for (let i = 0; i < messagesToSend.length; i++) {
             await ctx.telegram.sendMessage(
-                `@${CHANNEL_USERNAME}`,
+                `${CHANNEL_USERNAME}`,
                 messagesToSend[i],
                 { 
                     parse_mode: 'Markdown',
@@ -1877,7 +1886,7 @@ message += `💡 <b>Tip:</b> Enter multiple times to improve your chances whenev
 
 // Helper function to send message to channel
 async function sendToTelegramChannel(ctx, message) {
-    const CHANNEL_USERNAME = process.env.CHANNEL_NAME; // Your channel username without @
+    const CHANNEL_USERNAME = process.env.GROUPCHATID; // Your channel username without @
     
     try {
         // Split long messages (Telegram has a 4096 character limit per message)
@@ -1885,7 +1894,7 @@ async function sendToTelegramChannel(ctx, message) {
         
         for (let i = 0; i < messageParts.length; i++) {
             await ctx.telegram.sendMessage(
-                `@${process.env.CHANNEL_NAME}`,
+                `${process.env.GROUPCHATID}`,
                 messageParts[i],
                 { 
                     parse_mode: 'Markdown',

@@ -251,7 +251,7 @@ module.exports = (bot, bankSetupState) => {
         
         const keyboard = {
             reply_markup: {
-                inline_keyboard: [
+               inline_keyboard: [
                     [
                         { text: '🏆 Set Winning Number', callback_data: 'admin_set_winning_number' },
                         { text: '💰 Update Prize Amount', callback_data: 'admin_set_winning_amount' }
@@ -269,17 +269,19 @@ module.exports = (bot, bankSetupState) => {
                         { text: '📢 Post Winning Number', callback_data: 'admin_post_winning_number' }
                     ],
                     [
-                        { text: `${lockStatus} Entries`, callback_data: 'admin_toggle_entries_lock' }
+                        { text: `${lockStatus} Entries`, callback_data: 'admin_toggle_entries_lock' },
+                        { text: `All Users`, callback_data: 'admin_all_users' }
                     ],
                     [
                     { text: '🔒 Toggle Bonus Draw', callback_data: 'admin_toggle_bonus' },
                     { text: '➕ Create New Bonus', callback_data: 'admin_create_bonus' }
-                     ],
+                    ],
                     [
                     { text: '🤝 Manage Partners', callback_data: 'admin_manage_partners' }
                     ],
                     [
-                        { text: '🚪 Logout', callback_data: 'admin_logout' }
+                        { text: '🚪 Logout', callback_data: 'admin_logout' },
+                        { text: '🚪 revenue', callback_data: 'admin_weekly_revenue' }
                     ]
                 ]
             }
