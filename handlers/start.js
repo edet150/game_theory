@@ -607,12 +607,12 @@ bot.start(async (ctx) => {
     await cleanupSelectionMessages(ctx);
     await handleUserReferral(ctx);
 
-    const REQUIRED_CHANNEL_CHAT_ID = process.env.GROUPCHATID || "-1001234567890";
-    const REQUIRED_CHANNEL_INVITE_LINK = `https://t.me/${process.env.CHANNEL_ID || '+4RcBQwHYB3kwNWY8'}?attach`;
+    const REQUIRED_CHANNEL_CHAT_ID = process.env.GROUPCHATID;
+    const REQUIRED_CHANNEL_INVITE_LINK = `https://t.me/${process.env.CHANNEL_ID}?attach`;
     const BOT_NAME = process.env.BOT_NAME || "YourBot";
 
     const isInChannel = await isUserInChannel(ctx, REQUIRED_CHANNEL_CHAT_ID);
-
+console.log(REQUIRED_CHANNEL_CHAT_ID,' this is the chat id')
     if (!isInChannel) {
       // Post welcome message to channel first
       await ctx.telegram.sendMessage(
@@ -699,7 +699,7 @@ bot.action("verify_channel", async (ctx) => {
               [
                 {
                   text: "🎰 Continue Raffle",
-                  url: `https://t.me/${BOT_NAME}?start=raffle`
+                  url: `https://t.me/${BOT_NAME}?start`
                 }
               ]
             ]
