@@ -139,12 +139,12 @@ bot.use(cleanupMiddleware);
 // bot.use(cleanupMiddleware);
 
 
-// bot.use((ctx, next) => {
-//   console.log('sippiose')
-//   console.log(ctx)
-//   console.log("Update type:", ctx.updateType, ctx.update);
-//   return next();
-// });
+bot.use((ctx, next) => {
+  console.log('sippiose')
+  console.log(ctx)
+  console.log("Update type:", ctx.updateType, ctx.update);
+  return next();
+});
 
 bot.action('initiate_payment', async (ctx) => {
   await ctx.answerCbQuery();
