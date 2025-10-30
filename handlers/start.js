@@ -613,59 +613,63 @@ bot.start(async (ctx) => {
 
     const isInChannel = await isUserInChannel(ctx, REQUIRED_CHANNEL_CHAT_ID);
 console.log(REQUIRED_CHANNEL_CHAT_ID,' this is the chat id')
-    if (!isInChannel) {
-      // Post welcome message to channel first
-      await ctx.telegram.sendMessage(
-        REQUIRED_CHANNEL_CHAT_ID,
-        `🎉 Welcome <a href="tg://user?id=${ctx.from.id}">@${ctx.from.username || 'no username'}</a> to our private channel!\n\n` +
-        `To continue the raffle draw, click below to return to the bot.`,
-        {
-          parse_mode: "HTML",
-          reply_markup: {
-            inline_keyboard: [
-              [
-                {
-                  text: "🎰 Continue Raffle",
-                  url: `https://t.me/${BOT_NAME}?start=raffle`
-                }
-              ]
-            ]
-          }
-        }
-      );
+if (!isInChannel) {
+  // Send big waving hand emoji alone
+  await ctx.telegram.sendMessage(REQUIRED_CHANNEL_CHAT_ID, "👋");
 
-      // Then send reply to user
-      return await ctx.reply(
-        `<b>Join our official channel</b> — This is where <b>WINNERS</b> are announced <b>EVERY SUNDAY</b>.\n\n` +
-        `◎ Get live winner updates\n` +
-        `◎ Get notified about new draws\n` +
-        `◎ See total entries and prizes\n\n` +
-        `<b>Steps:</b>\n` +
-        `1️⃣ Click <b>Join Channel</b> and join the channel\n` +
-        `2️⃣ Check the channel for a welcome message, then click the button there to return to the bot and continue the raffle\n` +
-        `3️⃣ Alternatively, tap <b>✅ Try again</b> to confirm your membership`,
-        {
-          parse_mode: "HTML",
-          disable_web_page_preview: false,
-          reply_markup: {
-            inline_keyboard: [
-              [
-                {
-                  text: "📢 Join Channel",
-                  url: REQUIRED_CHANNEL_INVITE_LINK
-                }
-              ],
-              [
-                {
-                  text: "✅ Try again",
-                  callback_data: "verify_channel"
-                }
-              ]
-            ]
-          }
-        }
-      );
+  // Then send the welcome text
+  await ctx.telegram.sendMessage(
+    REQUIRED_CHANNEL_CHAT_ID,
+    `🎉 Welcome <a href="tg://user?id=${ctx.from.id}">@${ctx.from.username || 'no username'}</a> to our private channel!\n\n` +
+    `To continue the raffle draw, click below to return to the bot.`,
+    {
+      parse_mode: "HTML",
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: "🎰 Continue Raffle",
+              url: `https://t.me/${BOT_NAME}?start=raffle`
+            }
+          ]
+        ]
+      }
     }
+  );
+
+  // Then reply to the user
+  return await ctx.reply(
+    `👋 <b>Join our official channel</b> — This is where <b>WINNERS</b> are announced <b>EVERY SUNDAY</b>.\n\n` +
+    `◎ Get live winner updates\n` +
+    `◎ Get notified about new draws\n` +
+    `◎ See total entries and prizes\n\n` +
+    `<b>Steps:</b>\n` +
+    `1️⃣ Click <b>Join Channel</b> and join the channel\n` +
+    `2️⃣ Check the channel for a welcome message, then click the button there to return to the bot and continue the raffle\n` +
+    `3️⃣ Alternatively, tap <b>✅ Try again</b> to confirm your membership`,
+    {
+      parse_mode: "HTML",
+      disable_web_page_preview: false,
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: "📢 Join Channel",
+              url: REQUIRED_CHANNEL_INVITE_LINK
+            }
+          ],
+          [
+            {
+              text: "✅ Try again",
+              callback_data: "verify_channel"
+            }
+          ]
+        ]
+      }
+    }
+  );
+}
+
 
     // ✅ User already in channel → continue
     await handleReferralAndStart(ctx);
