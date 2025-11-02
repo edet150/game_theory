@@ -8,7 +8,23 @@ const { Op } = require("sequelize");
 async function showStartScreen(ctx) {
   const telegramId = ctx.from.id;
   const telegramUsername = ctx.from.username || `user_${telegramId}`;
-
+console.log('test')
+console.log('test')
+console.log('test')
+console.log('test')
+console.log('test')
+console.log('test')
+console.log('test')
+console.log('test')
+console.log('test')
+console.log('test')
+console.log('test')
+console.log('test')
+console.log('test')
+console.log('test')
+console.log('test')
+console.log('test')
+console.log('test')
   try {
     // Ensure user exists in DB
     await User.findOrCreate({
@@ -87,19 +103,34 @@ const options = {
 };
 
 
-
     let messageId;
 
-    if (ctx.callbackQuery) {
+      if (ctx.callbackQuery) {
+        console.log('editing')
         // Editing existing message (button press)
         await ctx.editMessageText(welcomeText, options);
         messageId = ctx.callbackQuery.message.message_id;
+    
     } else {
         // Fresh start
         const welcomeMessage = await ctx.reply(welcomeText, options);
         messageId = welcomeMessage.message_id;
     }
-
+    let usercheckbonus = await User.findOne({ where: { telegram_id: telegramId } });
+    if (usercheckbonus.bonus_entries > 0) {
+    await ctx.reply(
+        `🎟️ You have <b>${usercheckbonus.bonus_entries} bonus entries</b> available from last week!`,
+        {
+        parse_mode: "HTML",
+        reply_markup: {
+            inline_keyboard: [
+            [{ text: "🎯 Use Bonus Entries", callback_data: "use_bonus_entries" }],
+            [{ text: "💳 Buy New Entries", callback_data: "buy_entries" }]
+            ]
+        }
+        }
+    );
+    }
     // Store welcome message ID in session
     if (!ctx.session) ctx.session = {};
     ctx.session.welcomeMessageId = messageId;

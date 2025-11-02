@@ -1327,7 +1327,7 @@ async function compileUserListWithEntries(ctx) {
     // HTML version of compileWinnerAnnouncement with inverse strategy
     // --- top of file: import models / sequelize ---
     // --- compileWinnerAnnouncementHTML ---
-async function compileWinnerAnnouncementHTML({ structured = false } = {}) {
+async function compileWinnerAnnouncementHTML(ctx, { structured = false } = {}) {
   try {
     const today = new Date();
 
@@ -1416,19 +1416,45 @@ async function compileWinnerAnnouncementHTML({ structured = false } = {}) {
     message += `<b>Win Method:</b> ${winMethod}\n\n`;
     message += "━━━━━━━━━━━━━━━━━━━━\n\n";
 
-    // winners info
+    // winners info — using SAME name logic as compileUserListWithEntries
     for (const [index, entry] of winningEntries.entries()) {
+      const telegramId = entry.User?.telegram_id;
+
+      // === IDENTICAL TO compileUserListWithEntries ===
+      let firstName = `user_${telegramId}`; // fallback
+      if (telegramId) {
+        if (telegramId === ctx.from?.id) {
+          // Current user: use ctx.from directly (no API call)
+          firstName = ctx.from.first_name || `user_${telegramId}`;
+        } else {
+          // Other users: fetch via Telegram API
+          try {
+            const member = await ctx.telegram.getChatMember(
+              process.env.GROUPCHATID || "-1001234567890",
+              telegramId
+            );
+            firstName = member.user.first_name || `user_${telegramId}`;
+          } catch (error) {
+            console.error(`Error fetching first_name for user ${telegramId}:`, error.message);
+            // Keep fallback name
+          }
+        }
+      }
+
       message += `<b>${winnerType.toUpperCase()} ${index + 1}:</b>\n`;
-      message += `👤 <b>Name:</b> ${entry.User?.telegram_username || 'N/A'}\n`;
+      message += `👤 <b>Name:</b> <a href="tg://user?id=${telegramId}">${firstName}</a>\n`;
+
       if (entry.User?.phone) message += `📞 <b>Phone:</b> ${entry.User.phone}\n`;
       if (entry.User?.email) message += `📧 <b>Email:</b> ${entry.User.email}\n`;
       message += `🏊 <b>Draw:</b> ${entry.RafflePool?.name || 'N/A'}\n`;
+
       if (winMethod === 'inverse match') {
         message += `🔢 <b>Entry Number:</b> #${entry.entry_number}\n`;
         message += `🔄 <b>Matched Inverse Of:</b> #${winningNumber}\n`;
       } else {
         message += `🔢 <b>Winning Entry:</b> #${entry.entry_number}\n`;
       }
+
       message += `💰 <b>Prize Won:</b> ₦${Number(winningRecord.winning_amount).toLocaleString()}\n\n`;
     }
 
@@ -1441,13 +1467,12 @@ async function compileWinnerAnnouncementHTML({ structured = false } = {}) {
       message += `<i>This winner matched the inverse of the winning number (${winningNumber.split('').reverse().join('')})!</i>\n\n`;
     } else {
       const seat = moduloWinningIndex;
-     message += `<i>No exact or inverse match was found this week, so the winner was selected fairly using the <b>Modulo Method</b>.</i>\n\n`;
-message += `<b>How it works (simple):</b>\n`;
-message += `We used the winning number (<b>${winningNumber}</b>) together with the total number of entries (<b>${totalEntriesCount}</b>) to find the lucky position.\n`;
-message += `Here’s what we did: <b>${winningNumber} mod ${totalEntriesCount} + 1 = position ${seat}</b>\n`;
-message += `So, the entry sitting in <b>position ${seat}</b> out of all ${totalEntriesCount} entries became the winner! 🎯\n\n`;
-message += `💡 <b>Tip:</b> Enter multiple times to improve your chances whenever the modulo method is used.\n\n`;
-
+      message += `<i>No exact or inverse match was found this week, so the winner was selected fairly using the <b>Modulo Method</b>.</i>\n\n`;
+      message += `<b>How it works (simple):</b>\n`;
+      message += `We used the winning number (<b>${winningNumber}</b>) together with the total number of entries (<b>${totalEntriesCount}</b>) to find the lucky position.\n`;
+      message += `Here’s what we did: <b>${winningNumber} mod ${totalEntriesCount} + 1 = position ${seat}</b>\n`;
+      message += `So, the entry sitting in <b>position ${seat}</b> out of all ${totalEntriesCount} entries became the winner! 🎯\n\n`;
+      message += `💡 <b>Tip:</b> Enter multiple times to improve your chances whenever the modulo method is used.\n\n`;
     }
 
     message += "<b>🎊 CONGRATULATIONS! 🎊</b>\n\n";
