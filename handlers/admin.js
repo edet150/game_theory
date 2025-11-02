@@ -749,7 +749,7 @@ console.log(winningNumber)
 
     const processingMsg = await ctx.reply('🔄 Preparing winner announcement...');
     try {
-        const data = await compileWinnerAnnouncementHTML({ structured: true });
+        const data = await compileWinnerAnnouncementHTML(ctx,{ structured: true });
         await ctx.reply(data.message, {
         parse_mode: 'HTML',
         reply_markup: {
@@ -784,7 +784,7 @@ console.log(winningNumber)
     }
 
     try {
-        const data = await compileWinnerAnnouncementHTML({ structured: true });
+        const data = await compileWinnerAnnouncementHTML(ctx,{ structured: true });
         const { winningEntries, winMethod, winningNumber, currentWeek, moduloWinningIndex, message } = data;
 
         // Save unique winners inside a transaction
